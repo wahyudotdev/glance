@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Trash2, Shield, Plus } from 'lucide-react';
+import { Search, Trash2, Zap, Plus } from 'lucide-react';
 
 interface HeaderProps {
   proxyAddr: string;
@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, on
         <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
           <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
           <span className="w-px h-3 bg-slate-300" />
-          <span className="flex items-center gap-1.5 text-blue-600"><Shield size={12} /> MITM Active</span>
+          <span className="flex items-center gap-1.5 text-blue-600"><Zap size={12} /> MITM Active</span>
         </div>
       </div>
       

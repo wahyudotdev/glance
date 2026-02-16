@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Shield, Settings, Code, ShieldAlert } from 'lucide-react';
+import { Globe, Link, Settings, Code, ShieldAlert } from 'lucide-react';
 
 interface SidebarProps {
   currentView: 'traffic' | 'integrations' | 'settings' | 'rules';
@@ -14,7 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
         onClick={() => setCurrentView('traffic')}
       >
         <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
-          <Shield className="text-white" size={24} />
+          <Link className="text-white" size={24} />
         </div>
         <span className="font-bold text-lg tracking-tight text-slate-800">Agent Proxy</span>
       </div>
