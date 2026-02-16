@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -8,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/elazarl/goproxy"
 )
 
 func findToolsJar(pid string) string {
@@ -63,24 +66,61 @@ func BuildAndAttachAgent(pid string, proxyAddr string) error {
 	manifestFile := filepath.Join(tmpDir, "MANIFEST.MF")
 	jarFile := filepath.Join(os.TempDir(), "agent-proxy-injector.jar")
 
+	caCertBase64 := base64.StdEncoding.EncodeToString([]byte(goproxy.CA_CERT))
+
 	// Write Java code
-	javaCode := `
+	javaCode := fmt.Sprintf(`
 import java.lang.instrument.Instrumentation;
+import java.io.ByteArrayInputStream;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
 public class ProxyAgent {
     public static void agentmain(String agentArgs, Instrumentation inst) {
         try {
             String[] args = agentArgs.split(":");
-            System.setProperty("http.proxyHost", args[0]);
-            System.setProperty("http.proxyPort", args[1]);
-            System.setProperty("https.proxyHost", args[0]);
-            System.setProperty("https.proxyPort", args[1]);
+            String host = args[0];
+            String port = args[1];
+            String caCertB64 = "%s";
+
+            // 1. Set System Properties for standard HttpURLConnection
+            System.setProperty("http.proxyHost", host);
+            System.setProperty("http.proxyPort", port);
+            System.setProperty("https.proxyHost", host);
+            System.setProperty("https.proxyPort", port);
             System.setProperty("http.nonProxyHosts", "");
-            System.out.println("[AgentProxy] Injected " + args[0] + ":" + args[1]);
+
+            // 2. Trust the Agent Proxy CA Cert (for HTTPS)
+            try {
+                byte[] decoded = java.util.Base64.getDecoder().decode(caCertB64);
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                X509Certificate caCert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(decoded));
+
+                KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+                ks.load(null, null);
+                ks.setCertificateEntry("agent-proxy-ca", caCert);
+
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(ks);
+
+                SSLContext sc = SSLContext.getInstance("TLS");
+                sc.init(null, tmf.getTrustManagers(), new java.security.SecureRandom());
+                SSLContext.setDefault(sc);
+                
+                System.out.println("[AgentProxy] HTTPS CA certificate injected successfully");
+            } catch (Exception e) {
+                System.err.println("[AgentProxy] Failed to inject CA certificate: " + e.getMessage());
+            }
+
+            System.out.println("[AgentProxy] Interception enabled for " + host + ":" + port);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-}`
+}`, caCertBase64)
 	if err := os.WriteFile(javaFile, []byte(javaCode), 0644); err != nil {
 		return err
 	}
