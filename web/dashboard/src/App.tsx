@@ -3,7 +3,7 @@ import axios from 'axios';
 import type { TrafficEntry } from './types/traffic';
 import { 
   Activity, Globe, Shield, Search, Trash2, 
-  Copy, Check, ChevronRight, FileText, Settings
+  Copy, Check, ChevronRight, FileText, Settings, Code
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { generateCurl } from './lib/curl';
@@ -16,6 +16,9 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [javaProcesses, setJavaProcesses] = useState<{pid: string, name: string}[]>([]);
+  const [isLoadingJava, setIsLoadingJava] = useState(false);
+  const [proxyAddr, setProxyAddr] = useState(':8000');
 
   const fetchTraffic = async () => {
     try {
@@ -37,7 +40,35 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchJavaProcesses = async () => {
+    setIsLoadingJava(true);
+    try {
+      const response = await axios.get('http://localhost:8081/api/client/java/processes');
+      setJavaProcesses(response.data || []);
+    } catch (error) {
+      console.error('Error fetching Java processes:', error);
+    } finally {
+      setIsLoadingJava(false);
+    }
+  };
+
   useEffect(() => {
+    if (currentView === 'integrations') {
+      fetchJavaProcesses();
+    }
+  }, [currentView]);
+
+  const fetchStatus = async () => {
+    try {
+      const response = await axios.get('http://localhost:8081/api/status');
+      setProxyAddr(response.data.proxy_addr);
+    } catch (error) {
+      console.error('Error fetching status:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatus();
     const interval = setInterval(fetchTraffic, 1500);
     return () => clearInterval(interval);
   }, []);
@@ -93,7 +124,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-bold tracking-tight text-slate-800">Traffic Inspector</h1>
             <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy :8080</span>
+              <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
               <span className="w-px h-3 bg-slate-300" />
               <span className="flex items-center gap-1.5 text-blue-600"><Shield size={12} /> MITM Active</span>
             </div>
@@ -319,6 +350,86 @@ const App: React.FC = () => {
                       <button disabled className="w-full py-3 bg-slate-200 text-slate-400 rounded-xl font-bold text-sm cursor-not-allowed">
                         Coming Soon
                       </button>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
+                          <Code className="text-amber-600" size={24} />
+                        </div>
+                        <a 
+                          href="http://localhost:8081/api/ca/cert" 
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-all"
+                        >
+                          Download CA Certificate
+                        </a>
+                      </div>
+                      <h3 className="text-lg font-bold mb-2">Java / JVM Applications</h3>
+                      <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                        Detect running Java applications and get interception instructions.
+                      </p>
+                      
+                      <div className="space-y-6">
+                        {/* Process List */}
+                        <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                          <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Running Java Processes</span>
+                            <button 
+                              onClick={fetchJavaProcesses}
+                              className={`p-1.5 hover:bg-slate-100 rounded-md transition-all ${isLoadingJava ? 'animate-spin text-blue-600' : 'text-slate-400'}`}
+                            >
+                              <Activity size={14} />
+                            </button>
+                          </div>
+                          <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                            {javaProcesses.length > 0 ? javaProcesses.map(proc => (
+                              <div key={proc.pid} className="px-4 py-3 flex items-center justify-between hover:bg-white transition-colors group">
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-slate-700 font-mono">{proc.name}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">PID: {proc.pid}</span>
+                                </div>
+                                <button 
+                                  onClick={() => alert(`To intercept PID ${proc.pid}, restart the application with the JVM arguments below.`)}
+                                  className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 hover:text-blue-600"
+                                >
+                                  Intercept
+                                </button>
+                              </div>
+                            )) : (
+                              <div className="px-4 py-8 text-center text-slate-400 text-xs italic">
+                                No Java processes detected. Make sure 'jps' is in your PATH.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">JVM Arguments</label>
+                          <div className="relative group">
+                            <pre className="bg-slate-900 text-amber-200 p-4 rounded-xl text-xs font-mono overflow-x-auto">
+                              -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=8080 \<br/>
+                              -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=8080
+                            </pre>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText('-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=8080 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=8080');
+                              }}
+                              className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                          <h4 className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-2">
+                            <Shield size={14} /> HTTPS Note
+                          </h4>
+                          <p className="text-[11px] text-amber-700 leading-relaxed">
+                            For HTTPS, you must import the CA certificate into your Java keystore or use <code className="bg-amber-100 px-1 rounded">-Djavax.net.ssl.trustStore</code> pointing to a keystore containing the CA.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </section>

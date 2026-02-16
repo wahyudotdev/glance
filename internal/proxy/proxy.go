@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -66,7 +67,20 @@ func NewProxy(addr string) *Proxy {
 	}
 }
 
-func (p *Proxy) Start() error {
-	log.Printf("Proxy server starting on %s", p.addr)
-	return http.ListenAndServe(p.addr, p.server)
+func (p *Proxy) Start() (string, error) {
+	ln, err := net.Listen("tcp", p.addr)
+	if err != nil {
+		log.Printf("Port %s is in use, falling back to a random port...", p.addr)
+		ln, err = net.Listen("tcp", ":0")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	actualAddr := ln.Addr().String()
+	log.Printf("Proxy server starting on %s", actualAddr)
+
+	// Use the listener with the server
+	go http.Serve(ln, p.server)
+	return actualAddr, nil
 }
