@@ -1,9 +1,11 @@
 package interceptor
 
 import (
+	"agent-proxy/internal/config"
 	"agent-proxy/internal/model"
 	"agent-proxy/internal/repository"
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -24,8 +26,26 @@ func (s *TrafficStore) AddEntry(entry *model.TrafficEntry) {
 	if s.repo == nil {
 		return
 	}
+
+	cfg := config.Get()
+
+	// 1. Enforce response size limit
+	if cfg.MaxResponseSize > 0 && int64(len(entry.ResponseBody)) > cfg.MaxResponseSize {
+		entry.ResponseBody = fmt.Sprintf("[Response body truncated. Size: %.2f MB exceeds limit of %.2f MB]",
+			float64(len(entry.ResponseBody))/(1024*1024),
+			float64(cfg.MaxResponseSize)/(1024*1024))
+	}
+
+	// 2. Save entry
 	if err := s.repo.Add(entry); err != nil {
 		log.Printf("Error saving traffic entry to repo: %v", err)
+	}
+
+	// 3. Auto-prune old history
+	if cfg.HistoryLimit > 0 {
+		if err := s.repo.Prune(cfg.HistoryLimit); err != nil {
+			log.Printf("Error pruning history: %v", err)
+		}
 	}
 }
 

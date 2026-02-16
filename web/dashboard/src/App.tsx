@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Trash2, Check } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess } from './types/traffic';
 
@@ -37,8 +37,15 @@ const App: React.FC = () => {
     proxy_addr: ':8000',
     api_addr: ':8081',
     mcp_addr: ':8082',
-    mcp_enabled: false
+    mcp_enabled: false,
+    history_limit: 500,
+    max_response_size: 1048576
   });
+
+  const historyLimitRef = useRef(config.history_limit);
+  useEffect(() => {
+    historyLimitRef.current = config.history_limit;
+  }, [config.history_limit]);
 
   // --- API Actions (Using Native Fetch) ---
 
@@ -51,8 +58,13 @@ const App: React.FC = () => {
 
   const fetchTraffic = async () => {
     try {
-      const data = await apiFetch('/api/traffic');
-      setEntries(data || []);
+      const data: TrafficEntry[] = await apiFetch('/api/traffic');
+      const limit = historyLimitRef.current;
+      if (limit > 0 && data.length > limit) {
+        setEntries(data.slice(data.length - limit));
+      } else {
+        setEntries(data || []);
+      }
     } catch (error) {
       console.error('Error fetching traffic:', error);
     }
@@ -147,7 +159,14 @@ const App: React.FC = () => {
     ws.onmessage = (event) => {
       try {
         const entry: TrafficEntry = JSON.parse(event.data);
-        setEntries((prev) => [...prev, entry]);
+        setEntries((prev) => {
+          const updated = [...prev, entry];
+          const limit = historyLimitRef.current;
+          if (limit > 0 && updated.length > limit) {
+            return updated.slice(updated.length - limit);
+          }
+          return updated;
+        });
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
       }

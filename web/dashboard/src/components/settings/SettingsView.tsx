@@ -64,6 +64,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, o
             )}
           </div>
 
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Data Management</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase">History Limit (Max Entries)</label>
+                <input 
+                  type="number" 
+                  value={config.history_limit}
+                  onChange={(e) => setConfig({...config, history_limit: parseInt(e.target.value) || 0})}
+                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                  placeholder="500"
+                />
+                <p className="text-[10px] text-slate-400 italic">Auto-remove oldest entries when limit is reached.</p>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase">Max Response Size (Bytes)</label>
+                <input 
+                  type="number" 
+                  value={config.max_response_size}
+                  onChange={(e) => setConfig({...config, max_response_size: parseInt(e.target.value) || 0})}
+                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                  placeholder="1048576"
+                />
+                <p className="text-[10px] text-slate-400 italic">Default: 1,048,576 (1 MB). 0 to disable limit.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <button 
               onClick={onReset}

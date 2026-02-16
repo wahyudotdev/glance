@@ -17,10 +17,12 @@ func NewSQLiteConfigRepository(db *sql.DB) ConfigRepository {
 
 func (r *sqliteConfigRepository) Get() (*model.Config, error) {
 	cfg := &model.Config{
-		ProxyAddr:  ":8000",
-		APIAddr:    ":8081",
-		MCPAddr:    ":8082",
-		MCPEnabled: false,
+		ProxyAddr:       ":8000",
+		APIAddr:         ":8081",
+		MCPAddr:         ":8082",
+		MCPEnabled:      false,
+		HistoryLimit:    500,
+		MaxResponseSize: 1024 * 1024, // 1 MB
 	}
 
 	var val string
@@ -101,5 +103,13 @@ func (r *sqliteTrafficRepository) GetAll() ([]*model.TrafficEntry, error) {
 
 func (r *sqliteTrafficRepository) Clear() error {
 	_, err := r.db.Exec("DELETE FROM traffic")
+	return err
+}
+
+func (r *sqliteTrafficRepository) Prune(limit int) error {
+	_, err := r.db.Exec(`
+		DELETE FROM traffic WHERE id NOT IN (
+			SELECT id FROM traffic ORDER BY start_time DESC LIMIT ?
+		)`, limit)
 	return err
 }

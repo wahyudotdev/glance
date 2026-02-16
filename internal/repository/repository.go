@@ -13,4 +13,5 @@ type TrafficRepository interface {
 	Add(entry *model.TrafficEntry) error
 	GetAll() ([]*model.TrafficEntry, error)
 	Clear() error
+	Prune(limit int) error
 }

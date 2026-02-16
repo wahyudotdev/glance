@@ -16,6 +16,8 @@ export interface Config {
   api_addr: string;
   mcp_addr: string;
   mcp_enabled: boolean;
+  history_limit: number;
+  max_response_size: number;
 }
 
 export interface JavaProcess {
