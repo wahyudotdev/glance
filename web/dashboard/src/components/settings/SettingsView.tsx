@@ -1,4 +1,5 @@
 import React from 'react';
+import { HelpCircle } from 'lucide-react';
 import type { Config } from '../../types/traffic';
 
 interface SettingsViewProps {
@@ -6,16 +7,20 @@ interface SettingsViewProps {
   setConfig: (config: Config) => void;
   onSave: (config: Config) => void;
   onReset: () => void;
+  onShowMCP: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, onSave, onReset }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, onSave, onReset, onShowMCP }) => {
   return (
     <div className="flex-1 p-12 bg-slate-50 overflow-y-auto">
       <div className="max-w-2xl mx-auto">
         <h2 className="text-2xl font-bold text-slate-800 mb-8">System Settings</h2>
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Network Ports</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Network Ports</h3>
+              <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 uppercase tracking-tighter">Requires Restart</span>
+            </div>
             <div className="space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Proxy Address</label>
@@ -40,9 +45,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, o
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">MCP Server</h3>
-                <p className="text-xs text-slate-400 mt-1">Model Context Protocol for AI Agent integration</p>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">MCP Server</h3>
+                  <p className="text-xs text-slate-400 mt-1">Model Context Protocol for AI Agent integration</p>
+                </div>
+                <button 
+                  onClick={onShowMCP}
+                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                  title="View Documentation"
+                >
+                  <HelpCircle size={16} />
+                </button>
+                <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 uppercase tracking-tighter">Requires Restart</span>
               </div>
               <button 
                 onClick={() => setConfig({...config, mcp_enabled: !config.mcp_enabled})}

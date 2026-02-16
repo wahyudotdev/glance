@@ -5,11 +5,17 @@ import (
 	"agent-proxy/internal/model"
 	"agent-proxy/internal/rules"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"strings"
 )
 
 type MCPServer struct {
@@ -67,6 +73,35 @@ func (ms *MCPServer) registerTools() {
 		mcp.WithNumber("status", mcp.Description("HTTP Status code to return (e.g. 200, 404)")),
 		mcp.WithString("body", mcp.Description("Response body to return")),
 	), ms.addMockRuleHandler)
+
+	// --- New Tools ---
+
+	// Rules Management
+	ms.server.AddTool(mcp.NewTool("list_rules",
+		mcp.WithDescription("List all active interception rules (mocks and breakpoints)."),
+	), ms.listRulesHandler)
+
+	ms.server.AddTool(mcp.NewTool("add_breakpoint_rule",
+		mcp.WithDescription("Add a breakpoint rule to pause traffic for manual inspection."),
+		mcp.WithString("url_pattern", mcp.Description("URL pattern to match")),
+		mcp.WithString("method", mcp.Description("HTTP Method (optional)")),
+		mcp.WithString("strategy", mcp.Description("Interception strategy: 'request', 'response', or 'both'")),
+	), ms.addBreakpointRuleHandler)
+
+	ms.server.AddTool(mcp.NewTool("delete_rule",
+		mcp.WithDescription("Delete an interception rule by ID."),
+		mcp.WithString("id", mcp.Description("The ID of the rule to delete")),
+	), ms.deleteRuleHandler)
+
+	// Traffic Execution
+	ms.server.AddTool(mcp.NewTool("execute_request",
+		mcp.WithDescription("Execute a custom HTTP request through the proxy. Can be used to replay an existing request by providing base_id."),
+		mcp.WithString("method", mcp.Description("HTTP Method (e.g. GET, POST)")),
+		mcp.WithString("url", mcp.Description("Target URL")),
+		mcp.WithString("headers", mcp.Description("JSON string of headers (e.g. {\"Content-Type\": [\"application/json\"]})")),
+		mcp.WithString("body", mcp.Description("Request body")),
+		mcp.WithString("base_id", mcp.Description("Optional: The ID of an existing request to use as a template (replay)")),
+	), ms.executeRequestHandler)
 }
 
 func (ms *MCPServer) addMockRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -101,6 +136,143 @@ func (ms *MCPServer) addMockRuleHandler(ctx context.Context, request mcp.CallToo
 
 	ms.engine.AddRule(rule)
 	return mcp.NewToolResultText(fmt.Sprintf("Mock rule added for %s %s (Returns %d)", method, urlPattern, int(status))), nil
+}
+
+func (ms *MCPServer) listRulesHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	rules := ms.engine.GetRules()
+	var sb strings.Builder
+	for _, r := range rules {
+		sb.WriteString(fmt.Sprintf("ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
+			r.ID, r.Type, r.Method, r.URLPattern, r.Strategy))
+	}
+	if sb.Len() == 0 {
+		return mcp.NewToolResultText("No active rules."), nil
+	}
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
+func (ms *MCPServer) addBreakpointRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+
+	urlPattern, _ := args["url_pattern"].(string)
+	method, _ := args["method"].(string)
+	strategy, _ := args["strategy"].(string)
+
+	if urlPattern == "" {
+		return nil, fmt.Errorf("url_pattern is required")
+	}
+
+	rule := &model.Rule{
+		ID:         uuid.New().String(),
+		Type:       model.RuleBreakpoint,
+		URLPattern: urlPattern,
+		Method:     method,
+		Strategy:   model.BreakpointStrategy(strategy),
+	}
+
+	ms.engine.AddRule(rule)
+	return mcp.NewToolResultText(fmt.Sprintf("Breakpoint added for %s %s (Strategy: %s)", method, urlPattern, strategy)), nil
+}
+
+func (ms *MCPServer) deleteRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+	id, _ := args["id"].(string)
+	ms.engine.DeleteRule(id)
+	return mcp.NewToolResultText(fmt.Sprintf("Rule %s deleted", id)), nil
+}
+
+func (ms *MCPServer) executeRequestHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+
+	method, _ := args["method"].(string)
+	urlStr, _ := args["url"].(string)
+	headersJSON, _ := args["headers"].(string)
+	bodyStr, _ := args["body"].(string)
+	baseID, _ := args["base_id"].(string)
+
+	var finalMethod, finalURL, finalBody string
+	var finalHeaders http.Header = http.Header{}
+
+	// 1. If base_id is provided, load the template
+	if baseID != "" {
+		entries, _ := ms.store.GetPage(0, 500)
+		for _, e := range entries {
+			if e.ID == baseID {
+				finalMethod = e.Method
+				finalURL = e.URL
+				finalHeaders = e.RequestHeaders.Clone()
+				finalBody = e.RequestBody
+				break
+			}
+		}
+	}
+
+	// 2. Apply overrides from arguments
+	if method != "" {
+		finalMethod = method
+	}
+	if urlStr != "" {
+		finalURL = urlStr
+	}
+	if bodyStr != "" {
+		finalBody = bodyStr
+	}
+	if headersJSON != "" {
+		var customHeaders map[string][]string
+		if err := json.Unmarshal([]byte(headersJSON), &customHeaders); err == nil {
+			for k, vs := range customHeaders {
+				finalHeaders[k] = vs
+			}
+		}
+	}
+
+	if finalMethod == "" || finalURL == "" {
+		return nil, fmt.Errorf("method and url are required (or valid base_id)")
+	}
+
+	req, err := http.NewRequest(finalMethod, finalURL, strings.NewReader(finalBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header = finalHeaders
+
+	// Capture start
+	entry, _ := interceptor.NewEntry(req)
+	entry.ModifiedBy = "editor"
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Capture response
+	entry.Duration = time.Since(start)
+	entry.Status = resp.StatusCode
+	entry.ResponseHeaders = resp.Header.Clone()
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	entry.ResponseBody = string(bodyBytes)
+
+	contentType := resp.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "image/") {
+		encoded := base64.StdEncoding.EncodeToString(bodyBytes)
+		entry.ResponseBody = fmt.Sprintf("data:%s;base64,%s", contentType, encoded)
+	}
+
+	ms.store.AddEntry(entry)
+
+	return mcp.NewToolResultText(fmt.Sprintf("Request executed successfully.\nStatus: %d\nNew Entry ID: %s", resp.StatusCode, entry.ID)), nil
 }
 
 func (ms *MCPServer) registerResources() {

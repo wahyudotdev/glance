@@ -5,6 +5,7 @@ import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/t
 // Layout Components
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { MCPDocs } from './components/layout/MCPDocs';
 
 // Feature Components
 import { TrafficList } from './components/traffic/TrafficList';
@@ -29,6 +30,7 @@ const App: React.FC = () => {
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
+  const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
   
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -114,6 +116,7 @@ const App: React.FC = () => {
     max_response_size: 1048576,
     default_page_size: 50
   });
+  const [originalConfig, setOriginalConfig] = useState<Config | null>(null);
 
   const historyLimitRef = useRef(config.history_limit);
   useEffect(() => {
@@ -299,6 +302,7 @@ const App: React.FC = () => {
     try {
       const data = await apiFetch('/api/config');
       setConfig(data);
+      setOriginalConfig(data);
       return data as Config;
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -312,8 +316,22 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)
       });
+      
+      const needsRestart = originalConfig && (
+        newConfig.proxy_addr !== originalConfig.proxy_addr ||
+        newConfig.api_addr !== originalConfig.api_addr ||
+        newConfig.mcp_addr !== originalConfig.mcp_addr ||
+        newConfig.mcp_enabled !== originalConfig.mcp_enabled
+      );
+
       setConfig(newConfig);
-      toast('success', 'Settings Saved', 'Your configuration has been updated successfully.');
+      setOriginalConfig(newConfig);
+
+      if (needsRestart) {
+        toast('info', 'Restart Required', 'Some changes will take effect only after you restart the Agent Proxy.');
+      } else {
+        toast('success', 'Settings Saved', 'Your configuration has been updated successfully.');
+      }
     } catch (error) {
       toast('error', 'Save Failed', String(error));
     }
@@ -669,6 +687,7 @@ const App: React.FC = () => {
               setConfig={setConfig}
               onSave={saveConfig}
               onReset={fetchConfig}
+              onShowMCP={() => setIsMCPDocsOpen(true)}
             />
           )}
         </main>
@@ -714,6 +733,12 @@ const App: React.FC = () => {
       />
 
       <Toast toasts={toasts} onClose={removeToast} />
+
+      <MCPDocs 
+        isOpen={isMCPDocsOpen}
+        onClose={() => setIsMCPDocsOpen(false)}
+        mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.mcp_addr}/sse`}
+      />
     </div>
   );
 };
