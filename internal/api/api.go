@@ -5,7 +5,6 @@ import (
 	"agent-proxy/internal/interceptor"
 	"agent-proxy/internal/model"
 	"agent-proxy/internal/proxy"
-	"agent-proxy/internal/rules"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -277,7 +276,7 @@ func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
 }
 
 func (s *APIServer) handleCreateRule(c *fiber.Ctx) error {
-	rule := new(rules.Rule)
+	rule := new(model.Rule)
 	if err := c.BodyParser(rule); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -296,7 +295,7 @@ func (s *APIServer) handleListRules(c *fiber.Ctx) error {
 
 func (s *APIServer) handleUpdateRule(c *fiber.Ctx) error {
 	id := c.Params("id")
-	rule := new(rules.Rule)
+	rule := new(model.Rule)
 	if err := c.BodyParser(rule); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

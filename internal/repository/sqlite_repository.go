@@ -120,3 +120,57 @@ func (r *sqliteTrafficRepository) Prune(limit int) error {
 		)`, limit)
 	return err
 }
+
+type sqliteRuleRepository struct {
+	db *sql.DB
+}
+
+func NewSQLiteRuleRepository(db *sql.DB) RuleRepository {
+	return &sqliteRuleRepository{db: db}
+}
+
+func (r *sqliteRuleRepository) GetAll() ([]*model.Rule, error) {
+	rows, err := r.db.Query("SELECT id, type, url_pattern, method, strategy, response_json FROM rules")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []*model.Rule
+	for rows.Next() {
+		var rule model.Rule
+		var respJSON sql.NullString
+		err := rows.Scan(&rule.ID, &rule.Type, &rule.URLPattern, &rule.Method, &rule.Strategy, &respJSON)
+		if err != nil {
+			continue
+		}
+		if respJSON.Valid && respJSON.String != "" {
+			json.Unmarshal([]byte(respJSON.String), &rule.Response)
+		}
+		rules = append(rules, &rule)
+	}
+	return rules, nil
+}
+
+func (r *sqliteRuleRepository) Add(rule *model.Rule) error {
+	respJSON, _ := json.Marshal(rule.Response)
+	_, err := r.db.Exec(`
+		INSERT INTO rules (id, type, url_pattern, method, strategy, response_json)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		rule.ID, rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON))
+	return err
+}
+
+func (r *sqliteRuleRepository) Update(rule *model.Rule) error {
+	respJSON, _ := json.Marshal(rule.Response)
+	_, err := r.db.Exec(`
+		UPDATE rules SET type = ?, url_pattern = ?, method = ?, strategy = ?, response_json = ?
+		WHERE id = ?`,
+		rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON), rule.ID)
+	return err
+}
+
+func (r *sqliteRuleRepository) Delete(id string) error {
+	_, err := r.db.Exec("DELETE FROM rules WHERE id = ?", id)
+	return err
+}

@@ -15,3 +15,10 @@ type TrafficRepository interface {
 	Clear() error
 	Prune(limit int) error
 }
+
+type RuleRepository interface {
+	GetAll() ([]*model.Rule, error)
+	Add(rule *model.Rule) error
+	Update(rule *model.Rule) error
+	Delete(id string) error
+}

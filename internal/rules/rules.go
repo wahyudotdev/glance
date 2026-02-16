@@ -1,97 +1,68 @@
 package rules
 
 import (
+	"agent-proxy/internal/model"
+	"agent-proxy/internal/repository"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 )
 
-type RuleType string
-
-const (
-	RuleMock       RuleType = "mock"
-	RuleBreakpoint RuleType = "breakpoint"
-)
-
-type BreakpointStrategy string
-
-const (
-	StrategyRequest  BreakpointStrategy = "request"
-	StrategyResponse BreakpointStrategy = "response"
-	StrategyBoth     BreakpointStrategy = "both"
-)
-
-type Rule struct {
-	ID         string             `json:"id"`
-	Type       RuleType           `json:"type"`
-	URLPattern string             `json:"url_pattern"`
-	Method     string             `json:"method"`
-	Strategy   BreakpointStrategy `json:"strategy,omitempty"` // For breakpoints
-	Response   *MockResponse      `json:"response,omitempty"` // For mocks
-}
-
-type MockResponse struct {
-	Status  int               `json:"status"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
-}
-
 type Engine struct {
-	mu    sync.RWMutex
-	rules []*Rule
+	mu   sync.RWMutex
+	repo repository.RuleRepository
 }
 
-func NewEngine() *Engine {
+func NewEngine(repo repository.RuleRepository) *Engine {
 	return &Engine{
-		rules: make([]*Rule, 0),
+		repo: repo,
 	}
 }
 
-func (e *Engine) AddRule(rule *Rule) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.rules = append(e.rules, rule)
+func (e *Engine) AddRule(rule *model.Rule) {
+	if err := e.repo.Add(rule); err != nil {
+		log.Printf("Error persisting rule: %v", err)
+	}
 }
 
-func (e *Engine) GetRules() []*Rule {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.rules
+func (e *Engine) GetRules() []*model.Rule {
+	rules, err := e.repo.GetAll()
+	if err != nil {
+		log.Printf("Error loading rules: %v", err)
+		return []*model.Rule{}
+	}
+	return rules
 }
 
 func (e *Engine) ClearRules() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.rules = make([]*Rule, 0)
+	// Not implemented in repo yet, but we can iterate or add a Clear method to RuleRepo
 }
 
 func (e *Engine) DeleteRule(id string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	for i, r := range e.rules {
-		if r.ID == id {
-			e.rules = append(e.rules[:i], e.rules[i+1:]...)
-			break
-		}
+	if err := e.repo.Delete(id); err != nil {
+		log.Printf("Error deleting rule: %v", err)
 	}
 }
 
-func (e *Engine) UpdateRule(rule *Rule) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	for i, r := range e.rules {
-		if r.ID == rule.ID {
-			e.rules[i] = rule
-			break
-		}
+func (e *Engine) UpdateRule(rule *model.Rule) {
+	if err := e.repo.Update(rule); err != nil {
+		log.Printf("Error updating rule: %v", err)
 	}
 }
 
-func (e *Engine) Match(r *http.Request) *Rule {
+func (e *Engine) Match(r *http.Request) *model.Rule {
 	e.mu.RLock()
-	defer e.mu.RUnlock()
+	// We load from repo every time for now to keep it simple and consistent,
+	// but we could cache them in memory.
+	rules, err := e.repo.GetAll()
+	e.mu.RUnlock()
 
-	for _, rule := range e.rules {
+	if err != nil {
+		return nil
+	}
+
+	for _, rule := range rules {
 		if rule.Method != "" && rule.Method != r.Method {
 			continue
 		}

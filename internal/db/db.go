@@ -53,6 +53,14 @@ func createTables() {
 			duration INTEGER,
 			modified_by TEXT
 		)`,
+		`CREATE TABLE IF NOT EXISTS rules (
+			id TEXT PRIMARY KEY,
+			type TEXT,
+			url_pattern TEXT,
+			method TEXT,
+			strategy TEXT,
+			response_json TEXT
+		)`,
 	}
 
 	for _, q := range queries {

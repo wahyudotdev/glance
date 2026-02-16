@@ -1,15 +1,15 @@
 package mcp
 
 import (
+	"agent-proxy/internal/interceptor"
+	"agent-proxy/internal/model"
+	"agent-proxy/internal/rules"
 	"context"
 	"fmt"
-	"strings"
-
-	"agent-proxy/internal/interceptor"
-	"agent-proxy/internal/rules"
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"strings"
 )
 
 type MCPServer struct {
@@ -84,12 +84,12 @@ func (ms *MCPServer) addMockRuleHandler(ctx context.Context, request mcp.CallToo
 		return nil, fmt.Errorf("url_pattern is required")
 	}
 
-	rule := &rules.Rule{
+	rule := &model.Rule{
 		ID:         uuid.New().String(),
-		Type:       rules.RuleMock,
+		Type:       model.RuleMock,
 		URLPattern: urlPattern,
 		Method:     method,
-		Response: &rules.MockResponse{
+		Response: &model.MockResponse{
 			Status: int(status),
 			Body:   body,
 			Headers: map[string]string{

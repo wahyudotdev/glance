@@ -28,3 +28,33 @@ type Config struct {
 	MaxResponseSize int64  `json:"max_response_size"` // in bytes
 	DefaultPageSize int    `json:"default_page_size"`
 }
+
+type RuleType string
+
+const (
+	RuleMock       RuleType = "mock"
+	RuleBreakpoint RuleType = "breakpoint"
+)
+
+type BreakpointStrategy string
+
+const (
+	StrategyRequest  BreakpointStrategy = "request"
+	StrategyResponse BreakpointStrategy = "response"
+	StrategyBoth     BreakpointStrategy = "both"
+)
+
+type Rule struct {
+	ID         string             `json:"id"`
+	Type       RuleType           `json:"type"`
+	URLPattern string             `json:"url_pattern"`
+	Method     string             `json:"method"`
+	Strategy   BreakpointStrategy `json:"strategy,omitempty"` // For breakpoints
+	Response   *MockResponse      `json:"response,omitempty"` // For mocks
+}
+
+type MockResponse struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}

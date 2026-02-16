@@ -11,6 +11,7 @@ import (
 	"agent-proxy/internal/mcp"
 	"agent-proxy/internal/proxy"
 	"agent-proxy/internal/repository"
+	"agent-proxy/internal/rules"
 )
 
 func main() {
@@ -19,6 +20,7 @@ func main() {
 	// Initialize repositories
 	configRepo := repository.NewSQLiteConfigRepository(db.DB)
 	trafficRepo := repository.NewSQLiteTrafficRepository(db.DB)
+	ruleRepo := repository.NewSQLiteRuleRepository(db.DB)
 
 	config.Init(configRepo)
 	cfg := config.Get()
@@ -44,7 +46,8 @@ func main() {
 	}
 
 	store := interceptor.NewTrafficStore(trafficRepo)
-	p := proxy.NewProxyWithStore(*proxyAddr, store)
+	engine := rules.NewEngine(ruleRepo)
+	p := proxy.NewProxyWithRepositories(*proxyAddr, store, engine)
 
 	actualProxyAddr, err := p.Start()
 	if err != nil {
