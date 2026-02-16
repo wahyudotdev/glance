@@ -3,7 +3,7 @@ import axios from 'axios';
 import type { TrafficEntry } from './types/traffic';
 import { 
   Activity, Globe, Shield, Search, Trash2, 
-  Copy, Check, ChevronRight, FileText, Settings, Code
+  Copy, Check, ChevronRight, FileText, Settings, Code, Terminal
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { generateCurl } from './lib/curl';
@@ -14,11 +14,39 @@ const App: React.FC = () => {
   const [filter, setFilter] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations'>('traffic');
+  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isSettingsSavedModalOpen, setIsSettingsSavedModalOpen] = useState(false);
   const [javaProcesses, setJavaProcesses] = useState<{pid: string, name: string}[]>([]);
   const [isLoadingJava, setIsLoadingJava] = useState(false);
   const [proxyAddr, setProxyAddr] = useState(':8000');
+  const [terminalScript, setTerminalScript] = useState('');
+  const [scriptCopied, setScriptCopied] = useState(false);
+  const [config, setConfig] = useState({
+    proxy_addr: ':8000',
+    api_addr: ':8081',
+    mcp_addr: ':8082',
+    mcp_enabled: false
+  });
+
+  const fetchConfig = async () => {
+    try {
+      const response = await axios.get('http://localhost:8081/api/config');
+      setConfig(response.data);
+    } catch (error) {
+      console.error('Error fetching config:', error);
+    }
+  };
+
+  const saveConfig = async (newConfig: typeof config) => {
+    try {
+      await axios.post('http://localhost:8081/api/config', newConfig);
+      setConfig(newConfig);
+      setIsSettingsSavedModalOpen(true);
+    } catch (error) {
+      alert('Failed to save settings: ' + error);
+    }
+  };
 
   const fetchTraffic = async () => {
     try {
@@ -52,6 +80,15 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchTerminalScript = async () => {
+    try {
+      const response = await axios.get('http://localhost:8081/api/client/terminal/setup');
+      setTerminalScript(response.data);
+    } catch (error) {
+      console.error('Error fetching terminal script:', error);
+    }
+  };
+
   const handleIntercept = async (pid: string) => {
     try {
       await axios.post(`http://localhost:8081/api/client/java/intercept/${pid}`);
@@ -64,6 +101,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentView === 'integrations') {
       fetchJavaProcesses();
+      fetchTerminalScript();
     }
   }, [currentView]);
 
@@ -78,6 +116,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchStatus();
+    fetchConfig();
     const interval = setInterval(fetchTraffic, 1500);
     return () => clearInterval(interval);
   }, []);
@@ -108,7 +147,7 @@ const App: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-16 flex flex-col items-center py-6 bg-white border-r border-slate-200 gap-8">
         <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200 cursor-pointer" onClick={() => setCurrentView('traffic')}>
-          <Activity className="text-white" size={24} />
+          <Shield className="text-white" size={24} />
         </div>
         <nav className="flex flex-col gap-4">
           <button 
@@ -121,6 +160,12 @@ const App: React.FC = () => {
             onClick={() => setCurrentView('integrations')}
             className={`p-2 rounded-lg transition-all ${currentView === 'integrations' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
           >
+            <Code size={20} />
+          </button>
+          <button 
+            onClick={() => setCurrentView('settings')}
+            className={`p-2 rounded-lg transition-all ${currentView === 'settings' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+          >
             <Settings size={20} />
           </button>
         </nav>
@@ -131,7 +176,7 @@ const App: React.FC = () => {
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 shadow-sm z-10">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold tracking-tight text-slate-800">Traffic Inspector</h1>
+            <h1 className="text-lg font-bold tracking-tight text-slate-800">Agent Proxy</h1>
             <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
               <span className="w-px h-3 bg-slate-300" />
@@ -323,7 +368,7 @@ const App: React.FC = () => {
                 </div>
               )}
             </>
-          ) : (
+          ) : currentView === 'integrations' ? (
             <div className="flex-1 p-12 bg-slate-50 overflow-y-auto">
               <div className="max-w-4xl mx-auto space-y-12">
                 <section>
@@ -348,17 +393,37 @@ const App: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm opacity-60">
-                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-6">
-                        <Activity className="text-slate-400" size={24} />
+                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-6">
+                        <Terminal className="text-indigo-600" size={24} />
                       </div>
-                      <h3 className="text-lg font-bold mb-2">Android (ADB)</h3>
+                      <h3 className="text-lg font-bold mb-2">Existing Terminal</h3>
                       <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                        Configure connected Android devices or emulators to use the proxy via ADB commands. (Coming Soon)
+                        Run this one-liner in any terminal to instantly enable interception.
                       </p>
-                      <button disabled className="w-full py-3 bg-slate-200 text-slate-400 rounded-xl font-bold text-sm cursor-not-allowed">
-                        Coming Soon
-                      </button>
+                      <div className="relative group mb-4">
+                        <pre className="bg-slate-900 text-indigo-200 p-4 rounded-xl text-[10px] font-mono overflow-x-auto">
+                          eval "$(curl -s http://localhost:8081/setup)"
+                        </pre>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText('eval "$(curl -s http://localhost:8081/setup)"');
+                            setScriptCopied(true);
+                            setTimeout(() => setScriptCopied(false), 2000);
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all"
+                        >
+                          {scriptCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      <details className="text-[10px] text-slate-400 cursor-pointer">
+                        <summary className="hover:text-slate-600 transition-colors">Alternative: Manual Setup</summary>
+                        <div className="mt-2 relative group">
+                          <pre className="bg-slate-900 text-indigo-200 p-4 rounded-xl text-[9px] font-mono overflow-x-auto max-h-32">
+                            {terminalScript || '# Fetching setup script...'}
+                          </pre>
+                        </div>
+                      </details>
                     </div>
 
                     <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
@@ -444,9 +509,106 @@ const App: React.FC = () => {
                 </section>
               </div>
             </div>
+          ) : (
+            <div className="flex-1 p-12 bg-slate-50 overflow-y-auto">
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl font-bold text-slate-800 mb-8">System Settings</h2>
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Network Ports</h3>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase">Proxy Address</label>
+                        <input 
+                          type="text" 
+                          value={config.proxy_addr}
+                          onChange={(e) => setConfig({...config, proxy_addr: e.target.value})}
+                          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase">API / Dashboard Address</label>
+                        <input 
+                          type="text" 
+                          value={config.api_addr}
+                          onChange={(e) => setConfig({...config, api_addr: e.target.value})}
+                          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">MCP Server</h3>
+                        <p className="text-xs text-slate-400 mt-1">Model Context Protocol for AI Agent integration</p>
+                      </div>
+                      <button 
+                        onClick={() => setConfig({...config, mcp_enabled: !config.mcp_enabled})}
+                        className={`w-12 h-6 rounded-full transition-all relative ${config.mcp_enabled ? 'bg-blue-600' : 'bg-slate-200'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.mcp_enabled ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+                    {config.mcp_enabled && (
+                      <div className="mt-4 flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-200">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase">MCP Address (SSE)</label>
+                        <input 
+                          type="text" 
+                          value={config.mcp_addr}
+                          onChange={(e) => setConfig({...config, mcp_addr: e.target.value})}
+                          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button 
+                      onClick={fetchConfig}
+                      className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-white rounded-xl transition-all"
+                    >
+                      Reset
+                    </button>
+                    <button 
+                      onClick={() => saveConfig(config)}
+                      className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all"
+                    >
+                      Save Settings
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>
+
+      {/* Settings Saved Modal */}
+      {isSettingsSavedModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Check size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Settings Saved</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Your configuration has been updated successfully. Some changes (like port updates) will take effect after restarting the application.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+              <button 
+                onClick={() => setIsSettingsSavedModalOpen(false)}
+                className="w-full px-4 py-3 text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-all shadow-lg shadow-emerald-200 active:scale-[0.98]"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {isClearModalOpen && (

@@ -5,16 +5,28 @@ import (
 	"log"
 
 	"agent-proxy/internal/api"
+	"agent-proxy/internal/config"
 	"agent-proxy/internal/mcp"
 	"agent-proxy/internal/proxy"
 )
 
 func main() {
-	proxyAddr := flag.String("proxy-addr", ":8000", "proxy listen address")
-	apiAddr := flag.String("api-addr", ":8081", "api/dashboard listen address")
-	mcpAddr := flag.String("mcp-addr", ":8082", "mcp server listen address (SSE)")
-	mcpMode := flag.Bool("mcp", false, "run as MCP server")
+	cfg := config.Get()
+
+	proxyAddr := flag.String("proxy-addr", cfg.ProxyAddr, "proxy listen address")
+	apiAddr := flag.String("api-addr", cfg.APIAddr, "api/dashboard listen address")
+	mcpAddr := flag.String("mcp-addr", cfg.MCPAddr, "mcp server listen address (SSE)")
+	mcpMode := flag.Bool("mcp", cfg.MCPEnabled, "run as MCP server")
 	flag.Parse()
+
+	// Update config with flags if they were provided (flags override saved config)
+	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpAddr != cfg.MCPAddr || *mcpMode != cfg.MCPEnabled {
+		cfg.ProxyAddr = *proxyAddr
+		cfg.APIAddr = *apiAddr
+		cfg.MCPAddr = *mcpAddr
+		cfg.MCPEnabled = *mcpMode
+		config.Save(cfg)
+	}
 
 	// Check for Java Agent injection mode (used internally)
 	if len(flag.Args()) > 0 && flag.Args()[0] == "inject-agent" {

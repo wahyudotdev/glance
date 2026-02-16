@@ -1,15 +1,17 @@
 package api
 
 import (
+	"agent-proxy/internal/config"
 	"agent-proxy/internal/interceptor"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 type APIServer struct {
-	store     *interceptor.TrafficStore
-	app       *fiber.App
-	proxyAddr string
+	store       *interceptor.TrafficStore
+	app         *fiber.App
+	proxyAddr   string
+	restartChan chan bool
 }
 
 func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer {
@@ -25,9 +27,10 @@ func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer 
 	}))
 
 	return &APIServer{
-		store:     store,
-		app:       app,
-		proxyAddr: proxyAddr,
+		store:       store,
+		app:         app,
+		proxyAddr:   proxyAddr,
+		restartChan: make(chan bool, 1),
 	}
 }
 
@@ -35,6 +38,8 @@ func (s *APIServer) RegisterRoutes() {
 	s.app.Get("/api/status", s.handleStatus)
 	s.app.Get("/api/traffic", s.handleTraffic)
 	s.app.Delete("/api/traffic", s.handleClearTraffic)
+	s.app.Get("/api/config", s.handleGetConfig)
+	s.app.Post("/api/config", s.handleSaveConfig)
 
 	// Client integrations
 	s.registerClientRoutes()
@@ -60,6 +65,21 @@ func (s *APIServer) handleTraffic(c *fiber.Ctx) error {
 func (s *APIServer) handleClearTraffic(c *fiber.Ctx) error {
 	s.store.ClearEntries()
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (s *APIServer) handleGetConfig(c *fiber.Ctx) error {
+	return c.JSON(config.Get())
+}
+
+func (s *APIServer) handleSaveConfig(c *fiber.Ctx) error {
+	cfg := new(config.Config)
+	if err := c.BodyParser(cfg); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := config.Save(cfg); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(cfg)
 }
 
 func (s *APIServer) Listen(addr string) error {
