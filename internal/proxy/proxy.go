@@ -13,10 +13,11 @@ import (
 )
 
 type Proxy struct {
-	server *goproxy.ProxyHttpServer
-	addr   string
-	Store  *interceptor.TrafficStore
-	Engine *rules.Engine
+	server  *goproxy.ProxyHttpServer
+	addr    string
+	Store   *interceptor.TrafficStore
+	Engine  *rules.Engine
+	OnEntry func(*interceptor.TrafficEntry)
 }
 
 func NewProxy(addr string) *Proxy {
@@ -26,6 +27,13 @@ func NewProxy(addr string) *Proxy {
 
 	store := interceptor.NewTrafficStore()
 	engine := rules.NewEngine()
+
+	proxy := &Proxy{
+		server: p,
+		addr:   addr,
+		Store:  store,
+		Engine: engine,
+	}
 
 	// Handle HTTPS CONNECT requests
 	p.OnRequest().HandleConnect(goproxy.AlwaysMitm)
@@ -70,18 +78,18 @@ func NewProxy(addr string) *Proxy {
 				entry.ResponseBody = body
 				entry.Duration = time.Since(entry.StartTime)
 				store.AddEntry(entry)
+
+				if proxy.OnEntry != nil {
+					proxy.OnEntry(entry)
+				}
+
 				log.Printf("[%d] %s %s (%v)", entry.Status, entry.Method, entry.URL, entry.Duration)
 			}
 			return resp
 		},
 	)
 
-	return &Proxy{
-		server: p,
-		addr:   addr,
-		Store:  store,
-		Engine: engine,
-	}
+	return proxy
 }
 
 func (p *Proxy) Start() (string, error) {

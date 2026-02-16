@@ -126,8 +126,30 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchStatus();
     fetchConfig();
-    const interval = setInterval(fetchTraffic, 1500);
-    return () => clearInterval(interval);
+    fetchTraffic(); // Initial fetch
+
+    // WebSocket setup
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/traffic`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const entry: TrafficEntry = JSON.parse(event.data);
+        setEntries((prev) => [...prev, entry]);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected. Reconnecting in 3s...');
+      setTimeout(() => {
+        // Simple reconnection logic could go here if needed
+      }, 3000);
+    };
+
+    return () => ws.close();
   }, []);
 
   useEffect(() => {

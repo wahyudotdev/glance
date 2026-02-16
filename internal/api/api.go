@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/websocket/v2"
 )
 
 type APIServer struct {
@@ -15,12 +16,16 @@ type APIServer struct {
 	app         *fiber.App
 	proxyAddr   string
 	restartChan chan bool
+	Hub         *Hub
 }
 
 func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
+
+	hub := NewHub()
+	go hub.Run()
 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
@@ -42,6 +47,7 @@ func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer 
 		app:         app,
 		proxyAddr:   proxyAddr,
 		restartChan: make(chan bool, 1),
+		Hub:         hub,
 	}
 }
 
@@ -51,6 +57,21 @@ func (s *APIServer) RegisterRoutes() {
 	s.app.Delete("/api/traffic", s.handleClearTraffic)
 	s.app.Get("/api/config", s.handleGetConfig)
 	s.app.Post("/api/config", s.handleSaveConfig)
+
+	// WebSocket for real-time traffic
+	s.app.Get("/ws/traffic", websocket.New(func(c *websocket.Conn) {
+		s.Hub.register <- c
+		defer func() {
+			s.Hub.unregister <- c
+		}()
+
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}))
 
 	// Client integrations
 	s.registerClientRoutes()
