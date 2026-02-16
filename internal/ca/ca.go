@@ -3,10 +3,15 @@ package ca
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/elazarl/goproxy"
 )
+
+var CAPath string
 
 func SetupCA() {
 	// For now, we use the default goproxy CA.
@@ -22,4 +27,14 @@ func SetupCA() {
 	goproxy.GoproxyCa = caCert
 	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&caCert)}
 	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&caCert)}
+
+	// Save CA to a temporary file
+	tmpDir := os.TempDir()
+	CAPath = filepath.Join(tmpDir, "agent-proxy-ca.crt")
+	err = ioutil.WriteFile(CAPath, []byte(goproxy.CA_CERT), 0644)
+	if err != nil {
+		log.Printf("Warning: Failed to save CA certificate to %s: %v", CAPath, err)
+	} else {
+		log.Printf("CA certificate saved to %s", CAPath)
+	}
 }

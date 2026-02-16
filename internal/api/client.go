@@ -30,8 +30,15 @@ func (s *APIServer) handleInterceptJava(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "intercepted"})
 }
 
+func (s *APIServer) handleTerminalSetup(c *fiber.Ctx) error {
+	script := client.GetTerminalSetupScript(s.proxyAddr)
+	return c.SendString(script)
+}
+
 func (s *APIServer) registerClientRoutes() {
 	s.app.Post("/api/client/chromium", s.handleLaunchChromium)
 	s.app.Get("/api/client/java/processes", s.handleListJavaProcesses)
 	s.app.Post("/api/client/java/intercept/:pid", s.handleInterceptJava)
+	s.app.Get("/api/client/terminal/setup", s.handleTerminalSetup)
+	s.app.Get("/setup", s.handleTerminalSetup)
 }
