@@ -25,4 +25,5 @@ type Config struct {
 	MCPEnabled      bool   `json:"mcp_enabled"`
 	HistoryLimit    int    `json:"history_limit"`
 	MaxResponseSize int64  `json:"max_response_size"` // in bytes
+	DefaultPageSize int    `json:"default_page_size"`
 }

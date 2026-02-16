@@ -18,6 +18,7 @@ export interface Config {
   mcp_enabled: boolean;
   history_limit: number;
   max_response_size: number;
+  default_page_size: number;
 }
 
 export interface JavaProcess {

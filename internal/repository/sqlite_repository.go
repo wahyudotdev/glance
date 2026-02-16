@@ -23,6 +23,7 @@ func (r *sqliteConfigRepository) Get() (*model.Config, error) {
 		MCPEnabled:      false,
 		HistoryLimit:    500,
 		MaxResponseSize: 1024 * 1024, // 1 MB
+		DefaultPageSize: 50,
 	}
 
 	var val string
@@ -71,14 +72,20 @@ func (r *sqliteTrafficRepository) Add(entry *model.TrafficEntry) error {
 	return err
 }
 
-func (r *sqliteTrafficRepository) GetAll() ([]*model.TrafficEntry, error) {
+func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEntry, int, error) {
+	var total int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM traffic").Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := r.db.Query(`
 		SELECT 
 			id, method, url, request_headers, request_body,
 			status, response_headers, response_body, start_time, duration
-		FROM traffic ORDER BY start_time ASC`)
+		FROM traffic ORDER BY start_time DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -98,7 +105,7 @@ func (r *sqliteTrafficRepository) GetAll() ([]*model.TrafficEntry, error) {
 		e.Duration = time.Duration(duration)
 		entries = append(entries, &e)
 	}
-	return entries, nil
+	return entries, total, nil
 }
 
 func (r *sqliteTrafficRepository) Clear() error {

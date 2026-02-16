@@ -11,7 +11,7 @@ type ConfigRepository interface {
 
 type TrafficRepository interface {
 	Add(entry *model.TrafficEntry) error
-	GetAll() ([]*model.TrafficEntry, error)
+	GetPage(offset, limit int) ([]*model.TrafficEntry, int, error)
 	Clear() error
 	Prune(limit int) error
 }

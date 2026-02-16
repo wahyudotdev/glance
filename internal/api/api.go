@@ -91,8 +91,19 @@ func (s *APIServer) handleStatus(c *fiber.Ctx) error {
 }
 
 func (s *APIServer) handleTraffic(c *fiber.Ctx) error {
-	entries := s.store.GetEntries()
-	return c.JSON(entries)
+	cfg := config.Get()
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("pageSize", cfg.DefaultPageSize)
+
+	offset := (page - 1) * pageSize
+	entries, total := s.store.GetPage(offset, pageSize)
+
+	return c.JSON(fiber.Map{
+		"entries":  entries,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 func (s *APIServer) handleClearTraffic(c *fiber.Ctx) error {

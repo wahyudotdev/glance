@@ -132,15 +132,10 @@ func (ms *MCPServer) registerPrompts() {
 }
 
 func (ms *MCPServer) analyzeTrafficPromptHandler(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-	entries := ms.store.GetEntries()
-	count := 5
-	if len(entries) < count {
-		count = len(entries)
-	}
-	latest := entries[len(entries)-count:]
+	entries, _ := ms.store.GetPage(0, 5)
 
 	var trafficData strings.Builder
-	for _, e := range latest {
+	for _, e := range entries {
 		trafficData.WriteString(fmt.Sprintf("[%s] %s (Status: %d)\n", e.Method, e.URL, e.Status))
 	}
 
@@ -166,11 +161,11 @@ func (ms *MCPServer) listTrafficHandler(ctx context.Context, request mcp.CallToo
 	}
 	filter, _ := args["filter"].(string)
 
-	entries := ms.store.GetEntries()
+	// Fetch a larger set to allow filtering, or we could add filtering to the repo
+	entries, _ := ms.store.GetPage(0, 100)
 	var results []string
 
-	for i := len(entries) - 1; i >= 0; i-- {
-		e := entries[i]
+	for _, e := range entries {
 		if filter != "" {
 			combined := strings.ToLower(e.Method + " " + e.URL)
 			if !strings.Contains(combined, strings.ToLower(filter)) {
@@ -203,7 +198,8 @@ func (ms *MCPServer) getTrafficDetailsHandler(ctx context.Context, request mcp.C
 		return nil, fmt.Errorf("missing id")
 	}
 
-	entries := ms.store.GetEntries()
+	// We search in the latest 100 entries
+	entries, _ := ms.store.GetPage(0, 100)
 	for _, e := range entries {
 		if e.ID == id {
 			details := fmt.Sprintf("ID: %s\nMethod: %s\nURL: %s\nStatus: %d\nDuration: %v\n\nRequest Headers:\n%v\n\nRequest Body:\n%s\n\nResponse Headers:\n%v\n\nResponse Body:\n%s",
@@ -238,18 +234,13 @@ func (ms *MCPServer) proxyStatusResourceHandler(ctx context.Context, request mcp
 }
 
 func (ms *MCPServer) latestTrafficResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-	entries := ms.store.GetEntries()
-	count := 10
-	if len(entries) < count {
-		count = len(entries)
-	}
+	entries, _ := ms.store.GetPage(0, 10)
 
-	latest := entries[len(entries)-count:]
 	var sb strings.Builder
 	sb.WriteString("[\n")
-	for i, e := range latest {
+	for i, e := range entries {
 		sb.WriteString(fmt.Sprintf(`  {"id": "%s", "method": "%s", "url": "%s", "status": %d}`, e.ID, e.Method, e.URL, e.Status))
-		if i < len(latest)-1 {
+		if i < len(entries)-1 {
 			sb.WriteString(",\n")
 		}
 	}

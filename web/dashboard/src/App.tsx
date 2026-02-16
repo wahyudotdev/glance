@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Trash2, Check, XCircle, Info } from 'lucide-react';
+import { Trash2, Check, XCircle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess } from './types/traffic';
 
 // Layout Components
@@ -42,6 +42,8 @@ const App: React.FC = () => {
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
   const [filter, setFilter] = useState('');
   const [proxyAddr, setProxyAddr] = useState(':8000');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEntries, setTotalEntries] = useState(0);
   
   // Integration State
   const [javaProcesses, setJavaProcesses] = useState<JavaProcess[]>([]);
@@ -55,13 +57,24 @@ const App: React.FC = () => {
     mcp_addr: ':8082',
     mcp_enabled: false,
     history_limit: 500,
-    max_response_size: 1048576
+    max_response_size: 1048576,
+    default_page_size: 50
   });
 
   const historyLimitRef = useRef(config.history_limit);
   useEffect(() => {
     historyLimitRef.current = config.history_limit;
   }, [config.history_limit]);
+
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  const pageSizeRef = useRef(config.default_page_size);
+  useEffect(() => {
+    pageSizeRef.current = config.default_page_size;
+  }, [config.default_page_size]);
 
   // --- API Actions (Using Native Fetch) ---
 
@@ -72,14 +85,15 @@ const App: React.FC = () => {
     return res.json();
   };
 
-  const fetchTraffic = async () => {
+  const fetchTraffic = async (page: number = 1, pageSize?: number) => {
     try {
-      const data: TrafficEntry[] = await apiFetch('/api/traffic');
-      const limit = historyLimitRef.current;
-      if (limit > 0 && data.length > limit) {
-        setEntries(data.slice(data.length - limit));
-      } else {
-        setEntries(data || []);
+      const size = pageSize || config.default_page_size;
+      const data = await apiFetch(`/api/traffic?page=${page}&pageSize=${size}`);
+      
+      if (data && data.entries) {
+        setEntries(data.entries.reverse());
+        setTotalEntries(data.total);
+        setCurrentPage(page);
       }
     } catch (error) {
       console.error('Error fetching traffic:', error);
@@ -142,6 +156,7 @@ const App: React.FC = () => {
     try {
       const data = await apiFetch('/api/config');
       setConfig(data);
+      return data as Config;
     } catch (error) {
       console.error('Error fetching config:', error);
     }
@@ -164,39 +179,77 @@ const App: React.FC = () => {
   // --- Effects ---
 
   useEffect(() => {
-    fetchStatus();
-    fetchConfig();
-    fetchTraffic(); // Initial fetch
+    let ws: WebSocket | null = null;
 
-    // WebSocket setup
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/traffic`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      try {
-        const entry: TrafficEntry = JSON.parse(event.data);
-        setEntries((prev) => {
-          const updated = [...prev, entry];
-          const limit = historyLimitRef.current;
-          if (limit > 0 && updated.length > limit) {
-            return updated.slice(updated.length - limit);
-          }
-          return updated;
-        });
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+    const init = async () => {
+      await fetchStatus();
+      const cfg = await fetchConfig();
+      if (cfg) {
+        await fetchTraffic(1, cfg.default_page_size);
       }
+
+      // WebSocket setup
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/traffic`;
+      ws = new WebSocket(wsUrl);
+
+              ws.onmessage = (event) => {
+
+                try {
+
+                  const entry: TrafficEntry = JSON.parse(event.data);
+
+                  
+
+                  setTotalEntries(prev => prev + 1);
+
+          
+
+                  setEntries((prev) => {
+
+                    // Only add to the visible list if we are on the first page
+
+                    if (currentPageRef.current === 1) {
+
+                      const updated = [...prev, entry];
+
+                      const pageSize = pageSizeRef.current;
+
+                      // Maintain page size: remove the oldest item (first in our ASC entries list)
+
+                      if (updated.length > pageSize) {
+
+                        return updated.slice(1);
+
+                      }
+
+                      return updated;
+
+                    }
+
+                    return prev;
+
+                  });
+
+                } catch (error) {
+
+                  console.error('Error parsing WebSocket message:', error);
+
+                }
+
+              };
+
+          
+            ws.onclose = () => {
+        console.log('WebSocket disconnected.');
+      };
     };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected. Reconnecting in 3s...');
-      setTimeout(() => {
-        // Simple reconnection logic could go here if needed
-      }, 3000);
-    };
+    init();
 
-    return () => ws.close();
+    return () => {
+      if (ws) ws.close();
+    };
   }, []);
 
   useEffect(() => {
@@ -230,11 +283,40 @@ const App: React.FC = () => {
         <main className="flex-1 flex overflow-hidden">
           {currentView === 'traffic' && (
             <>
-              <TrafficList 
-                entries={filteredEntries} 
-                selectedEntry={selectedEntry} 
-                onSelect={setSelectedEntry} 
-              />
+              <div className="flex-1 flex flex-col min-w-0 bg-white">
+                <TrafficList 
+                  entries={filteredEntries} 
+                  selectedEntry={selectedEntry} 
+                  onSelect={setSelectedEntry} 
+                />
+                
+                {/* Pagination Controls */}
+                <div className="h-12 border-t border-slate-100 flex items-center justify-between px-6 bg-slate-50/50">
+                  <div className="text-[11px] font-medium text-slate-400">
+                    Showing <span className="text-slate-600 font-bold">{entries.length}</span> of <span className="text-slate-600 font-bold">{totalEntries}</span> requests
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => fetchTraffic(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-xs font-bold text-slate-600 min-w-[3rem] text-center">
+                      Page {currentPage}
+                    </span>
+                    <button 
+                      onClick={() => fetchTraffic(currentPage + 1)}
+                      disabled={currentPage * config.default_page_size >= totalEntries}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
               {selectedEntry && <DetailsPanel entry={selectedEntry} />}
             </>
           )}

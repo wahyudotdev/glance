@@ -89,6 +89,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, o
                 />
                 <p className="text-[10px] text-slate-400 italic">Default: 1,048,576 (1 MB). 0 to disable limit.</p>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase">Default Page Size</label>
+                <input 
+                  type="number" 
+                  value={config.default_page_size}
+                  onChange={(e) => setConfig({...config, default_page_size: parseInt(e.target.value) || 0})}
+                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
+                  placeholder="50"
+                />
+                <p className="text-[10px] text-slate-400 italic">Number of entries to load per page.</p>
+              </div>
             </div>
           </div>
 

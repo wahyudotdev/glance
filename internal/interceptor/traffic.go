@@ -49,16 +49,16 @@ func (s *TrafficStore) AddEntry(entry *model.TrafficEntry) {
 	}
 }
 
-func (s *TrafficStore) GetEntries() []*model.TrafficEntry {
+func (s *TrafficStore) GetPage(offset, limit int) ([]*model.TrafficEntry, int) {
 	if s.repo == nil {
-		return nil
+		return nil, 0
 	}
-	entries, err := s.repo.GetAll()
+	entries, total, err := s.repo.GetPage(offset, limit)
 	if err != nil {
-		log.Printf("Error getting traffic from repo: %v", err)
-		return nil
+		log.Printf("Error getting traffic page from repo: %v", err)
+		return nil, 0
 	}
-	return entries
+	return entries, total
 }
 
 func (s *TrafficStore) ClearEntries() {
