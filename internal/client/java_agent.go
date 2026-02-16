@@ -72,11 +72,10 @@ func BuildAndAttachAgent(pid string, proxyAddr string) error {
 	javaCode := fmt.Sprintf(`
 import java.lang.instrument.Instrumentation;
 import java.io.ByteArrayInputStream;
-import java.security.KeyStore;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 public class ProxyAgent {
     public static void agentmain(String agentArgs, Instrumentation inst) {
@@ -93,26 +92,33 @@ public class ProxyAgent {
             System.setProperty("https.proxyPort", port);
             System.setProperty("http.nonProxyHosts", "");
 
-            // 2. Trust the Agent Proxy CA Cert (for HTTPS)
+            // 2. Aggressively force trust (for HTTPS)
             try {
-                byte[] decoded = java.util.Base64.getDecoder().decode(caCertB64);
-                CertificateFactory cf = CertificateFactory.getInstance("X.509");
-                X509Certificate caCert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(decoded));
+                TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        public X509Certificate[] getAcceptedIssuers() { return null; }
+                        public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                        public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                    }
+                };
 
-                KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-                ks.load(null, null);
-                ks.setCertificateEntry("agent-proxy-ca", caCert);
-
-                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                tmf.init(ks);
-
-                SSLContext sc = SSLContext.getInstance("TLS");
-                sc.init(null, tmf.getTrustManagers(), new java.security.SecureRandom());
+                SSLContext sc = SSLContext.getInstance("SSL");
+                sc.init(null, trustAllCerts, new java.security.SecureRandom());
+                
+                // Set as default for the entire JVM
                 SSLContext.setDefault(sc);
                 
-                System.out.println("[AgentProxy] HTTPS CA certificate injected successfully");
+                // Also set for HttpsURLConnection specifically
+                javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(new javax.net.ssl.HostnameVerifier() {
+                    public boolean verify(String hostname, javax.net.ssl.SSLSession session) {
+                        return true;
+                    }
+                });
+
+                System.out.println("[AgentProxy] Aggressive TLS trust-all injected");
             } catch (Exception e) {
-                System.err.println("[AgentProxy] Failed to inject CA certificate: " + e.getMessage());
+                System.err.println("[AgentProxy] Failed to inject aggressive trust: " + e.getMessage());
             }
 
             System.out.println("[AgentProxy] Interception enabled for " + host + ":" + port);
@@ -126,8 +132,14 @@ public class ProxyAgent {
 	}
 
 	// 2. Compile Agent
-	if out, err := exec.Command("javac", javaFile).CombinedOutput(); err != nil {
-		return fmt.Errorf("javac failed: %s %v", string(out), err)
+	// Use --release 8 (modern JDKs) or -source/-target (older JDKs) to ensure compatibility with Java 8 (version 52.0)
+	cmdCompile := exec.Command("javac", "--release", "8", javaFile)
+	if _, err := cmdCompile.CombinedOutput(); err != nil {
+		// Fallback for older javac that doesn't support --release
+		cmdFallback := exec.Command("javac", "-source", "1.8", "-target", "1.8", javaFile)
+		if out2, err2 := cmdFallback.CombinedOutput(); err2 != nil {
+			return fmt.Errorf("javac failed to compile for Java 8 compatibility: %s", string(out2))
+		}
 	}
 
 	// 3. Create Manifest
