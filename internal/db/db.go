@@ -21,6 +21,16 @@ func Init() {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 
+	// High-performance SQLite settings for concurrent access
+	DB.SetMaxOpenConns(1) // Force serialization to prevent "database is locked"
+
+	if _, err := DB.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+		log.Printf("Warning: Failed to enable WAL mode: %v", err)
+	}
+	if _, err := DB.Exec("PRAGMA synchronous=NORMAL;"); err != nil {
+		log.Printf("Warning: Failed to set synchronous mode: %v", err)
+	}
+
 	createTables()
 }
 
@@ -30,6 +40,10 @@ func InitCustom(path string) {
 	if err != nil {
 		log.Fatalf("Failed to open database at %s: %v", path, err)
 	}
+
+	DB.SetMaxOpenConns(1)
+	DB.Exec("PRAGMA journal_mode=WAL;")
+	DB.Exec("PRAGMA synchronous=NORMAL;")
 
 	createTables()
 }

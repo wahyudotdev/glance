@@ -4,6 +4,8 @@ import (
 	"agent-proxy/internal/model"
 	"database/sql"
 	"encoding/json"
+	"log"
+	"sync"
 	"time"
 )
 
@@ -50,34 +52,74 @@ func (r *sqliteConfigRepository) Save(cfg *model.Config) error {
 }
 
 type sqliteTrafficRepository struct {
-	db *sql.DB
+	db         *sql.DB
+	writeQueue chan *model.TrafficEntry
+	memCache   []*model.TrafficEntry
+	cacheSize  int
+	mu         sync.RWMutex
 }
 
 func NewSQLiteTrafficRepository(db *sql.DB) TrafficRepository {
-	return &sqliteTrafficRepository{db: db}
+	repo := &sqliteTrafficRepository{
+		db:         db,
+		writeQueue: make(chan *model.TrafficEntry, 100),
+		memCache:   make([]*model.TrafficEntry, 0, 500),
+		cacheSize:  500,
+	}
+	go repo.writeWorker()
+	return repo
+}
+
+func (r *sqliteTrafficRepository) writeWorker() {
+	for entry := range r.writeQueue {
+		reqHeaders, _ := json.Marshal(entry.RequestHeaders)
+		resHeaders, _ := json.Marshal(entry.ResponseHeaders)
+
+		_, err := r.db.Exec(`
+			INSERT INTO traffic (
+				id, method, url, request_headers, request_body,
+				status, response_headers, response_body, start_time, duration, modified_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			entry.ID, entry.Method, entry.URL, string(reqHeaders), entry.RequestBody,
+			entry.Status, string(resHeaders), entry.ResponseBody, entry.StartTime, int64(entry.Duration), entry.ModifiedBy)
+
+		if err != nil {
+			log.Printf("Background DB write error: %v", err)
+		}
+	}
 }
 
 func (r *sqliteTrafficRepository) Add(entry *model.TrafficEntry) error {
-	reqHeaders, _ := json.Marshal(entry.RequestHeaders)
-	resHeaders, _ := json.Marshal(entry.ResponseHeaders)
+	// 1. Update Memory Cache immediately for fast UI response
+	r.mu.Lock()
+	r.memCache = append(r.memCache, entry)
+	if len(r.memCache) > r.cacheSize {
+		r.memCache = r.memCache[1:]
+	}
+	r.mu.Unlock()
 
-	_, err := r.db.Exec(`
-		INSERT INTO traffic (
-			id, method, url, request_headers, request_body,
-			status, response_headers, response_body, start_time, duration, modified_by
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		entry.ID, entry.Method, entry.URL, string(reqHeaders), entry.RequestBody,
-		entry.Status, string(resHeaders), entry.ResponseBody, entry.StartTime, int64(entry.Duration), entry.ModifiedBy)
-
-	return err
+	// 2. Queue for background persistent storage
+	select {
+	case r.writeQueue <- entry:
+	default:
+		log.Printf("Warning: Traffic write queue full, dropping entry %s", entry.ID)
+	}
+	return nil
 }
 
 func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEntry, int, error) {
+	// If we are asking for the first page and it might be in memory, we can optimize.
+	// But for now, to keep consistency with total count, we still query DB total.
 	var total int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM traffic").Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
+
+	// If offset is 0, we can prepend/merge with memory cache for "un-flushed" items
+	// To keep it simple and fix the 'locked' error, we mainly needed serialized writes.
+	// Let's stick to DB for GetPage but the 'locked' error will be gone because
+	// writes are now serialized in the background worker.
 
 	rows, err := r.db.Query(`
 		SELECT 

@@ -8,7 +8,7 @@ BUILD_DIR=build
 # Build flags
 LDFLAGS=-ldflags="-s -w"
 
-.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64
+.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage
 
 all: build
 
@@ -55,6 +55,20 @@ clean:
 	rm -rf $(BACKEND_STATIC_DIR)
 	rm -rf $(FRONTEND_DIR)/dist
 	rm -rf $(BUILD_DIR)
+	rm -f coverage.out
+
+test:
+	@echo "Running tests..."
+	go test ./internal/...
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	go test -coverprofile=coverage.out ./internal/...
+	go tool cover -html=coverage.out
+
+load-test:
+	@echo "Running load test (100 reqs, 10 concurrency)..."
+	go run scripts/load-test.go -n 100 -c 10
 
 run: build
 	./$(BINARY_NAME)
