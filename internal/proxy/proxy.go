@@ -8,6 +8,7 @@ import (
 
 	"agent-proxy/internal/ca"
 	"agent-proxy/internal/interceptor"
+	"agent-proxy/internal/rules"
 	"github.com/elazarl/goproxy"
 )
 
@@ -15,6 +16,7 @@ type Proxy struct {
 	server *goproxy.ProxyHttpServer
 	addr   string
 	Store  *interceptor.TrafficStore
+	Engine *rules.Engine
 }
 
 func NewProxy(addr string) *Proxy {
@@ -23,19 +25,33 @@ func NewProxy(addr string) *Proxy {
 	p.Verbose = false // Disable verbose to keep logs clean for now
 
 	store := interceptor.NewTrafficStore()
+	engine := rules.NewEngine()
 
 	// Handle HTTPS CONNECT requests
 	p.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
-	// Capture Requests
+	// Capture Requests and apply rules
 	p.OnRequest().DoFunc(
 		func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 			entry, err := interceptor.NewEntry(r)
 			if err != nil {
 				log.Printf("Error capturing request: %v", err)
-				return r, nil
+			} else {
+				ctx.UserData = entry
 			}
-			ctx.UserData = entry
+
+			// Apply rules
+			if rule := engine.Match(r); rule != nil {
+				if rule.Type == rules.RuleMock && rule.Response != nil {
+					resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
+					for k, v := range rule.Response.Headers {
+						resp.Header.Set(k, v)
+					}
+					log.Printf("[MOCK] %s %s -> %d", r.Method, r.URL.String(), rule.Response.Status)
+					return r, resp
+				}
+			}
+
 			return r, nil
 		},
 	)
@@ -64,6 +80,7 @@ func NewProxy(addr string) *Proxy {
 		server: p,
 		addr:   addr,
 		Store:  store,
+		Engine: engine,
 	}
 }
 

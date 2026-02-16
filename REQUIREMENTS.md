@@ -44,14 +44,17 @@ An application inspired by HTTP Toolkit for intercepting, inspecting, and mockin
 ### 1.5 MCP Server Integration (Model Context Protocol)
 - **MCP Compliance:** Implement the Model Context Protocol to function as an MCP Server.
 - **Resources:**
-    - Expose captured traffic logs as readable resources for AI agents.
-    - Provide access to current proxy configuration and active rules.
+    - `proxy://status`: Current proxy address, dashboard URL, and count of active rules.
+    - `traffic://latest`: The most recent 10 HTTP requests captured in JSON format.
 - **Tools:**
-    - `add_mock_rule`: Allow AI to programmatically create mocking rules (e.g., "Mock 404 for /api/user").
-    - `search_traffic`: Allow AI to query specific requests/responses (e.g., "Find all failed POST requests").
-    - `clear_logs`: Allow AI to reset the session.
+    - `list_traffic`: List captured HTTP traffic summaries (up to 20 entries), with optional keyword filtering.
+    - `get_traffic_details`: Retrieve full headers and body for a specific traffic entry by ID.
+    - `add_mock_rule`: Programmatically create mocking rules to intercept and return static responses.
+    - `clear_traffic`: Reset/clear the captured traffic logs.
+    - `get_proxy_status`: Get real-time proxy address and status.
 - **Prompts:**
-    - Pre-defined prompts for analyzing traffic (e.g., "Analyze this error response", "Generate API documentation from these requests").
+    - `analyze-traffic`: Pre-defined prompt to have an AI analyze recent traffic for errors or anomalies.
+    - `generate-api-docs`: Pre-defined prompt to generate OpenAPI documentation from the captured traffic.
 
 ## 2. User Interface
 - **Web Dashboard:** A modern, responsive web UI to manage the proxy and view traffic.
