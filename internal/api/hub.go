@@ -5,13 +5,13 @@ import (
 	"log"
 	"sync"
 
-	"agent-proxy/internal/interceptor"
+	"agent-proxy/internal/model"
 	"github.com/gofiber/websocket/v2"
 )
 
 type Hub struct {
 	clients    map[*websocket.Conn]bool
-	broadcast  chan *interceptor.TrafficEntry
+	broadcast  chan *model.TrafficEntry
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
 	mu         sync.Mutex
@@ -20,7 +20,7 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[*websocket.Conn]bool),
-		broadcast:  make(chan *interceptor.TrafficEntry),
+		broadcast:  make(chan *model.TrafficEntry),
 		register:   make(chan *websocket.Conn),
 		unregister: make(chan *websocket.Conn),
 	}
@@ -64,6 +64,6 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) Broadcast(entry *interceptor.TrafficEntry) {
+func (h *Hub) Broadcast(entry *model.TrafficEntry) {
 	h.broadcast <- entry
 }

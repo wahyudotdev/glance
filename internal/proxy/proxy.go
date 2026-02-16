@@ -8,6 +8,7 @@ import (
 
 	"agent-proxy/internal/ca"
 	"agent-proxy/internal/interceptor"
+	"agent-proxy/internal/model"
 	"agent-proxy/internal/rules"
 	"github.com/elazarl/goproxy"
 )
@@ -17,15 +18,19 @@ type Proxy struct {
 	addr    string
 	Store   *interceptor.TrafficStore
 	Engine  *rules.Engine
-	OnEntry func(*interceptor.TrafficEntry)
+	OnEntry func(*model.TrafficEntry)
 }
 
 func NewProxy(addr string) *Proxy {
+	// Minimal fallback
+	return NewProxyWithStore(addr, interceptor.NewTrafficStore(nil))
+}
+
+func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 	ca.SetupCA()
 	p := goproxy.NewProxyHttpServer()
-	p.Verbose = false // Disable verbose to keep logs clean for now
+	p.Verbose = false
 
-	store := interceptor.NewTrafficStore()
 	engine := rules.NewEngine()
 
 	proxy := &Proxy{
@@ -70,8 +75,8 @@ func NewProxy(addr string) *Proxy {
 			if resp == nil {
 				return resp
 			}
-			entry, ok := ctx.UserData.(*interceptor.TrafficEntry)
-			if ok {
+			entry, ok := ctx.UserData.(*model.TrafficEntry)
+			if ok && store != nil {
 				body, _ := interceptor.ReadAndReplaceResponseBody(resp)
 				entry.Status = resp.StatusCode
 				entry.ResponseHeaders = resp.Header.Clone()

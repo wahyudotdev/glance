@@ -3,6 +3,7 @@ package api
 import (
 	"agent-proxy/internal/config"
 	"agent-proxy/internal/interceptor"
+	"agent-proxy/internal/model"
 	"log"
 	"strings"
 
@@ -104,7 +105,7 @@ func (s *APIServer) handleGetConfig(c *fiber.Ctx) error {
 }
 
 func (s *APIServer) handleSaveConfig(c *fiber.Ctx) error {
-	cfg := new(config.Config)
+	cfg := new(model.Config)
 	if err := c.BodyParser(cfg); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

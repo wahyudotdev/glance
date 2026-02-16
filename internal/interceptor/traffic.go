@@ -1,55 +1,53 @@
 package interceptor
 
 import (
+	"agent-proxy/internal/model"
+	"agent-proxy/internal/repository"
 	"bytes"
 	"io"
+	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type TrafficEntry struct {
-	ID              string        `json:"id"`
-	Method          string        `json:"method"`
-	URL             string        `json:"url"`
-	RequestHeaders  http.Header   `json:"request_headers"`
-	RequestBody     string        `json:"request_body"`
-	Status          int           `json:"status"`
-	ResponseHeaders http.Header   `json:"response_headers"`
-	ResponseBody    string        `json:"response_body"`
-	StartTime       time.Time     `json:"start_time"`
-	Duration        time.Duration `json:"duration"`
-}
-
 type TrafficStore struct {
-	mu      sync.RWMutex
-	entries []*TrafficEntry
+	repo repository.TrafficRepository
 }
 
-func NewTrafficStore() *TrafficStore {
-	return &TrafficStore{
-		entries: make([]*TrafficEntry, 0),
+func NewTrafficStore(repo repository.TrafficRepository) *TrafficStore {
+	return &TrafficStore{repo: repo}
+}
+
+func (s *TrafficStore) AddEntry(entry *model.TrafficEntry) {
+	if s.repo == nil {
+		return
+	}
+	if err := s.repo.Add(entry); err != nil {
+		log.Printf("Error saving traffic entry to repo: %v", err)
 	}
 }
 
-func (s *TrafficStore) AddEntry(entry *TrafficEntry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.entries = append(s.entries, entry)
-}
-
-func (s *TrafficStore) GetEntries() []*TrafficEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.entries
+func (s *TrafficStore) GetEntries() []*model.TrafficEntry {
+	if s.repo == nil {
+		return nil
+	}
+	entries, err := s.repo.GetAll()
+	if err != nil {
+		log.Printf("Error getting traffic from repo: %v", err)
+		return nil
+	}
+	return entries
 }
 
 func (s *TrafficStore) ClearEntries() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.entries = make([]*TrafficEntry, 0)
+	if s.repo == nil {
+		return
+	}
+	if err := s.repo.Clear(); err != nil {
+		log.Printf("Error clearing traffic in repo: %v", err)
+	}
 }
 
 // Helper to clone request body without draining it
@@ -78,9 +76,9 @@ func ReadAndReplaceResponseBody(res *http.Response) (string, error) {
 	return string(body), nil
 }
 
-func NewEntry(r *http.Request) (*TrafficEntry, error) {
+func NewEntry(r *http.Request) (*model.TrafficEntry, error) {
 	body, _ := ReadAndReplaceBody(r)
-	return &TrafficEntry{
+	return &model.TrafficEntry{
 		ID:             uuid.New().String(),
 		Method:         r.Method,
 		URL:            r.URL.String(),

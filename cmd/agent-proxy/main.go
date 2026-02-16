@@ -6,11 +6,21 @@ import (
 
 	"agent-proxy/internal/api"
 	"agent-proxy/internal/config"
+	"agent-proxy/internal/db"
+	"agent-proxy/internal/interceptor"
 	"agent-proxy/internal/mcp"
 	"agent-proxy/internal/proxy"
+	"agent-proxy/internal/repository"
 )
 
 func main() {
+	db.Init()
+
+	// Initialize repositories
+	configRepo := repository.NewSQLiteConfigRepository(db.DB)
+	trafficRepo := repository.NewSQLiteTrafficRepository(db.DB)
+
+	config.Init(configRepo)
 	cfg := config.Get()
 
 	proxyAddr := flag.String("proxy-addr", cfg.ProxyAddr, "proxy listen address")
@@ -30,12 +40,11 @@ func main() {
 
 	// Check for Java Agent injection mode (used internally)
 	if len(flag.Args()) > 0 && flag.Args()[0] == "inject-agent" {
-		// This path is just for building/attaching, usually handled by library functions
-		// but we can expose it if needed. For now, we rely on the API.
 		return
 	}
 
-	p := proxy.NewProxy(*proxyAddr)
+	store := interceptor.NewTrafficStore(trafficRepo)
+	p := proxy.NewProxyWithStore(*proxyAddr, store)
 
 	actualProxyAddr, err := p.Start()
 	if err != nil {
