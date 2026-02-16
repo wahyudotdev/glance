@@ -103,14 +103,14 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                   </div>
                   <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
                     {javaProcesses.length > 0 ? javaProcesses.map(proc => (
-                      <div key={proc.pid} className="px-4 py-3 flex items-center justify-between hover:bg-white transition-colors group">
+                      <div key={proc.pid} className="px-4 py-3 flex items-center justify-between hover:bg-blue-50/50 transition-colors group cursor-default">
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-700 font-mono">{proc.name}</span>
+                          <span className="text-xs font-bold text-slate-700 font-mono group-hover:text-blue-700 transition-colors">{proc.name}</span>
                           <span className="text-[10px] text-slate-400 font-mono">PID: {proc.pid}</span>
                         </div>
                         <button 
                           onClick={() => onInterceptJava(proc.pid)}
-                          className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 hover:text-blue-600"
+                          className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 hover:text-blue-600 hover:shadow-sm active:scale-95 cursor-pointer"
                         >
                           Intercept
                         </button>

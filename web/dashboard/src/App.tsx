@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Trash2, Check } from 'lucide-react';
+import { Trash2, Check, XCircle, Info } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess } from './types/traffic';
 
 // Layout Components
@@ -19,7 +19,23 @@ const App: React.FC = () => {
   // Navigation & UI State
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
-  const [isSettingsSavedModalOpen, setIsSettingsSavedModalOpen] = useState(false);
+  
+  // Unified Notification State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
+
+  const notify = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setNotification({ isOpen: true, type, title, message });
+  };
   
   // Data State
   const [entries, setEntries] = useState<TrafficEntry[]>([]);
@@ -76,8 +92,9 @@ const App: React.FC = () => {
       setEntries([]);
       setSelectedEntry(null);
       setIsClearModalOpen(false);
+      notify('success', 'Traffic Cleared', 'All intercepted requests have been deleted.');
     } catch (error) {
-      alert('Failed to clear traffic: ' + error);
+      notify('error', 'Clear Failed', String(error));
     }
   };
 
@@ -106,9 +123,9 @@ const App: React.FC = () => {
   const handleInterceptJava = async (pid: string) => {
     try {
       await apiFetch(`/api/client/java/intercept/${pid}`, { method: 'POST' });
-      alert(`Successfully injected proxy into PID ${pid}! Traffic should start appearing.`);
+      notify('success', 'Interception Active', `Successfully injected proxy into PID ${pid}.`);
     } catch (error) {
-      alert('Failed to intercept: ' + error);
+      notify('error', 'Interception Failed', String(error));
     }
   };
 
@@ -138,9 +155,9 @@ const App: React.FC = () => {
         body: JSON.stringify(newConfig)
       });
       setConfig(newConfig);
-      setIsSettingsSavedModalOpen(true);
+      notify('success', 'Settings Saved', 'Your configuration has been updated successfully.');
     } catch (error) {
-      alert('Failed to save settings: ' + error);
+      notify('error', 'Save Failed', String(error));
     }
   };
 
@@ -243,7 +260,33 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Modals */}
+      {/* Unified Notification Modal */}
+      <Modal 
+        isOpen={notification.isOpen}
+        onClose={() => setNotification({ ...notification, isOpen: false })}
+        title={notification.title}
+        description={notification.message}
+        icon={
+          notification.type === 'success' ? <Check size={32} /> :
+          notification.type === 'error' ? <XCircle size={32} /> :
+          <Info size={32} />
+        }
+        iconBgColor={
+          notification.type === 'success' ? 'bg-emerald-50 text-emerald-500' :
+          notification.type === 'error' ? 'bg-rose-50 text-rose-500' :
+          'bg-blue-50 text-blue-500'
+        }
+        confirmLabel="Got it"
+        confirmColor={
+          notification.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200' :
+          notification.type === 'error' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' :
+          'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
+        }
+        onConfirm={() => setNotification({ ...notification, isOpen: false })}
+        showCancel={false}
+      />
+
+      {/* Confirmation Modal */}
       <Modal 
         isOpen={isClearModalOpen}
         onClose={() => setIsClearModalOpen(false)}
@@ -254,19 +297,6 @@ const App: React.FC = () => {
         confirmLabel="Clear All"
         confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200"
         onConfirm={handleClear}
-      />
-
-      <Modal 
-        isOpen={isSettingsSavedModalOpen}
-        onClose={() => setIsSettingsSavedModalOpen(false)}
-        title="Settings Saved"
-        description="Your configuration has been updated successfully. Some changes (like port updates) will take effect after restarting the application."
-        icon={<Check size={32} />}
-        iconBgColor="bg-emerald-50 text-emerald-500"
-        confirmLabel="Got it"
-        confirmColor="bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
-        onConfirm={() => setIsSettingsSavedModalOpen(false)}
-        showCancel={false}
       />
     </div>
   );
