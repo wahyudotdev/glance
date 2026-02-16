@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code, Play, X } from 'lucide-react';
+import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 
@@ -7,9 +7,10 @@ interface DetailsPanelProps {
   entry: TrafficEntry;
   onEdit?: (entry: TrafficEntry) => void;
   onClose?: () => void;
+  onBreak?: (entry: TrafficEntry) => void;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
@@ -130,6 +131,14 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             >
               <Play size={14} fill="currentColor" />
               Edit & Resend
+            </button>
+            <button 
+              onClick={() => onBreak?.(entry)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
+              title="Pause on the next request matching this URL/Method"
+            >
+              <ShieldAlert size={14} />
+              Break on next
             </button>
             <button 
               onClick={handleCopyCurl}

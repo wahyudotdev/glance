@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Trash2, Check, XCircle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/traffic';
 
 // Layout Components
@@ -12,28 +12,31 @@ import { DetailsPanel } from './components/traffic/DetailsPanel';
 import { RequestEditor } from './components/traffic/RequestEditor';
 import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
+import { RulesView } from './components/settings/RulesView';
+import type { Rule } from './components/settings/RulesView';
 
 // UI Components
 import { Modal } from './components/ui/Modal';
+import { Toast } from './components/ui/Toast';
+import type { ToastMessage } from './components/ui/Toast';
 
 const App: React.FC = () => {
   // Navigation & UI State
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings'>('traffic');
+  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   
-  // Unified Notification State
-  const [notification, setNotification] = useState<{
-    isOpen: boolean;
-    type: 'success' | 'error' | 'info';
-    title: string;
-    message: string;
-  }>({
-    isOpen: false,
-    type: 'info',
-    title: '',
-    message: ''
-  });
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const toast = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, type, title, message }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter(t => t.id !== id));
+  };
 
   const [detailsWidth, setDetailsWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
@@ -64,10 +67,6 @@ const App: React.FC = () => {
       window.removeEventListener('mouseup', stopResizing);
     };
   }, [isResizing]);
-
-  const notify = (type: 'success' | 'error' | 'info', title: string, message: string) => {
-    setNotification({ isOpen: true, type, title, message });
-  };
   
   // Data State
   const [entries, setEntries] = useState<TrafficEntry[]>([]);
@@ -83,6 +82,10 @@ const App: React.FC = () => {
   const [isLoadingJava, setIsLoadingJava] = useState(false);
   const [isLoadingAndroid, setIsLoadingAndroid] = useState(false);
   const [terminalScript, setTerminalScript] = useState('');
+  
+  // Rules State
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [isLoadingRules, setIsLoadingRules] = useState(false);
   
   // Settings State
   const [config, setConfig] = useState<Config>({
@@ -140,9 +143,9 @@ const App: React.FC = () => {
       setEntries([]);
       setSelectedEntry(null);
       setIsClearModalOpen(false);
-      notify('success', 'Traffic Cleared', 'All intercepted requests have been deleted.');
+      toast('success', 'Traffic Cleared', 'All intercepted requests have been deleted.');
     } catch (error) {
-      notify('error', 'Clear Failed', String(error));
+      toast('error', 'Clear Failed', String(error));
     }
   };
 
@@ -164,7 +167,7 @@ const App: React.FC = () => {
       const data = await apiFetch('/api/client/android/devices');
       setAndroidDevices(data || []);
     } catch (error) {
-      notify('error', 'ADB Error', 'Could not list Android devices. Ensure adb is installed and devices are connected.');
+      toast('error', 'ADB Error', 'Could not list Android devices. Ensure adb is installed.');
     } finally {
       setIsLoadingAndroid(false);
     }
@@ -183,36 +186,72 @@ const App: React.FC = () => {
   const handleInterceptJava = async (pid: string) => {
     try {
       await apiFetch(`/api/client/java/intercept/${pid}`, { method: 'POST' });
-      notify('success', 'Interception Active', `Successfully injected proxy into PID ${pid}.`);
+      toast('success', 'Interception Active', `Successfully injected proxy into PID ${pid}.`);
     } catch (error) {
-      notify('error', 'Interception Failed', String(error));
+      toast('error', 'Interception Failed', String(error));
     }
   };
 
   const handleInterceptAndroid = async (id: string) => {
     try {
       await apiFetch(`/api/client/android/intercept/${id}`, { method: 'POST' });
-      notify('success', 'Proxy Configured', `Android device ${id} is now routing traffic through this proxy.`);
+      toast('success', 'Proxy Configured', `Android device ${id} is now routing traffic through this proxy.`);
     } catch (error) {
-      notify('error', 'Configuration Failed', String(error));
+      toast('error', 'Configuration Failed', String(error));
     }
   };
 
   const handleClearAndroid = async (id: string) => {
     try {
       await apiFetch(`/api/client/android/clear/${id}`, { method: 'POST' });
-      notify('success', 'Proxy Cleared', `Android device ${id} proxy settings have been reset.`);
+      toast('success', 'Proxy Cleared', `Android device ${id} proxy settings have been reset.`);
     } catch (error) {
-      notify('error', 'Reset Failed', String(error));
+      toast('error', 'Reset Failed', String(error));
     }
   };
 
   const handlePushAndroidCert = async (id: string) => {
     try {
       await apiFetch(`/api/client/android/push-cert/${id}`, { method: 'POST' });
-      notify('success', 'CA Cert Pushed', 'Certificate pushed to /sdcard/ and install settings opened on device.');
+      toast('success', 'CA Cert Pushed', 'Certificate pushed to /sdcard/ and install settings opened on device.');
     } catch (error) {
-      notify('error', 'Push Failed', String(error));
+      toast('error', 'Push Failed', String(error));
+    }
+  };
+
+  const fetchRules = async () => {
+    setIsLoadingRules(true);
+    try {
+      const data = await apiFetch('/api/rules');
+      setRules(data || []);
+    } catch (error) {
+      toast('error', 'Fetch Rules Failed', String(error));
+    } finally {
+      setIsLoadingRules(false);
+    }
+  };
+
+  const handleCreateRule = async (pattern: string, method: string) => {
+    try {
+      await apiFetch('/api/rules/breakpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url_pattern: pattern, method })
+      });
+      fetchRules();
+      toast('success', 'Rule Created', 'Requests matching this pattern will now be paused.');
+    } catch (error) {
+      toast('error', 'Create Rule Failed', String(error));
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    try {
+      await apiFetch(`/api/rules/${id}`, { method: 'DELETE' });
+      setRules(prev => prev.filter(r => r.id !== id));
+      toast('success', 'Rule Deleted', 'The rule has been removed.');
+    } catch (error) {
+      toast('error', 'Delete Rule Failed', String(error));
     }
   };
 
@@ -243,15 +282,18 @@ const App: React.FC = () => {
         body: JSON.stringify(newConfig)
       });
       setConfig(newConfig);
-      notify('success', 'Settings Saved', 'Your configuration has been updated successfully.');
+      toast('success', 'Settings Saved', 'Your configuration has been updated successfully.');
     } catch (error) {
-      notify('error', 'Save Failed', String(error));
+      toast('error', 'Save Failed', String(error));
     }
   };
 
   const handleExecuteRequest = async (req: Partial<TrafficEntry>) => {
     try {
-      await apiFetch('/api/request/execute', {
+      const isResume = !!req.id;
+      const endpoint = isResume ? `/api/intercept/continue/${req.id}` : '/api/request/execute';
+      
+      await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -261,9 +303,35 @@ const App: React.FC = () => {
           body: req.request_body
         })
       });
-      notify('success', 'Request Executed', 'The custom request has been sent successfully.');
+      toast('success', isResume ? 'Request Resumed' : 'Request Executed', isResume ? 'The modified request has been sent to the server.' : 'The custom request has been sent successfully.');
     } catch (error) {
-      notify('error', 'Execution Failed', String(error));
+      toast('error', 'Execution Failed', String(error));
+    }
+  };
+
+  const handleAbortIntercept = async (id: string) => {
+    try {
+      await apiFetch(`/api/intercept/abort/${id}`, { method: 'POST' });
+      setIsRequestEditorOpen(false);
+      toast('info', 'Request Aborted', 'The intercepted request was discarded.');
+    } catch (error) {
+      toast('error', 'Abort Failed', String(error));
+    }
+  };
+
+  const handleCreateBreakpoint = async (entry: TrafficEntry) => {
+    try {
+      await apiFetch('/api/rules/breakpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url_pattern: entry.url,
+          method: entry.method
+        })
+      });
+      toast('success', 'Breakpoint Added', `Future ${entry.method} requests to this URL will be paused.`);
+    } catch (error) {
+      toast('error', 'Failed to Add Breakpoint', String(error));
     }
   };
 
@@ -284,11 +352,31 @@ const App: React.FC = () => {
       const wsUrl = `${protocol}//${window.location.host}/ws/traffic`;
       ws = new WebSocket(wsUrl);
 
-              ws.onmessage = (event) => {
+                  ws.onmessage = (event) => {
 
-                try {
+                    try {
 
-                  const entry: TrafficEntry = JSON.parse(event.data);
+                      const msg = JSON.parse(event.data);
+
+              
+
+                      if (msg.type === 'intercepted') {
+
+                        setSelectedEntry(msg.entry);
+
+                        setIsRequestEditorOpen(true);
+
+                        // We don't add to total yet as it hasn't completed
+
+                        return;
+
+                      }
+
+              
+
+                      const entry: TrafficEntry = msg;
+
+              
 
                   
 
@@ -348,6 +436,9 @@ const App: React.FC = () => {
       fetchJavaProcesses();
       fetchAndroidDevices();
       fetchTerminalScript();
+    }
+    if (currentView === 'rules') {
+      fetchRules();
     }
   }, [currentView]);
 
@@ -435,11 +526,13 @@ const App: React.FC = () => {
                     style={{ width: `${detailsWidth}px` }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <DetailsPanel 
-                      entry={selectedEntry} 
-                      onEdit={() => setIsRequestEditorOpen(true)}
-                      onClose={() => setSelectedEntry(null)}
-                    />
+                                      <DetailsPanel 
+                                        entry={selectedEntry} 
+                                        onEdit={() => setIsRequestEditorOpen(true)}
+                                        onClose={() => setSelectedEntry(null)}
+                                        onBreak={handleCreateBreakpoint}
+                                      />
+                    
                   </div>
                 </>
               )}
@@ -462,6 +555,15 @@ const App: React.FC = () => {
             />
           )}
 
+          {currentView === 'rules' && (
+            <RulesView 
+              rules={rules}
+              isLoading={isLoadingRules}
+              onDelete={handleDeleteRule}
+              onCreate={handleCreateRule}
+            />
+          )}
+
           {currentView === 'settings' && (
             <SettingsView 
               config={config}
@@ -472,32 +574,6 @@ const App: React.FC = () => {
           )}
         </main>
       </div>
-
-      {/* Unified Notification Modal */}
-      <Modal 
-        isOpen={notification.isOpen}
-        onClose={() => setNotification({ ...notification, isOpen: false })}
-        title={notification.title}
-        description={notification.message}
-        icon={
-          notification.type === 'success' ? <Check size={32} /> :
-          notification.type === 'error' ? <XCircle size={32} /> :
-          <Info size={32} />
-        }
-        iconBgColor={
-          notification.type === 'success' ? 'bg-emerald-50 text-emerald-500' :
-          notification.type === 'error' ? 'bg-rose-50 text-rose-500' :
-          'bg-blue-50 text-blue-500'
-        }
-        confirmLabel="Got it"
-        confirmColor={
-          notification.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200' :
-          notification.type === 'error' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' :
-          'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
-        }
-        onConfirm={() => setNotification({ ...notification, isOpen: false })}
-        showCancel={false}
-      />
 
       {/* Confirmation Modal */}
       <Modal 
@@ -517,7 +593,11 @@ const App: React.FC = () => {
         onClose={() => setIsRequestEditorOpen(false)}
         initialRequest={selectedEntry}
         onExecute={handleExecuteRequest}
+        isIntercept={!!selectedEntry && !entries.find(e => e.id === selectedEntry.id)}
+        onAbort={handleAbortIntercept}
       />
+
+      <Toast toasts={toasts} onClose={removeToast} />
     </div>
   );
 };

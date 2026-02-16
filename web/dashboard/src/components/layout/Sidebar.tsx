@@ -1,9 +1,9 @@
 import React from 'react';
-import { Globe, Shield, Settings, Code } from 'lucide-react';
+import { Globe, Shield, Settings, Code, ShieldAlert } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'traffic' | 'integrations' | 'settings';
-  setCurrentView: (view: 'traffic' | 'integrations' | 'settings') => void;
+  currentView: 'traffic' | 'integrations' | 'settings' | 'rules';
+  setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules') => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
@@ -42,6 +42,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
         >
           <Code size={20} />
           <span>Integrations</span>
+        </button>
+
+        <button 
+          onClick={() => setCurrentView('rules')}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${
+            currentView === 'rules' 
+            ? 'text-blue-600 bg-blue-50' 
+            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <ShieldAlert size={20} />
+          <span>Breakpoint Rules</span>
         </button>
         
         <button 

@@ -9,7 +9,8 @@ import (
 type RuleType string
 
 const (
-	RuleMock RuleType = "mock"
+	RuleMock       RuleType = "mock"
+	RuleBreakpoint RuleType = "breakpoint"
 )
 
 type Rule struct {
@@ -53,6 +54,17 @@ func (e *Engine) ClearRules() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.rules = make([]*Rule, 0)
+}
+
+func (e *Engine) DeleteRule(id string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for i, r := range e.rules {
+		if r.ID == id {
+			e.rules = append(e.rules[:i], e.rules[i+1:]...)
+			break
+		}
+	}
 }
 
 func (e *Engine) Match(r *http.Request) *Rule {

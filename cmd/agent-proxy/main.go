@@ -52,11 +52,12 @@ func main() {
 	}
 
 	// Start API Server
-	apiServer := api.NewAPIServer(p.Store, actualProxyAddr)
+	apiServer := api.NewAPIServer(p.Store, p, actualProxyAddr)
 	apiServer.RegisterRoutes()
 
 	// Connect Proxy to WebSocket Hub
 	p.OnEntry = apiServer.Hub.Broadcast
+	p.OnIntercept = apiServer.BroadcastIntercept
 
 	log.Printf("API server starting on %s", *apiAddr)
 	log.Printf("Dashboard available at http://localhost%s", *apiAddr)

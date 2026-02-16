@@ -56,6 +56,16 @@ An application inspired by HTTP Toolkit for intercepting, inspecting, and mockin
     - `analyze-traffic`: Pre-defined prompt to have an AI analyze recent traffic for errors or anomalies.
     - `generate-api-docs`: Pre-defined prompt to generate OpenAPI documentation from the captured traffic.
 
+### 1.6 Breakpoints (Manual Interception)
+- **Pause & Edit Flow:** 
+    - Automatically pause matching requests before they are sent to the server.
+    - Allow manual modification of Method, URL, Headers, and Body in the Dashboard.
+    - Resume the modified request or abort it.
+- **Breakpoint Rules:**
+    - Define filters (URL patterns, Methods) to trigger pauses.
+    - "Break on next like this": Quick-create rules from existing captured traffic.
+- **Real-time Notification:** Instant UI feedback via WebSockets when a request is caught by a breakpoint.
+
 ## 2. User Interface
 - **Web Dashboard:** A modern, responsive web UI to manage the proxy and view traffic.
 - **CLI Interface:** Basic status and logs in the terminal.

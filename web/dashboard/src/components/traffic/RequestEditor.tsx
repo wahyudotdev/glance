@@ -7,10 +7,12 @@ interface RequestEditorProps {
   onClose: () => void;
   initialRequest?: TrafficEntry | null;
   onExecute: (request: Partial<TrafficEntry>) => Promise<void>;
+  isIntercept?: boolean;
+  onAbort?: (id: string) => Promise<void>;
 }
 
 export const RequestEditor: React.FC<RequestEditorProps> = ({ 
-  isOpen, onClose, initialRequest, onExecute 
+  isOpen, onClose, initialRequest, onExecute, isIntercept, onAbort
 }) => {
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('');
@@ -84,8 +86,8 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
         {/* Header */}
         <div className="h-16 border-b border-slate-100 flex items-center justify-between px-6 bg-slate-50/50">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Play size={18} className="text-blue-600" />
-            {initialRequest ? 'Edit & Resend Request' : 'New Request'}
+            <Play size={18} className={isIntercept ? "text-amber-500" : "text-blue-600"} />
+            {isIntercept ? 'PAUSED: Intercepted Request' : (initialRequest ? 'Edit & Resend Request' : 'New Request')}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-white rounded-lg text-slate-400 transition-all">
             <X size={20} />
@@ -169,23 +171,32 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
 
         {/* Footer */}
         <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-3">
-          <button 
-            onClick={onClose}
-            className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-white rounded-xl transition-all"
-          >
-            Cancel
-          </button>
+          {isIntercept ? (
+            <button 
+              onClick={() => initialRequest && onAbort?.(initialRequest.id)}
+              className="px-6 py-2.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+            >
+              Abort / Discard
+            </button>
+          ) : (
+            <button 
+              onClick={onClose}
+              className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-white rounded-xl transition-all"
+            >
+              Cancel
+            </button>
+          )}
           <button 
             onClick={handleSubmit}
             disabled={!url || isExecuting}
-            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className={`px-8 py-2.5 ${isIntercept ? "bg-amber-500 hover:bg-amber-600 shadow-amber-200" : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"} text-white rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
           >
             {isExecuting ? (
               <Activity className="animate-spin" size={16} />
             ) : (
               <Play size={16} fill="currentColor" />
             )}
-            Execute Request
+            {isIntercept ? 'Resume Request' : 'Execute Request'}
           </button>
         </div>
       </div>

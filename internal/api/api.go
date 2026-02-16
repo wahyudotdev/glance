@@ -4,7 +4,10 @@ import (
 	"agent-proxy/internal/config"
 	"agent-proxy/internal/interceptor"
 	"agent-proxy/internal/model"
+	"agent-proxy/internal/proxy"
+	"agent-proxy/internal/rules"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -15,17 +18,19 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
 )
 
 type APIServer struct {
 	store       *interceptor.TrafficStore
+	proxy       *proxy.Proxy
 	app         *fiber.App
 	proxyAddr   string
 	restartChan chan bool
 	Hub         *Hub
 }
 
-func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer {
+func NewAPIServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string) *APIServer {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
@@ -50,6 +55,7 @@ func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer 
 
 	return &APIServer{
 		store:       store,
+		proxy:       p,
 		app:         app,
 		proxyAddr:   proxyAddr,
 		restartChan: make(chan bool, 1),
@@ -64,7 +70,11 @@ func (s *APIServer) RegisterRoutes() {
 	s.app.Get("/api/config", s.handleGetConfig)
 	s.app.Post("/api/config", s.handleSaveConfig)
 	s.app.Post("/api/request/execute", s.handleExecuteRequest)
-	s.app.Post("/api/request/execute", s.handleExecuteRequest)
+	s.app.Get("/api/rules", s.handleListRules)
+	s.app.Post("/api/rules/breakpoint", s.handleCreateBreakpointRule)
+	s.app.Delete("/api/rules/:id", s.handleDeleteRule)
+	s.app.Post("/api/intercept/continue/:id", s.handleContinueRequest)
+	s.app.Post("/api/intercept/abort/:id", s.handleAbortRequest)
 
 	// WebSocket for real-time traffic
 	s.app.Get("/ws/traffic", websocket.New(func(c *websocket.Conn) {
@@ -195,6 +205,90 @@ func (s *APIServer) handleExecuteRequest(c *fiber.Ctx) error {
 	s.Hub.Broadcast(entry)
 
 	return c.JSON(entry)
+}
+
+func (s *APIServer) handleContinueRequest(c *fiber.Ctx) error {
+	id := c.Params("id")
+	type ContinueRequest struct {
+		Method  string              `json:"method"`
+		URL     string              `json:"url"`
+		Headers map[string][]string `json:"headers"`
+		Body    string              `json:"body"`
+	}
+
+	reqData := new(ContinueRequest)
+	if err := c.BodyParser(reqData); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	h := http.Header{}
+	for k, vs := range reqData.Headers {
+		for _, v := range vs {
+			h.Add(k, v)
+		}
+	}
+
+	success := s.proxy.ContinueRequest(id, reqData.Method, reqData.URL, h, reqData.Body)
+	if !success {
+		return c.Status(404).JSON(fiber.Map{"error": "Intercepted request not found or already released"})
+	}
+
+	return c.JSON(fiber.Map{"status": "resumed"})
+}
+
+func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
+	id := c.Params("id")
+	success := s.proxy.AbortRequest(id)
+	if !success {
+		return c.Status(404).JSON(fiber.Map{"error": "Intercepted request not found or already released"})
+	}
+	return c.JSON(fiber.Map{"status": "aborted"})
+}
+
+func (s *APIServer) handleCreateBreakpointRule(c *fiber.Ctx) error {
+	type BreakpointRuleRequest struct {
+		URLPattern string `json:"url_pattern"`
+		Method     string `json:"method"`
+	}
+
+	reqData := new(BreakpointRuleRequest)
+	if err := c.BodyParser(reqData); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	rule := &rules.Rule{
+		ID:         uuid.New().String(),
+		Type:       rules.RuleBreakpoint,
+		URLPattern: reqData.URLPattern,
+		Method:     reqData.Method,
+	}
+
+	s.proxy.Engine.AddRule(rule)
+	return c.JSON(rule)
+}
+
+func (s *APIServer) handleListRules(c *fiber.Ctx) error {
+	return c.JSON(s.proxy.Engine.GetRules())
+}
+
+func (s *APIServer) handleDeleteRule(c *fiber.Ctx) error {
+	id := c.Params("id")
+	s.proxy.Engine.DeleteRule(id)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (s *APIServer) BroadcastIntercept(bp *proxy.Breakpoint) {
+	msg := fiber.Map{
+		"type":  "intercepted",
+		"id":    bp.ID,
+		"entry": bp.Entry,
+	}
+	data, _ := json.Marshal(msg)
+	s.Hub.mu.Lock()
+	for client := range s.Hub.clients {
+		client.WriteMessage(websocket.TextMessage, data)
+	}
+	s.Hub.mu.Unlock()
 }
 
 func (s *APIServer) Listen(addr string) error {
