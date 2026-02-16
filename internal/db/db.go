@@ -1,3 +1,4 @@
+// Package db handles SQLite database initialization and schema management.
 package db
 
 import (
@@ -6,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // SQLite driver
 )
 
+// DB is the global database connection.
 var DB *sql.DB
 
+// Init initializes the default database in the user's home directory.
 func Init() {
 	home, _ := os.UserHomeDir()
 	dbPath := filepath.Join(home, ".agent-proxy.db")
@@ -34,6 +37,7 @@ func Init() {
 	createTables()
 }
 
+// InitCustom initializes the database at a specific path.
 func InitCustom(path string) {
 	var err error
 	DB, err = sql.Open("sqlite", path)
@@ -42,12 +46,15 @@ func InitCustom(path string) {
 	}
 
 	DB.SetMaxOpenConns(1)
-	DB.Exec("PRAGMA journal_mode=WAL;")
-	DB.Exec("PRAGMA synchronous=NORMAL;")
+	if _, err := DB.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+		log.Printf("Warning: Failed to enable WAL mode: %v", err)
+	}
+	if _, err := DB.Exec("PRAGMA synchronous=NORMAL;"); err != nil {
+		log.Printf("Warning: Failed to set synchronous mode: %v", err)
+	}
 
 	createTables()
 }
-
 func createTables() {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS config (

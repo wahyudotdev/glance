@@ -1,3 +1,4 @@
+// Package main provides a load testing script for the agent proxy.
 package main
 
 import (
@@ -28,6 +29,7 @@ func main() {
 	transport := &http.Transport{
 		Proxy: http.ProxyURL(proxyURL),
 		TLSClientConfig: &tls.Config{
+			// #nosec G402
 			InsecureSkipVerify: *insecure,
 		},
 	}
@@ -63,7 +65,7 @@ func main() {
 
 				// Read body to ensure full request capture
 				_, _ = io.ReadAll(resp.Body)
-				resp.Body.Close()
+				_ = resp.Body.Close()
 
 				mu.Lock()
 				successCount++

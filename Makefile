@@ -8,7 +8,7 @@ BUILD_DIR=build
 # Build flags
 LDFLAGS=-ldflags="-s -w"
 
-.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage
+.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage load-test lint
 
 all: build
 
@@ -69,6 +69,10 @@ test-coverage:
 load-test:
 	@echo "Running load test (100 reqs, 10 concurrency)..."
 	go run scripts/load-test.go -n 100 -c 10
+
+lint:
+	@echo "Running linter..."
+	golangci-lint run
 
 run: build
 	./$(BINARY_NAME)

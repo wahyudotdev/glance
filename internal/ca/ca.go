@@ -1,9 +1,9 @@
+// Package ca handles Certificate Authority generation and management for MITM.
 package ca
 
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,8 +11,10 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+// CAPath is the path to the saved CA certificate on disk.
 var CAPath string
 
+// SetupCA initializes the proxy CA and saves it to a temporary file.
 func SetupCA() {
 	// For now, we use the default goproxy CA.
 	// In a production-like app, we would generate a custom one and save it to disk.
@@ -31,7 +33,7 @@ func SetupCA() {
 	// Save CA to a temporary file
 	tmpDir := os.TempDir()
 	CAPath = filepath.Join(tmpDir, "agent-proxy-ca.crt")
-	err = ioutil.WriteFile(CAPath, []byte(goproxy.CA_CERT), 0644)
+	err = os.WriteFile(CAPath, []byte(goproxy.CA_CERT), 0600) // Restricted permissions for security
 	if err != nil {
 		log.Printf("Warning: Failed to save CA certificate to %s: %v", CAPath, err)
 	} else {

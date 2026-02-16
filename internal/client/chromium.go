@@ -6,6 +6,7 @@ import (
 	"runtime"
 )
 
+// LaunchChromium starts a Chromium-based browser configured to use the agent proxy.
 func LaunchChromium(proxyAddr string) error {
 	var cmd *exec.Cmd
 	// Base flags for proxy and ignoring cert errors (for local MITM)
@@ -22,10 +23,13 @@ func LaunchChromium(proxyAddr string) error {
 	case "darwin":
 		// On macOS, we try to find Chrome or Chromium
 		path := "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+		// #nosec G204
 		cmd = exec.Command(path, args...)
 	case "linux":
+		// #nosec G204
 		cmd = exec.Command("google-chrome", args...)
 	case "windows":
+		// #nosec G204
 		cmd = exec.Command("chrome.exe", args...)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)

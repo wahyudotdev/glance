@@ -1,23 +1,11 @@
 package interceptor
 
 import (
-	"agent-proxy/internal/model"
 	"bytes"
 	"io"
 	"net/http"
 	"testing"
 )
-
-type mockTrafficRepo struct {
-	entries []*model.TrafficEntry
-}
-
-func (m *mockTrafficRepo) Add(e *model.TrafficEntry) error { m.entries = append(m.entries, e); return nil }
-func (m *mockTrafficRepo) GetPage(o, l int) ([]*model.TrafficEntry, int, error) {
-	return m.entries, len(m.entries), nil
-}
-func (m *mockTrafficRepo) Clear() error        { m.entries = nil; return nil }
-func (m *mockTrafficRepo) Prune(l int) error   { return nil }
 
 func TestReadAndReplaceBody(t *testing.T) {
 	content := "test body content"

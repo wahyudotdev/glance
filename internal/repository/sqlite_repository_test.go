@@ -32,7 +32,9 @@ func setupTestDB() *sql.DB {
 	}
 
 	for _, q := range queries {
-		db.Exec(q)
+		if _, err := db.Exec(q); err != nil {
+			log.Fatalf("Failed to execute setup query: %v", err)
+		}
 	}
 	return db
 }
@@ -52,6 +54,8 @@ func TestSQLiteTrafficRepository(t *testing.T) {
 	if err := repo.Add(entry); err != nil {
 		t.Fatalf("Failed to add entry: %v", err)
 	}
+
+	repo.Flush() // Ensure background write completes
 
 	entries, total, err := repo.GetPage(0, 10)
 	if err != nil || total != 1 {

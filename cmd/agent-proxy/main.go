@@ -1,10 +1,11 @@
+// Package main is the entry point for the Agent Proxy application.
 package main
 
 import (
 	"flag"
 	"log"
 
-	"agent-proxy/internal/api"
+	"agent-proxy/internal/apiserver"
 	"agent-proxy/internal/config"
 	"agent-proxy/internal/db"
 	"agent-proxy/internal/interceptor"
@@ -37,7 +38,9 @@ func main() {
 		cfg.APIAddr = *apiAddr
 		cfg.MCPAddr = *mcpAddr
 		cfg.MCPEnabled = *mcpMode
-		config.Save(cfg)
+		if err := config.Save(cfg); err != nil {
+			log.Printf("Warning: Failed to save updated config: %v", err)
+		}
 	}
 
 	// Check for Java Agent injection mode (used internally)
@@ -55,7 +58,7 @@ func main() {
 	}
 
 	// Start API Server
-	apiServer := api.NewAPIServer(p.Store, p, actualProxyAddr)
+	apiServer := apiserver.NewServer(p.Store, p, actualProxyAddr)
 	apiServer.RegisterRoutes()
 
 	// Connect Proxy to WebSocket Hub
@@ -68,7 +71,7 @@ func main() {
 	// Start MCP Server if requested
 	if *mcpMode {
 		go func() {
-			mcpServer := mcp.NewMCPServer(p.Store, p.Engine, actualProxyAddr)
+			mcpServer := mcp.NewServer(p.Store, p.Engine, actualProxyAddr)
 			log.Printf("MCP server (SSE) starting on %s", *mcpAddr)
 			if err := mcpServer.ServeSSE(*mcpAddr); err != nil {
 				log.Fatalf("MCP Server failed: %v", err)

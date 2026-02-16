@@ -1,3 +1,4 @@
+// Package client handles external integrations with Android, Java, and other clients.
 package client
 
 import (
@@ -54,13 +55,14 @@ func findToolsJar(pid string) string {
 	return ""
 }
 
+// BuildAndAttachAgent dynamically compiles a Java agent and attaches it to a running JVM.
 func BuildAndAttachAgent(pid string, proxyAddr string) error {
 	// ... (compilation setup remains same until step 5)
 	tmpDir, err := os.MkdirTemp("", "agent-proxy-java")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck
 
 	javaFile := filepath.Join(tmpDir, "ProxyAgent.java")
 	manifestFile := filepath.Join(tmpDir, "MANIFEST.MF")
@@ -127,15 +129,17 @@ public class ProxyAgent {
         }
     }
 }`, caCertBase64)
-	if err := os.WriteFile(javaFile, []byte(javaCode), 0644); err != nil {
+	if err := os.WriteFile(javaFile, []byte(javaCode), 0600); err != nil {
 		return err
 	}
 
 	// 2. Compile Agent
 	// Use --release 8 (modern JDKs) or -source/-target (older JDKs) to ensure compatibility with Java 8 (version 52.0)
+	// #nosec G204
 	cmdCompile := exec.Command("javac", "--release", "8", javaFile)
 	if _, err := cmdCompile.CombinedOutput(); err != nil {
 		// Fallback for older javac that doesn't support --release
+		// #nosec G204
 		cmdFallback := exec.Command("javac", "-source", "1.8", "-target", "1.8", javaFile)
 		if out2, err2 := cmdFallback.CombinedOutput(); err2 != nil {
 			return fmt.Errorf("javac failed to compile for Java 8 compatibility: %s", string(out2))
@@ -144,11 +148,12 @@ public class ProxyAgent {
 
 	// 3. Create Manifest
 	manifest := "Agent-Class: ProxyAgent\nCan-Retransform-Classes: true\n"
-	if err := os.WriteFile(manifestFile, []byte(manifest), 0644); err != nil {
+	if err := os.WriteFile(manifestFile, []byte(manifest), 0600); err != nil {
 		return err
 	}
 
 	// 4. Create JAR
+	// #nosec G204
 	if out, err := exec.Command("jar", "cmf", manifestFile, jarFile, "-C", tmpDir, "ProxyAgent.class").CombinedOutput(); err != nil {
 		return fmt.Errorf("jar creation failed: %s %v", string(out), err)
 	}
@@ -186,15 +191,17 @@ public class Injector {
         }
     }
 }`
-	if err := os.WriteFile(injectorFile, []byte(injectorCode), 0644); err != nil {
+	if err := os.WriteFile(injectorFile, []byte(injectorCode), 0600); err != nil {
 		return err
 	}
 
 	// Compile Injector
 	// Try Java 9+ first
+	// #nosec G204
 	if _, err := exec.Command("javac", "--add-modules", "jdk.attach", injectorFile).CombinedOutput(); err != nil {
 		// Fallback for Java 8
 		if toolsJar != "" {
+			// #nosec G204
 			if out, err := exec.Command("javac", "-cp", toolsJar, injectorFile).CombinedOutput(); err != nil {
 				log.Printf("Warning: Injector compilation with tools.jar failed: %s", string(out))
 			}
@@ -206,11 +213,13 @@ public class Injector {
 	agentArgs := fmt.Sprintf("%s:%s", host, port)
 
 	// Try the Injector (Java 9+)
+	// #nosec G204
 	cmd := exec.Command("java", "--add-modules", "jdk.attach", "-cp", tmpDir, "Injector", pid, jarFile, agentArgs)
 	if out, err := cmd.CombinedOutput(); err == nil && strings.Contains(string(out), "Successfully attached") {
 		return nil
 	} else if toolsJar != "" {
 		// Try Java 8 fallback for Injector
+		// #nosec G204
 		cmd8 := exec.Command("java", "-cp", tmpDir+":"+toolsJar, "Injector", pid, jarFile, agentArgs)
 		if out8, err8 := cmd8.CombinedOutput(); err8 == nil && strings.Contains(string(out8), "Successfully attached") {
 			return nil
@@ -218,8 +227,10 @@ public class Injector {
 	}
 
 	// 7. Last resort: jcmd
+	// #nosec G204
 	cmdLast := exec.Command("jcmd", pid, "JVMTI.agent_load", jarFile, agentArgs)
 	if _, err := cmdLast.CombinedOutput(); err != nil {
+		// #nosec G204
 		cmdLast2 := exec.Command("jcmd", pid, "JVMTI.agent_load", jarFile+"="+agentArgs)
 		if out2, err2 := cmdLast2.CombinedOutput(); err2 != nil {
 			return fmt.Errorf("attachment failed after multiple attempts.\nPID: %s\nTools.jar found: %v\njcmd error: %s",

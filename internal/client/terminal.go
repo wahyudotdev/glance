@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// GetTerminalSetupScript generates a shell script to configure proxy environment variables.
 func GetTerminalSetupScript(proxyAddr string) string {
 	var sb strings.Builder
 

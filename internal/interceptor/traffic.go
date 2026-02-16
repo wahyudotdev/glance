@@ -1,3 +1,4 @@
+// Package interceptor handles the capturing and temporary storage of HTTP traffic.
 package interceptor
 
 import (
@@ -16,14 +17,17 @@ import (
 	"github.com/google/uuid"
 )
 
+// TrafficStore provides an in-memory view and persistent storage for intercepted traffic.
 type TrafficStore struct {
 	repo repository.TrafficRepository
 }
 
+// NewTrafficStore creates a new TrafficStore with the provided repository.
 func NewTrafficStore(repo repository.TrafficRepository) *TrafficStore {
 	return &TrafficStore{repo: repo}
 }
 
+// AddEntry saves a new traffic entry to persistent storage.
 func (s *TrafficStore) AddEntry(entry *model.TrafficEntry) {
 	if s.repo == nil {
 		return
@@ -51,6 +55,7 @@ func (s *TrafficStore) AddEntry(entry *model.TrafficEntry) {
 	}
 }
 
+// GetPage retrieves a paginated list of traffic entries.
 func (s *TrafficStore) GetPage(offset, limit int) ([]*model.TrafficEntry, int) {
 	if s.repo == nil {
 		return nil, 0
@@ -63,6 +68,7 @@ func (s *TrafficStore) GetPage(offset, limit int) ([]*model.TrafficEntry, int) {
 	return entries, total
 }
 
+// ClearEntries removes all captured traffic from the repository.
 func (s *TrafficStore) ClearEntries() {
 	if s.repo == nil {
 		return
@@ -72,7 +78,7 @@ func (s *TrafficStore) ClearEntries() {
 	}
 }
 
-// Helper to clone request body without draining it
+// ReadAndReplaceBody clones the request body without draining the original stream.
 func ReadAndReplaceBody(r *http.Request) (string, error) {
 	if r.Body == nil || r.Body == http.NoBody {
 		return "", nil
@@ -85,7 +91,7 @@ func ReadAndReplaceBody(r *http.Request) (string, error) {
 	return string(body), nil
 }
 
-// Helper to clone response body without draining it
+// ReadAndReplaceResponseBody clones the response body without draining the original stream.
 func ReadAndReplaceResponseBody(res *http.Response) (string, error) {
 	if res.Body == nil || res.Body == http.NoBody {
 		return "", nil
@@ -105,6 +111,7 @@ func ReadAndReplaceResponseBody(res *http.Response) (string, error) {
 	return string(body), nil
 }
 
+// NewEntry creates a new TrafficEntry from an HTTP request.
 func NewEntry(r *http.Request) (*model.TrafficEntry, error) {
 	body, _ := ReadAndReplaceBody(r)
 	return &model.TrafficEntry{

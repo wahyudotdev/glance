@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// AndroidDevice represents a connected Android device.
 type AndroidDevice struct {
 	ID    string `json:"id"`
 	Model string `json:"model"`
@@ -71,6 +72,7 @@ func ListAndroidDevices() ([]AndroidDevice, error) {
 func ConfigureAndroidProxy(deviceID string, proxyPort string) error {
 	// 1. Reverse port forwarding: Map device's port to host's port
 	// This allows the device to talk to 'localhost:proxyPort' and hit the host machine
+	// #nosec G204
 	reverseCmd := exec.Command("adb", "-s", deviceID, "reverse", fmt.Sprintf("tcp:%s", proxyPort), fmt.Sprintf("tcp:%s", proxyPort))
 	if out, err := reverseCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("adb reverse failed: %s %v", string(out), err)
@@ -79,6 +81,7 @@ func ConfigureAndroidProxy(deviceID string, proxyPort string) error {
 	// 2. Set global http proxy on device to localhost:proxyPort
 	// Since we reversed the port, 127.0.0.1 on the device now routes to the host
 	proxyAddr := fmt.Sprintf("127.0.0.1:%s", proxyPort)
+	// #nosec G204
 	settingsCmd := exec.Command("adb", "-s", deviceID, "shell", "settings", "put", "global", "http_proxy", proxyAddr)
 	if out, err := settingsCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("adb settings failed: %s %v", string(out), err)
@@ -90,12 +93,14 @@ func ConfigureAndroidProxy(deviceID string, proxyPort string) error {
 // ClearAndroidProxy removes the global proxy setting and reverse rule
 func ClearAndroidProxy(deviceID string, proxyPort string) error {
 	// 1. Remove global proxy
+	// #nosec G204
 	settingsCmd := exec.Command("adb", "-s", deviceID, "shell", "settings", "put", "global", "http_proxy", ":0")
 	if out, err := settingsCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("adb settings failed: %s %v", string(out), err)
 	}
 
 	// 2. Remove reverse rule
+	// #nosec G204
 	reverseCmd := exec.Command("adb", "-s", deviceID, "reverse", "--remove", fmt.Sprintf("tcp:%s", proxyPort))
 	// We don't error check this strictly as it might not exist
 	_ = reverseCmd.Run()
@@ -109,18 +114,20 @@ func PushCertToDevice(deviceID string, certBytes []byte) error {
 
 	// 1. Create a temporary local file for the cert
 	tmpFile := filepath.Join(os.TempDir(), "agent-proxy-ca.crt")
-	if err := os.WriteFile(tmpFile, certBytes, 0644); err != nil {
+	if err := os.WriteFile(tmpFile, certBytes, 0600); err != nil {
 		return fmt.Errorf("failed to write temporary cert file: %v", err)
 	}
-	defer os.Remove(tmpFile)
+	defer os.Remove(tmpFile) //nolint:errcheck
 
 	// 2. Push the cert
+	// #nosec G204
 	cmd := exec.Command("adb", "-s", deviceID, "push", tmpFile, remotePath)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("adb push failed: %s %v", string(out), err)
 	}
 
 	// 3. Open CA installation settings
+	// #nosec G204
 	shellCmd := exec.Command("adb", "-s", deviceID, "shell", "am", "start", "-a", "android.settings.CA_CERTIFICATE_SETTINGS")
 	_ = shellCmd.Run()
 

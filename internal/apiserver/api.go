@@ -1,4 +1,5 @@
-package api
+// Package apiserver implements the REST and WebSocket API for the dashboard and external clients.
+package apiserver
 
 import (
 	"agent-proxy/internal/config"
@@ -20,7 +21,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type APIServer struct {
+// Server manages the HTTP and WebSocket endpoints for the application.
+type Server struct {
 	store       *interceptor.TrafficStore
 	proxy       *proxy.Proxy
 	app         *fiber.App
@@ -29,7 +31,8 @@ type APIServer struct {
 	Hub         *Hub
 }
 
-func NewAPIServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string) *APIServer {
+// NewServer creates and initializes a new Server instance.
+func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string) *Server {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
@@ -52,7 +55,7 @@ func NewAPIServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr str
 		return c.Next()
 	})
 
-	return &APIServer{
+	return &Server{
 		store:       store,
 		proxy:       p,
 		app:         app,
@@ -62,7 +65,8 @@ func NewAPIServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr str
 	}
 }
 
-func (s *APIServer) RegisterRoutes() {
+// RegisterRoutes sets up all the API and static asset routes.
+func (s *Server) RegisterRoutes() {
 	s.app.Get("/api/status", s.handleStatus)
 	s.app.Get("/api/traffic", s.handleTraffic)
 	s.app.Delete("/api/traffic", s.handleClearTraffic)
@@ -102,13 +106,13 @@ func (s *APIServer) RegisterRoutes() {
 	s.registerStaticRoutes()
 }
 
-func (s *APIServer) handleStatus(c *fiber.Ctx) error {
+func (s *Server) handleStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"proxy_addr": s.proxyAddr,
 	})
 }
 
-func (s *APIServer) handleTraffic(c *fiber.Ctx) error {
+func (s *Server) handleTraffic(c *fiber.Ctx) error {
 	cfg := config.Get()
 	page := c.QueryInt("page", 1)
 	pageSize := c.QueryInt("pageSize", cfg.DefaultPageSize)
@@ -124,16 +128,16 @@ func (s *APIServer) handleTraffic(c *fiber.Ctx) error {
 	})
 }
 
-func (s *APIServer) handleClearTraffic(c *fiber.Ctx) error {
+func (s *Server) handleClearTraffic(c *fiber.Ctx) error {
 	s.store.ClearEntries()
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (s *APIServer) handleGetConfig(c *fiber.Ctx) error {
+func (s *Server) handleGetConfig(c *fiber.Ctx) error {
 	return c.JSON(config.Get())
 }
 
-func (s *APIServer) handleSaveConfig(c *fiber.Ctx) error {
+func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	cfg := new(model.Config)
 	if err := c.BodyParser(cfg); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -144,7 +148,7 @@ func (s *APIServer) handleSaveConfig(c *fiber.Ctx) error {
 	return c.JSON(cfg)
 }
 
-func (s *APIServer) handleExecuteRequest(c *fiber.Ctx) error {
+func (s *Server) handleExecuteRequest(c *fiber.Ctx) error {
 	type ExecuteRequest struct {
 		Method  string              `json:"method"`
 		URL     string              `json:"url"`
@@ -184,7 +188,7 @@ func (s *APIServer) handleExecuteRequest(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Capture the response
 	entry.Duration = time.Since(start)
@@ -209,7 +213,7 @@ func (s *APIServer) handleExecuteRequest(c *fiber.Ctx) error {
 	return c.JSON(entry)
 }
 
-func (s *APIServer) handleContinueRequest(c *fiber.Ctx) error {
+func (s *Server) handleContinueRequest(c *fiber.Ctx) error {
 	id := c.Params("id")
 	type ContinueRequest struct {
 		Method  string              `json:"method"`
@@ -238,7 +242,7 @@ func (s *APIServer) handleContinueRequest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "resumed"})
 }
 
-func (s *APIServer) handleContinueResponse(c *fiber.Ctx) error {
+func (s *Server) handleContinueResponse(c *fiber.Ctx) error {
 	id := c.Params("id")
 	type ContinueResponse struct {
 		Status  int                 `json:"status"`
@@ -266,7 +270,7 @@ func (s *APIServer) handleContinueResponse(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "resumed"})
 }
 
-func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
+func (s *Server) handleAbortRequest(c *fiber.Ctx) error {
 	id := c.Params("id")
 	success := s.proxy.AbortRequest(id)
 	if !success {
@@ -275,7 +279,7 @@ func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "aborted"})
 }
 
-func (s *APIServer) handleCreateRule(c *fiber.Ctx) error {
+func (s *Server) handleCreateRule(c *fiber.Ctx) error {
 	rule := new(model.Rule)
 	if err := c.BodyParser(rule); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -289,11 +293,11 @@ func (s *APIServer) handleCreateRule(c *fiber.Ctx) error {
 	return c.JSON(rule)
 }
 
-func (s *APIServer) handleListRules(c *fiber.Ctx) error {
+func (s *Server) handleListRules(c *fiber.Ctx) error {
 	return c.JSON(s.proxy.Engine.GetRules())
 }
 
-func (s *APIServer) handleUpdateRule(c *fiber.Ctx) error {
+func (s *Server) handleUpdateRule(c *fiber.Ctx) error {
 	id := c.Params("id")
 	rule := new(model.Rule)
 	if err := c.BodyParser(rule); err != nil {
@@ -305,33 +309,30 @@ func (s *APIServer) handleUpdateRule(c *fiber.Ctx) error {
 	return c.JSON(rule)
 }
 
-func (s *APIServer) handleDeleteRule(c *fiber.Ctx) error {
+func (s *Server) handleDeleteRule(c *fiber.Ctx) error {
 	id := c.Params("id")
 	s.proxy.Engine.DeleteRule(id)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (s *APIServer) BroadcastIntercept(bp *proxy.Breakpoint) {
-
+// BroadcastIntercept sends an interception event to all connected WebSocket clients.
+func (s *Server) BroadcastIntercept(bp *proxy.Breakpoint) {
 	msg := fiber.Map{
-
-		"type": "intercepted",
-
+		"type":           "intercepted",
 		"intercept_type": bp.Type,
-
-		"id": bp.ID,
-
-		"entry": bp.Entry,
+		"id":             bp.ID,
+		"entry":          bp.Entry,
 	}
 
 	data, _ := json.Marshal(msg)
 	s.Hub.mu.Lock()
 	for client := range s.Hub.clients {
-		client.WriteMessage(websocket.TextMessage, data)
+		_ = client.WriteMessage(websocket.TextMessage, data) //nolint:errcheck
 	}
 	s.Hub.mu.Unlock()
 }
 
-func (s *APIServer) Listen(addr string) error {
+// Listen starts the API server on the provided address.
+func (s *Server) Listen(addr string) error {
 	return s.app.Listen(addr)
 }

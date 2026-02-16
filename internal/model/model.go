@@ -1,3 +1,4 @@
+// Package model defines the data structures used throughout the Agent Proxy.
 package model
 
 import (
@@ -5,6 +6,7 @@ import (
 	"time"
 )
 
+// TrafficEntry represents a single captured HTTP request/response pair.
 type TrafficEntry struct {
 	ID              string        `json:"id"`
 	Method          string        `json:"method"`
@@ -19,6 +21,7 @@ type TrafficEntry struct {
 	ModifiedBy      string        `json:"modified_by,omitempty"` // "mock" or "breakpoint"
 }
 
+// Config represents the application configuration.
 type Config struct {
 	ProxyAddr       string `json:"proxy_addr"`
 	APIAddr         string `json:"api_addr"`
@@ -29,21 +32,29 @@ type Config struct {
 	DefaultPageSize int    `json:"default_page_size"`
 }
 
+// RuleType defines the kind of interception rule.
 type RuleType string
 
 const (
-	RuleMock       RuleType = "mock"
+	// RuleMock returns a static response.
+	RuleMock RuleType = "mock"
+	// RuleBreakpoint pauses the traffic.
 	RuleBreakpoint RuleType = "breakpoint"
 )
 
+// BreakpointStrategy defines when to pause a request.
 type BreakpointStrategy string
 
 const (
-	StrategyRequest  BreakpointStrategy = "request"
+	// StrategyRequest pauses before sending to target.
+	StrategyRequest BreakpointStrategy = "request"
+	// StrategyResponse pauses after receiving from target.
 	StrategyResponse BreakpointStrategy = "response"
-	StrategyBoth     BreakpointStrategy = "both"
+	// StrategyBoth pauses both before and after.
+	StrategyBoth BreakpointStrategy = "both"
 )
 
+// Rule defines how to intercept specific traffic.
 type Rule struct {
 	ID         string             `json:"id"`
 	Type       RuleType           `json:"type"`
@@ -53,6 +64,7 @@ type Rule struct {
 	Response   *MockResponse      `json:"response,omitempty"` // For mocks
 }
 
+// MockResponse defines the static response returned by a mock rule.
 type MockResponse struct {
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`

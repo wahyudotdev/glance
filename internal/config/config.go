@@ -1,3 +1,4 @@
+// Package config manages application-wide settings and their persistence.
 package config
 
 import (
@@ -7,10 +8,12 @@ import (
 
 var repo repository.ConfigRepository
 
+// Init initializes the configuration system with the provided repository.
 func Init(r repository.ConfigRepository) {
 	repo = r
 }
 
+// Get returns the current application configuration.
 func Get() *model.Config {
 	cfg, err := repo.Get()
 	if err != nil {
@@ -25,6 +28,7 @@ func Get() *model.Config {
 	return cfg
 }
 
+// Save persists the provided configuration to the repository.
 func Save(c *model.Config) error {
 	return repo.Save(c)
 }

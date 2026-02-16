@@ -1,3 +1,4 @@
+// Package proxy implements the core MITM proxy engine and interception logic.
 package proxy
 
 import (
@@ -18,6 +19,7 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+// Breakpoint represents a paused request or response waiting for user action.
 type Breakpoint struct {
 	ID       string
 	Request  *http.Request
@@ -28,6 +30,7 @@ type Breakpoint struct {
 	Type     string // "request" or "response"
 }
 
+// Proxy is the wrapper around the goproxy server that adds interception capabilities.
 type Proxy struct {
 	server      *goproxy.ProxyHttpServer
 	addr        string
@@ -40,15 +43,18 @@ type Proxy struct {
 	bpMu        sync.RWMutex
 }
 
+// NewProxy creates a minimal Proxy instance.
 func NewProxy(addr string) *Proxy {
 	// Minimal fallback
 	return NewProxyWithRepositories(addr, interceptor.NewTrafficStore(nil), rules.NewEngine(nil))
 }
 
+// NewProxyWithStore creates a Proxy with a custom traffic store.
 func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 	return NewProxyWithRepositories(addr, store, rules.NewEngine(nil))
 }
 
+// NewProxyWithRepositories creates a fully configured Proxy with store and rule engine.
 func NewProxyWithRepositories(addr string, store *interceptor.TrafficStore, engine *rules.Engine) *Proxy {
 	ca.SetupCA()
 	p := goproxy.NewProxyHttpServer()
@@ -216,11 +222,12 @@ func NewProxyWithRepositories(addr string, store *interceptor.TrafficStore, engi
 	return proxy
 }
 
+// Start begins the proxy server on the configured address.
 func (p *Proxy) Start() (string, error) {
 	ln, err := net.Listen("tcp", p.addr)
 	if err != nil {
 		log.Printf("Port %s is in use, falling back to a random port...", p.addr)
-		ln, err = net.Listen("tcp", ":0")
+		ln, err = net.Listen("tcp", ":0") //nolint:gosec
 		if err != nil {
 			return "", err
 		}
@@ -230,16 +237,18 @@ func (p *Proxy) Start() (string, error) {
 	log.Printf("Proxy server starting on %s", actualAddr)
 
 	// Use the listener with the server
-	go http.Serve(ln, p.server)
+	go http.Serve(ln, p.server) //nolint:errcheck,gosec
 	return actualAddr, nil
 }
 
+// GetBreakpoint retrieves an active breakpoint by its ID.
 func (p *Proxy) GetBreakpoint(id string) *Breakpoint {
 	p.bpMu.RLock()
 	defer p.bpMu.RUnlock()
 	return p.breakpoints[id]
 }
 
+// ContinueRequest resumes a paused request with potential modifications.
 func (p *Proxy) ContinueRequest(id string, modifiedMethod, modifiedURL string, modifiedHeaders http.Header, modifiedBody string) bool {
 	bp := p.GetBreakpoint(id)
 	if bp == nil {
@@ -274,6 +283,7 @@ func (p *Proxy) ContinueRequest(id string, modifiedMethod, modifiedURL string, m
 	return true
 }
 
+// AbortRequest terminates a paused request or response.
 func (p *Proxy) AbortRequest(id string) bool {
 	bp := p.GetBreakpoint(id)
 	if bp == nil {
@@ -283,6 +293,7 @@ func (p *Proxy) AbortRequest(id string) bool {
 	return true
 }
 
+// ContinueResponse resumes a paused response with potential modifications.
 func (p *Proxy) ContinueResponse(id string, modifiedStatus int, modifiedHeaders http.Header, modifiedBody string) bool {
 	bp := p.GetBreakpoint(id)
 	if bp == nil || bp.Type != "response" {

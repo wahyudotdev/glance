@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
+// JavaProcess represents a running Java application.
 type JavaProcess struct {
 	PID  string `json:"pid"`
 	Name string `json:"name"`
 }
 
+// ListJavaProcesses returns a list of active Java processes.
 func ListJavaProcesses() ([]JavaProcess, error) {
 	processes := make(map[string]JavaProcess)
 

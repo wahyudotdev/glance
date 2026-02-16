@@ -1,4 +1,4 @@
-package api
+package apiserver
 
 import (
 	"embed"
@@ -11,7 +11,7 @@ import (
 //go:embed all:dist
 var staticAssets embed.FS
 
-func (s *APIServer) registerStaticRoutes() {
+func (s *Server) registerStaticRoutes() {
 	sub, err := fs.Sub(staticAssets, "dist")
 	if err != nil {
 		return

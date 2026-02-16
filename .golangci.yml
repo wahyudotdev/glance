@@ -1,0 +1,35 @@
+# golangci-lint configuration file
+# Ref: https://golangci-lint.run/docs/configuration/
+
+version: 2
+
+run:
+  timeout: 5m
+  tests: true
+  allow-parallel-runners: true
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  revive:
+    min-confidence: 0.8
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+    - misspell
+    - bodyclose
+    - gocritic
+    - gosec
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

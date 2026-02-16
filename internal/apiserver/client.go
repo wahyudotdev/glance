@@ -1,4 +1,4 @@
-package api
+package apiserver
 
 import (
 	"agent-proxy/internal/client"
@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (s *APIServer) handleLaunchChromium(c *fiber.Ctx) error {
+func (s *Server) handleLaunchChromium(c *fiber.Ctx) error {
 	err := client.LaunchChromium(s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -16,7 +16,7 @@ func (s *APIServer) handleLaunchChromium(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "launched"})
 }
 
-func (s *APIServer) handleListJavaProcesses(c *fiber.Ctx) error {
+func (s *Server) handleListJavaProcesses(c *fiber.Ctx) error {
 	procs, err := client.ListJavaProcesses()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -24,7 +24,7 @@ func (s *APIServer) handleListJavaProcesses(c *fiber.Ctx) error {
 	return c.JSON(procs)
 }
 
-func (s *APIServer) handleInterceptJava(c *fiber.Ctx) error {
+func (s *Server) handleInterceptJava(c *fiber.Ctx) error {
 	pid := c.Params("pid")
 	err := client.BuildAndAttachAgent(pid, s.proxyAddr)
 	if err != nil {
@@ -33,12 +33,12 @@ func (s *APIServer) handleInterceptJava(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "intercepted"})
 }
 
-func (s *APIServer) handleTerminalSetup(c *fiber.Ctx) error {
+func (s *Server) handleTerminalSetup(c *fiber.Ctx) error {
 	script := client.GetTerminalSetupScript(s.proxyAddr)
 	return c.SendString(script)
 }
 
-func (s *APIServer) handleListAndroidDevices(c *fiber.Ctx) error {
+func (s *Server) handleListAndroidDevices(c *fiber.Ctx) error {
 	devices, err := client.ListAndroidDevices()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -46,7 +46,7 @@ func (s *APIServer) handleListAndroidDevices(c *fiber.Ctx) error {
 	return c.JSON(devices)
 }
 
-func (s *APIServer) handleInterceptAndroid(c *fiber.Ctx) error {
+func (s *Server) handleInterceptAndroid(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
 	_, port, _ := net.SplitHostPort(s.proxyAddr)
 	if port == "" {
@@ -60,7 +60,7 @@ func (s *APIServer) handleInterceptAndroid(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "intercepted"})
 }
 
-func (s *APIServer) handleClearAndroid(c *fiber.Ctx) error {
+func (s *Server) handleClearAndroid(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
 	_, port, _ := net.SplitHostPort(s.proxyAddr)
 	if port == "" {
@@ -74,7 +74,7 @@ func (s *APIServer) handleClearAndroid(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "cleared"})
 }
 
-func (s *APIServer) handlePushAndroidCert(c *fiber.Ctx) error {
+func (s *Server) handlePushAndroidCert(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
 	err := client.PushCertToDevice(deviceID, []byte(goproxy.CA_CERT))
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *APIServer) handlePushAndroidCert(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "pushed"})
 }
 
-func (s *APIServer) registerClientRoutes() {
+func (s *Server) registerClientRoutes() {
 	s.app.Post("/api/client/chromium", s.handleLaunchChromium)
 	s.app.Get("/api/client/java/processes", s.handleListJavaProcesses)
 	s.app.Post("/api/client/java/intercept/:pid", s.handleInterceptJava)

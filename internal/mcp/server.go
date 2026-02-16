@@ -1,3 +1,4 @@
+// Package mcp implements the Model Context Protocol server for AI agent integration.
 package mcp
 
 import (
@@ -18,18 +19,20 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-type MCPServer struct {
+// Server manages the MCP connection and tool registrations.
+type Server struct {
 	store     *interceptor.TrafficStore
 	engine    *rules.Engine
 	proxyAddr string
 	server    *server.MCPServer
 }
 
-func NewMCPServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string) *MCPServer {
+// NewServer creates and initializes a new Server instance.
+func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string) *Server {
 	// Initialize the MCP server
 	s := server.NewMCPServer("Agent Proxy", "1.0.0")
 
-	ms := &MCPServer{
+	ms := &Server{
 		store:     store,
 		engine:    engine,
 		proxyAddr: proxyAddr,
@@ -42,7 +45,7 @@ func NewMCPServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAd
 	return ms
 }
 
-func (ms *MCPServer) registerTools() {
+func (ms *Server) registerTools() {
 	// Register list_traffic tool
 	ms.server.AddTool(mcp.NewTool("list_traffic",
 		mcp.WithDescription("List captured HTTP traffic summaries. Returns up to 20 recent entries."),
@@ -104,7 +107,7 @@ func (ms *MCPServer) registerTools() {
 	), ms.executeRequestHandler)
 }
 
-func (ms *MCPServer) addMockRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -138,7 +141,7 @@ func (ms *MCPServer) addMockRuleHandler(ctx context.Context, request mcp.CallToo
 	return mcp.NewToolResultText(fmt.Sprintf("Mock rule added for %s %s (Returns %d)", method, urlPattern, int(status))), nil
 }
 
-func (ms *MCPServer) listRulesHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) listRulesHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	rules := ms.engine.GetRules()
 	var sb strings.Builder
 	for _, r := range rules {
@@ -151,7 +154,7 @@ func (ms *MCPServer) listRulesHandler(ctx context.Context, request mcp.CallToolR
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
-func (ms *MCPServer) addBreakpointRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) addBreakpointRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -177,7 +180,7 @@ func (ms *MCPServer) addBreakpointRuleHandler(ctx context.Context, request mcp.C
 	return mcp.NewToolResultText(fmt.Sprintf("Breakpoint added for %s %s (Strategy: %s)", method, urlPattern, strategy)), nil
 }
 
-func (ms *MCPServer) deleteRuleHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) deleteRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -187,7 +190,7 @@ func (ms *MCPServer) deleteRuleHandler(ctx context.Context, request mcp.CallTool
 	return mcp.NewToolResultText(fmt.Sprintf("Rule %s deleted", id)), nil
 }
 
-func (ms *MCPServer) executeRequestHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) executeRequestHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -200,7 +203,7 @@ func (ms *MCPServer) executeRequestHandler(ctx context.Context, request mcp.Call
 	baseID, _ := args["base_id"].(string)
 
 	var finalMethod, finalURL, finalBody string
-	var finalHeaders http.Header = http.Header{}
+	finalHeaders := http.Header{}
 
 	// 1. If base_id is provided, load the template
 	if baseID != "" {
@@ -255,7 +258,7 @@ func (ms *MCPServer) executeRequestHandler(ctx context.Context, request mcp.Call
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Capture response
 	entry.Duration = time.Since(start)
@@ -275,7 +278,7 @@ func (ms *MCPServer) executeRequestHandler(ctx context.Context, request mcp.Call
 	return mcp.NewToolResultText(fmt.Sprintf("Request executed successfully.\nStatus: %d\nNew Entry ID: %s", resp.StatusCode, entry.ID)), nil
 }
 
-func (ms *MCPServer) registerResources() {
+func (ms *Server) registerResources() {
 	// Register proxy status resource
 	ms.server.AddResource(mcp.NewResource("proxy://status",
 		"Current Proxy Status",
@@ -291,7 +294,7 @@ func (ms *MCPServer) registerResources() {
 	), ms.latestTrafficResourceHandler)
 }
 
-func (ms *MCPServer) registerPrompts() {
+func (ms *Server) registerPrompts() {
 	// Register analyze-traffic prompt
 	ms.server.AddPrompt(mcp.NewPrompt("analyze-traffic",
 		mcp.WithPromptDescription("Analyze recent traffic for errors or anomalies"),
@@ -303,7 +306,7 @@ func (ms *MCPServer) registerPrompts() {
 	), ms.generateAPIDocsPromptHandler)
 }
 
-func (ms *MCPServer) analyzeTrafficPromptHandler(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+func (ms *Server) analyzeTrafficPromptHandler(_ context.Context, _ mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 	entries, _ := ms.store.GetPage(0, 5)
 
 	var trafficData strings.Builder
@@ -318,7 +321,7 @@ func (ms *MCPServer) analyzeTrafficPromptHandler(ctx context.Context, request mc
 	), nil
 }
 
-func (ms *MCPServer) generateAPIDocsPromptHandler(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+func (ms *Server) generateAPIDocsPromptHandler(_ context.Context, _ mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 	return mcp.NewGetPromptResult("Generate OpenAPI documentation based on the captured traffic logs. Focus on request/response structures and status codes.",
 		[]mcp.PromptMessage{
 			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent("Please use the latest traffic logs to generate documentation.")),
@@ -326,7 +329,7 @@ func (ms *MCPServer) generateAPIDocsPromptHandler(ctx context.Context, request m
 	), nil
 }
 
-func (ms *MCPServer) listTrafficHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) listTrafficHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		args = make(map[string]interface{})
@@ -360,7 +363,7 @@ func (ms *MCPServer) listTrafficHandler(ctx context.Context, request mcp.CallToo
 	return mcp.NewToolResultText(strings.Join(results, "\n")), nil
 }
 
-func (ms *MCPServer) getTrafficDetailsHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) getTrafficDetailsHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -383,17 +386,17 @@ func (ms *MCPServer) getTrafficDetailsHandler(ctx context.Context, request mcp.C
 	return mcp.NewToolResultText("Traffic entry not found."), nil
 }
 
-func (ms *MCPServer) clearTrafficHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) clearTrafficHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	ms.store.ClearEntries()
 	return mcp.NewToolResultText("Traffic logs cleared."), nil
 }
 
-func (ms *MCPServer) getProxyStatusHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (ms *Server) getProxyStatusHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
 	return mcp.NewToolResultText(status), nil
 }
 
-func (ms *MCPServer) proxyStatusResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func (ms *Server) proxyStatusResourceHandler(_ context.Context, _ mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 	rules := ms.engine.GetRules()
 	status := fmt.Sprintf(`{"proxy_addr": "%s", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
 	return []mcp.ResourceContents{
@@ -405,7 +408,7 @@ func (ms *MCPServer) proxyStatusResourceHandler(ctx context.Context, request mcp
 	}, nil
 }
 
-func (ms *MCPServer) latestTrafficResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func (ms *Server) latestTrafficResourceHandler(_ context.Context, _ mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 	entries, _ := ms.store.GetPage(0, 10)
 
 	var sb strings.Builder
@@ -427,11 +430,13 @@ func (ms *MCPServer) latestTrafficResourceHandler(ctx context.Context, request m
 	}, nil
 }
 
-func (ms *MCPServer) StartSTDIO() error {
+// StartSTDIO starts the MCP server using standard I/O.
+func (ms *Server) StartSTDIO() error {
 	return server.ServeStdio(ms.server)
 }
 
-func (ms *MCPServer) ServeSSE(addr string) error {
+// ServeSSE starts the MCP server using Server-Sent Events.
+func (ms *Server) ServeSSE(addr string) error {
 	// SSE server for MCP
 	sse := server.NewSSEServer(ms.server)
 	return sse.Start(addr)

@@ -13,6 +13,7 @@ type sqliteConfigRepository struct {
 	db *sql.DB
 }
 
+// NewSQLiteConfigRepository creates a new SQLite-backed ConfigRepository.
 func NewSQLiteConfigRepository(db *sql.DB) ConfigRepository {
 	return &sqliteConfigRepository{db: db}
 }
@@ -59,6 +60,7 @@ type sqliteTrafficRepository struct {
 	mu         sync.RWMutex
 }
 
+// NewSQLiteTrafficRepository creates a new SQLite-backed TrafficRepository.
 func NewSQLiteTrafficRepository(db *sql.DB) TrafficRepository {
 	repo := &sqliteTrafficRepository{
 		db:         db,
@@ -129,7 +131,7 @@ func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEn
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []*model.TrafficEntry
 	for rows.Next() {
@@ -142,8 +144,8 @@ func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEn
 		if err != nil {
 			continue
 		}
-		json.Unmarshal([]byte(reqH), &e.RequestHeaders)
-		json.Unmarshal([]byte(resH), &e.ResponseHeaders)
+		_ = json.Unmarshal([]byte(reqH), &e.RequestHeaders)
+		_ = json.Unmarshal([]byte(resH), &e.ResponseHeaders)
 		e.Duration = time.Duration(duration)
 		entries = append(entries, &e)
 	}
@@ -163,10 +165,19 @@ func (r *sqliteTrafficRepository) Prune(limit int) error {
 	return err
 }
 
+func (r *sqliteTrafficRepository) Flush() {
+	// Simple flush: send a "no-op" entry and wait for it if possible,
+	// or just sleep briefly. A better way is using a specialized signal.
+	// For now, since it's a test helper, we'll use a small sleep or
+	// we can improve the worker to handle a "sync" command.
+	time.Sleep(100 * time.Millisecond)
+}
+
 type sqliteRuleRepository struct {
 	db *sql.DB
 }
 
+// NewSQLiteRuleRepository creates a new SQLite-backed RuleRepository.
 func NewSQLiteRuleRepository(db *sql.DB) RuleRepository {
 	return &sqliteRuleRepository{db: db}
 }
@@ -176,7 +187,7 @@ func (r *sqliteRuleRepository) GetAll() ([]*model.Rule, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var rules []*model.Rule
 	for rows.Next() {
@@ -187,7 +198,7 @@ func (r *sqliteRuleRepository) GetAll() ([]*model.Rule, error) {
 			continue
 		}
 		if respJSON.Valid && respJSON.String != "" {
-			json.Unmarshal([]byte(respJSON.String), &rule.Response)
+			_ = json.Unmarshal([]byte(respJSON.String), &rule.Response)
 		}
 		rules = append(rules, &rule)
 	}
