@@ -52,6 +52,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleIntercept = async (pid: string) => {
+    try {
+      await axios.post(`http://localhost:8081/api/client/java/intercept/${pid}`);
+      alert(`Successfully injected proxy into PID ${pid}! Traffic should start appearing.`);
+    } catch (error) {
+      alert('Failed to intercept: ' + error);
+    }
+  };
+
   useEffect(() => {
     if (currentView === 'integrations') {
       fetchJavaProcesses();
@@ -389,7 +398,7 @@ const App: React.FC = () => {
                                   <span className="text-[10px] text-slate-400 font-mono">PID: {proc.pid}</span>
                                 </div>
                                 <button 
-                                  onClick={() => alert(`To intercept PID ${proc.pid}, restart the application with the JVM arguments below.`)}
+                                  onClick={() => handleIntercept(proc.pid)}
                                   className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 hover:text-blue-600"
                                 >
                                   Intercept
