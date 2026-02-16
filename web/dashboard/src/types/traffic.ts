@@ -3,10 +3,22 @@ export interface TrafficEntry {
   method: string;
   url: string;
   request_headers: Record<string, string[]>;
-  request_body: string; // Base64 or string depending on content
+  request_body: string;
+  response_headers?: Record<string, string[]>;
+  response_body?: string;
   status: number;
-  response_headers: Record<string, string[]>;
-  response_body: string;
   start_time: string;
-  duration: number; // in nanoseconds
+  duration: number;
+}
+
+export interface Config {
+  proxy_addr: string;
+  api_addr: string;
+  mcp_addr: string;
+  mcp_enabled: boolean;
+}
+
+export interface JavaProcess {
+  pid: string;
+  name: string;
 }
