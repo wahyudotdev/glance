@@ -5,10 +5,12 @@ import (
 	"agent-proxy/internal/model"
 	"agent-proxy/internal/repository"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,6 +95,13 @@ func ReadAndReplaceResponseBody(res *http.Response) (string, error) {
 		return "", err
 	}
 	res.Body = io.NopCloser(bytes.NewBuffer(body))
+
+	contentType := res.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "image/") {
+		encoded := base64.StdEncoding.EncodeToString(body)
+		return fmt.Sprintf("data:%s;base64,%s", contentType, encoded), nil
+	}
+
 	return string(body), nil
 }
 
