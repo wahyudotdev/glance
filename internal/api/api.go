@@ -72,8 +72,10 @@ func (s *APIServer) RegisterRoutes() {
 	s.app.Post("/api/request/execute", s.handleExecuteRequest)
 	s.app.Get("/api/rules", s.handleListRules)
 	s.app.Post("/api/rules/breakpoint", s.handleCreateBreakpointRule)
+	s.app.Put("/api/rules/:id", s.handleUpdateRule)
 	s.app.Delete("/api/rules/:id", s.handleDeleteRule)
 	s.app.Post("/api/intercept/continue/:id", s.handleContinueRequest)
+	s.app.Post("/api/intercept/response/continue/:id", s.handleContinueResponse)
 	s.app.Post("/api/intercept/abort/:id", s.handleAbortRequest)
 
 	// WebSocket for real-time traffic
@@ -236,6 +238,34 @@ func (s *APIServer) handleContinueRequest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "resumed"})
 }
 
+func (s *APIServer) handleContinueResponse(c *fiber.Ctx) error {
+	id := c.Params("id")
+	type ContinueResponse struct {
+		Status  int                 `json:"status"`
+		Headers map[string][]string `json:"headers"`
+		Body    string              `json:"body"`
+	}
+
+	resData := new(ContinueResponse)
+	if err := c.BodyParser(resData); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	h := http.Header{}
+	for k, vs := range resData.Headers {
+		for _, v := range vs {
+			h.Add(k, v)
+		}
+	}
+
+	success := s.proxy.ContinueResponse(id, resData.Status, h, resData.Body)
+	if !success {
+		return c.Status(404).JSON(fiber.Map{"error": "Intercepted response not found or already released"})
+	}
+
+	return c.JSON(fiber.Map{"status": "resumed"})
+}
+
 func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
 	id := c.Params("id")
 	success := s.proxy.AbortRequest(id)
@@ -249,6 +279,7 @@ func (s *APIServer) handleCreateBreakpointRule(c *fiber.Ctx) error {
 	type BreakpointRuleRequest struct {
 		URLPattern string `json:"url_pattern"`
 		Method     string `json:"method"`
+		Strategy   string `json:"strategy"`
 	}
 
 	reqData := new(BreakpointRuleRequest)
@@ -261,6 +292,7 @@ func (s *APIServer) handleCreateBreakpointRule(c *fiber.Ctx) error {
 		Type:       rules.RuleBreakpoint,
 		URLPattern: reqData.URLPattern,
 		Method:     reqData.Method,
+		Strategy:   rules.BreakpointStrategy(reqData.Strategy),
 	}
 
 	s.proxy.Engine.AddRule(rule)
@@ -271,6 +303,31 @@ func (s *APIServer) handleListRules(c *fiber.Ctx) error {
 	return c.JSON(s.proxy.Engine.GetRules())
 }
 
+func (s *APIServer) handleUpdateRule(c *fiber.Ctx) error {
+	id := c.Params("id")
+	type UpdateRuleRequest struct {
+		URLPattern string `json:"url_pattern"`
+		Method     string `json:"method"`
+		Strategy   string `json:"strategy"`
+	}
+
+	reqData := new(UpdateRuleRequest)
+	if err := c.BodyParser(reqData); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	rule := &rules.Rule{
+		ID:         id,
+		Type:       rules.RuleBreakpoint,
+		URLPattern: reqData.URLPattern,
+		Method:     reqData.Method,
+		Strategy:   rules.BreakpointStrategy(reqData.Strategy),
+	}
+
+	s.proxy.Engine.UpdateRule(rule)
+	return c.JSON(rule)
+}
+
 func (s *APIServer) handleDeleteRule(c *fiber.Ctx) error {
 	id := c.Params("id")
 	s.proxy.Engine.DeleteRule(id)
@@ -278,11 +335,18 @@ func (s *APIServer) handleDeleteRule(c *fiber.Ctx) error {
 }
 
 func (s *APIServer) BroadcastIntercept(bp *proxy.Breakpoint) {
+
 	msg := fiber.Map{
-		"type":  "intercepted",
-		"id":    bp.ID,
+
+		"type": "intercepted",
+
+		"intercept_type": bp.Type,
+
+		"id": bp.ID,
+
 		"entry": bp.Entry,
 	}
+
 	data, _ := json.Marshal(msg)
 	s.Hub.mu.Lock()
 	for client := range s.Hub.clients {

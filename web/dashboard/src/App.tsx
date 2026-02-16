@@ -10,6 +10,7 @@ import { Header } from './components/layout/Header';
 import { TrafficList } from './components/traffic/TrafficList';
 import { DetailsPanel } from './components/traffic/DetailsPanel';
 import { RequestEditor } from './components/traffic/RequestEditor';
+import { ResponseEditor } from './components/traffic/ResponseEditor';
 import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { RulesView } from './components/settings/RulesView';
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
+  const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -231,17 +233,31 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateRule = async (pattern: string, method: string) => {
+  const handleCreateRule = async (pattern: string, method: string, strategy: string) => {
     try {
       await apiFetch('/api/rules/breakpoint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_pattern: pattern, method })
+        body: JSON.stringify({ url_pattern: pattern, method, strategy })
       });
       fetchRules();
       toast('success', 'Rule Created', 'Requests matching this pattern will now be paused.');
     } catch (error) {
       toast('error', 'Create Rule Failed', String(error));
+    }
+  };
+
+  const handleUpdateRule = async (id: string, pattern: string, method: string, strategy: string) => {
+    try {
+      await apiFetch(`/api/rules/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url_pattern: pattern, method, strategy })
+      });
+      fetchRules();
+      toast('success', 'Rule Updated', 'The breakpoint rule has been modified.');
+    } catch (error) {
+      toast('error', 'Update Rule Failed', String(error));
     }
   };
 
@@ -309,10 +325,25 @@ const App: React.FC = () => {
     }
   };
 
+  const handleContinueResponse = async (status: number, headers: Record<string, string[]>, body: string) => {
+    if (!selectedEntry) return;
+    try {
+      await apiFetch(`/api/intercept/response/continue/${selectedEntry.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, headers, body })
+      });
+      toast('success', 'Response Resumed', 'The modified response has been sent to the client.');
+    } catch (error) {
+      toast('error', 'Resume Failed', String(error));
+    }
+  };
+
   const handleAbortIntercept = async (id: string) => {
     try {
       await apiFetch(`/api/intercept/abort/${id}`, { method: 'POST' });
       setIsRequestEditorOpen(false);
+      setIsResponseEditorOpen(false);
       toast('info', 'Request Aborted', 'The intercepted request was discarded.');
     } catch (error) {
       toast('error', 'Abort Failed', String(error));
@@ -326,10 +357,11 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url_pattern: entry.url,
-          method: entry.method
+          method: entry.method,
+          strategy: 'both'
         })
       });
-      toast('success', 'Breakpoint Added', `Future ${entry.method} requests to this URL will be paused.`);
+      toast('success', 'Breakpoint Added', `Future ${entry.method} traffic to this URL will be paused (Both Req/Res).`);
     } catch (error) {
       toast('error', 'Failed to Add Breakpoint', String(error));
     }
@@ -360,17 +392,51 @@ const App: React.FC = () => {
 
               
 
-                      if (msg.type === 'intercepted') {
+                              if (msg.type === 'intercepted') {
 
-                        setSelectedEntry(msg.entry);
+              
 
-                        setIsRequestEditorOpen(true);
+                                setSelectedEntry(msg.entry);
 
-                        // We don't add to total yet as it hasn't completed
+              
 
-                        return;
+                                if (msg.intercept_type === 'response') {
 
-                      }
+              
+
+                                  setIsResponseEditorOpen(true);
+
+              
+
+                                  toast('info', 'Response Paused', `${msg.entry.url} - Ready for edit.`);
+
+              
+
+                                } else {
+
+              
+
+                                  setIsRequestEditorOpen(true);
+
+              
+
+                                  toast('info', 'Request Paused', `${msg.entry.url} - Ready for edit.`);
+
+              
+
+                                }
+
+              
+
+                                return;
+
+              
+
+                              }
+
+              
+
+                      
 
               
 
@@ -561,6 +627,7 @@ const App: React.FC = () => {
               isLoading={isLoadingRules}
               onDelete={handleDeleteRule}
               onCreate={handleCreateRule}
+              onUpdate={handleUpdateRule}
             />
           )}
 
@@ -596,6 +663,16 @@ const App: React.FC = () => {
         isIntercept={!!selectedEntry && !entries.find(e => e.id === selectedEntry.id)}
         onAbort={handleAbortIntercept}
       />
+
+      {selectedEntry && (
+        <ResponseEditor 
+          isOpen={isResponseEditorOpen}
+          onClose={() => setIsResponseEditorOpen(false)}
+          entry={selectedEntry}
+          onResume={handleContinueResponse}
+          onAbort={handleAbortIntercept}
+        />
+      )}
 
       <Toast toasts={toasts} onClose={removeToast} />
     </div>

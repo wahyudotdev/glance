@@ -13,12 +13,21 @@ const (
 	RuleBreakpoint RuleType = "breakpoint"
 )
 
+type BreakpointStrategy string
+
+const (
+	StrategyRequest  BreakpointStrategy = "request"
+	StrategyResponse BreakpointStrategy = "response"
+	StrategyBoth     BreakpointStrategy = "both"
+)
+
 type Rule struct {
-	ID         string        `json:"id"`
-	Type       RuleType      `json:"type"`
-	URLPattern string        `json:"url_pattern"`
-	Method     string        `json:"method"`
-	Response   *MockResponse `json:"response,omitempty"`
+	ID         string             `json:"id"`
+	Type       RuleType           `json:"type"`
+	URLPattern string             `json:"url_pattern"`
+	Method     string             `json:"method"`
+	Strategy   BreakpointStrategy `json:"strategy,omitempty"` // For breakpoints
+	Response   *MockResponse      `json:"response,omitempty"` // For mocks
 }
 
 type MockResponse struct {
@@ -62,6 +71,17 @@ func (e *Engine) DeleteRule(id string) {
 	for i, r := range e.rules {
 		if r.ID == id {
 			e.rules = append(e.rules[:i], e.rules[i+1:]...)
+			break
+		}
+	}
+}
+
+func (e *Engine) UpdateRule(rule *Rule) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for i, r := range e.rules {
+		if r.ID == rule.ID {
+			e.rules[i] = rule
 			break
 		}
 	}

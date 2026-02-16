@@ -18,11 +18,13 @@ import (
 )
 
 type Breakpoint struct {
-	ID      string
-	Request *http.Request
-	Entry   *model.TrafficEntry
-	Resume  chan bool
-	Abort   chan bool
+	ID       string
+	Request  *http.Request
+	Response *http.Response
+	Entry    *model.TrafficEntry
+	Resume   chan bool
+	Abort    chan bool
+	Type     string // "request" or "response"
 }
 
 type Proxy struct {
@@ -82,14 +84,15 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 					return r, resp
 				}
 
-				if rule.Type == rules.RuleBreakpoint {
-					log.Printf("[PAUSE] Intercepting %s %s", r.Method, r.URL.String())
+				if rule.Type == rules.RuleBreakpoint && (rule.Strategy == rules.StrategyRequest || rule.Strategy == rules.StrategyBoth || rule.Strategy == "") {
+					log.Printf("[PAUSE REQ] Intercepting %s %s", r.Method, r.URL.String())
 					bp := &Breakpoint{
 						ID:      entry.ID,
 						Request: r,
 						Entry:   entry,
 						Resume:  make(chan bool),
 						Abort:   make(chan bool),
+						Type:    "request",
 					}
 
 					proxy.bpMu.Lock()
@@ -134,6 +137,45 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 				entry.ResponseHeaders = resp.Header.Clone()
 				entry.ResponseBody = body
 				entry.Duration = time.Since(entry.StartTime)
+
+				// Check for Response Breakpoint
+				rule := engine.Match(resp.Request)
+				if rule != nil && rule.Type == rules.RuleBreakpoint && (rule.Strategy == rules.StrategyResponse || rule.Strategy == rules.StrategyBoth) {
+					log.Printf("[PAUSE RES] Intercepting response for %s", resp.Request.URL.String())
+					bp := &Breakpoint{
+						ID:       entry.ID,
+						Request:  resp.Request,
+						Response: resp,
+						Entry:    entry,
+						Resume:   make(chan bool),
+						Abort:    make(chan bool),
+						Type:     "response",
+					}
+
+					proxy.bpMu.Lock()
+					proxy.breakpoints[bp.ID] = bp
+					proxy.bpMu.Unlock()
+
+					if proxy.OnIntercept != nil {
+						proxy.OnIntercept(bp)
+					}
+
+					// BLOCK here until resume or abort
+					select {
+					case <-bp.Resume:
+						log.Printf("[RESUME RES] Resuming response for %s", bp.ID)
+					case <-bp.Abort:
+						log.Printf("[ABORT RES] Aborting response for %s", bp.ID)
+						return goproxy.NewResponse(resp.Request, goproxy.ContentTypeText, 502, "Response aborted by user")
+					case <-time.After(5 * time.Minute):
+						log.Printf("[TIMEOUT RES] Auto-resuming response %s after timeout", bp.ID)
+					}
+
+					proxy.bpMu.Lock()
+					delete(proxy.breakpoints, bp.ID)
+					proxy.bpMu.Unlock()
+				}
+
 				store.AddEntry(entry)
 
 				if proxy.OnEntry != nil {
@@ -213,5 +255,33 @@ func (p *Proxy) AbortRequest(id string) bool {
 		return false
 	}
 	bp.Abort <- true
+	return true
+}
+
+func (p *Proxy) ContinueResponse(id string, modifiedStatus int, modifiedHeaders http.Header, modifiedBody string) bool {
+	bp := p.GetBreakpoint(id)
+	if bp == nil || bp.Type != "response" {
+		return false
+	}
+
+	// Apply modifications to the original response
+	if modifiedStatus > 0 {
+		bp.Response.StatusCode = modifiedStatus
+		bp.Response.Status = http.StatusText(modifiedStatus)
+	}
+	if modifiedHeaders != nil {
+		bp.Response.Header = modifiedHeaders
+	}
+	if modifiedBody != "" {
+		bp.Response.Body = io.NopCloser(strings.NewReader(modifiedBody))
+		bp.Response.ContentLength = int64(len(modifiedBody))
+	}
+
+	// Update the entry for history consistency
+	bp.Entry.Status = bp.Response.StatusCode
+	bp.Entry.ResponseHeaders = bp.Response.Header.Clone()
+	bp.Entry.ResponseBody = modifiedBody
+
+	bp.Resume <- true
 	return true
 }
