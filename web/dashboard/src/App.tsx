@@ -9,6 +9,7 @@ import { Header } from './components/layout/Header';
 // Feature Components
 import { TrafficList } from './components/traffic/TrafficList';
 import { DetailsPanel } from './components/traffic/DetailsPanel';
+import { RequestEditor } from './components/traffic/RequestEditor';
 import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
 
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   // Navigation & UI State
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   
   // Unified Notification State
   const [notification, setNotification] = useState<{
@@ -247,6 +249,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExecuteRequest = async (req: Partial<TrafficEntry>) => {
+    try {
+      await apiFetch('/api/request/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: req.method,
+          url: req.url,
+          headers: req.request_headers,
+          body: req.request_body
+        })
+      });
+      notify('success', 'Request Executed', 'The custom request has been sent successfully.');
+    } catch (error) {
+      notify('error', 'Execution Failed', String(error));
+    }
+  };
+
   // --- Effects ---
 
   useEffect(() => {
@@ -344,18 +364,27 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100">
       <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>
         <Header 
           proxyAddr={proxyAddr} 
           filter={filter} 
           setFilter={setFilter} 
           onClearTraffic={() => setIsClearModalOpen(true)} 
+          onNewRequest={() => {
+            setSelectedEntry(null);
+            setIsRequestEditorOpen(true);
+          }}
         />
 
-        <main className="flex-1 flex overflow-hidden">
+        <main 
+          className="flex-1 flex overflow-hidden"
+          onClick={() => setSelectedEntry(null)}
+        >
           {currentView === 'traffic' && (
             <>
-              <div className="flex-1 flex flex-col min-w-0 bg-white">
+              <div 
+                className="flex-1 flex flex-col min-w-0 bg-white"
+              >
                 <TrafficList 
                   entries={filteredEntries} 
                   selectedEntry={selectedEntry} 
@@ -363,7 +392,10 @@ const App: React.FC = () => {
                 />
                 
                 {/* Pagination Controls */}
-                <div className="h-12 border-t border-slate-100 flex items-center justify-between px-6 bg-slate-50/50">
+                <div 
+                  className="h-12 border-t border-slate-100 flex items-center justify-between px-6 bg-slate-50/50"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="text-[11px] font-medium text-slate-400">
                     Showing <span className="text-slate-600 font-bold">{entries.length}</span> of <span className="text-slate-600 font-bold">{totalEntries}</span> requests
                   </div>
@@ -396,8 +428,19 @@ const App: React.FC = () => {
                   <div 
                     className={`w-1.5 h-full cursor-col-resize hover:bg-blue-500/30 transition-colors flex-shrink-0 z-30 ${isResizing ? 'bg-blue-500/50' : 'bg-transparent'}`}
                     onMouseDown={startResizing}
+                    onClick={(e) => e.stopPropagation()}
                   />
-                  <DetailsPanel entry={selectedEntry} width={detailsWidth} />
+                  <div 
+                    className="flex-shrink-0 h-full overflow-hidden flex flex-col"
+                    style={{ width: `${detailsWidth}px` }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DetailsPanel 
+                      entry={selectedEntry} 
+                      onEdit={() => setIsRequestEditorOpen(true)}
+                      onClose={() => setSelectedEntry(null)}
+                    />
+                  </div>
                 </>
               )}
             </>
@@ -467,6 +510,13 @@ const App: React.FC = () => {
         confirmLabel="Clear All"
         confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200"
         onConfirm={handleClear}
+      />
+
+      <RequestEditor 
+        isOpen={isRequestEditorOpen}
+        onClose={() => setIsRequestEditorOpen(false)}
+        initialRequest={selectedEntry}
+        onExecute={handleExecuteRequest}
       />
     </div>
   );

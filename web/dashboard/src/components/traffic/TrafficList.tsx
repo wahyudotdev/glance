@@ -43,7 +43,10 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
           {entries.map((entry) => (
             <tr
               key={entry.id}
-              onClick={() => onSelect(entry)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(entry);
+              }}
               className={`group cursor-pointer border-b border-slate-50 transition-all duration-150 hover:bg-blue-50/50 ${
                 selectedEntry?.id === entry.id ? 'bg-blue-50 border-blue-100' : ''
               }`}

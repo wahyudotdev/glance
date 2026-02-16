@@ -1,14 +1,15 @@
 import React from 'react';
-import { Search, Trash2, Shield } from 'lucide-react';
+import { Search, Trash2, Shield, Plus } from 'lucide-react';
 
 interface HeaderProps {
   proxyAddr: string;
   filter: string;
   setFilter: (filter: string) => void;
   onClearTraffic: () => void;
+  onNewRequest: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, onClearTraffic }) => {
+export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, onClearTraffic, onNewRequest }) => {
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 shadow-sm z-10">
       <div className="flex items-center gap-4">
@@ -21,6 +22,14 @@ export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, on
       </div>
       
       <div className="flex items-center gap-3">
+        <button 
+          onClick={onNewRequest}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 mr-2"
+        >
+          <Plus size={14} />
+          Compose
+        </button>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input 

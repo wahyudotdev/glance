@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code } from 'lucide-react';
+import { FileText, Copy, Check, Eye, Code, Play, X } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 
 interface DetailsPanelProps {
   entry: TrafficEntry;
-  width?: number;
+  onEdit?: (entry: TrafficEntry) => void;
+  onClose?: () => void;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
+  const [copiedRequest, setCopiedRequest] = useState(false);
+  const [copiedResponse, setCopiedResponse] = useState(false);
 
   const getContentType = () => {
     if (!entry.response_headers) return '';
@@ -69,6 +72,36 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }
     return <pre className="text-slate-600 whitespace-pre-wrap leading-relaxed">{entry.response_body}</pre>;
   };
 
+  const renderRequestBody = () => {
+    if (!entry.request_body) return null;
+    try {
+      const parsed = JSON.parse(entry.request_body);
+      return (
+        <pre className="text-blue-700 whitespace-pre-wrap leading-relaxed">
+          {JSON.stringify(parsed, null, 2)}
+        </pre>
+      );
+    } catch {
+      return <pre className="text-slate-600 whitespace-pre-wrap leading-relaxed">{entry.request_body}</pre>;
+    }
+  };
+
+  const handleCopyRequestBody = () => {
+    if (entry.request_body) {
+      navigator.clipboard.writeText(entry.request_body);
+      setCopiedRequest(true);
+      setTimeout(() => setCopiedRequest(false), 2000);
+    }
+  };
+
+  const handleCopyResponseBody = () => {
+    if (entry.response_body) {
+      navigator.clipboard.writeText(entry.response_body);
+      setCopiedResponse(true);
+      setTimeout(() => setCopiedResponse(false), 2000);
+    }
+  };
+
   const handleCopyCurl = () => {
     const curl = generateCurl(entry);
     navigator.clipboard.writeText(curl);
@@ -78,8 +111,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }
 
   return (
     <div 
-      className="bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20 flex-shrink-0"
-      style={{ width: `${width}px` }}
+      className="bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20 flex-shrink-0 h-full w-full"
     >
       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
         <div className="flex items-center justify-between mb-4">
@@ -91,13 +123,29 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }
               </span>
             )}
           </h2>
-          <button 
-            onClick={handleCopyCurl}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
-          >
-            {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-            {copied ? 'Copied!' : 'Copy cURL'}
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => onEdit?.(entry)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
+            >
+              <Play size={14} fill="currentColor" />
+              Edit & Resend
+            </button>
+            <button 
+              onClick={handleCopyCurl}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+            >
+              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy cURL'}
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+              title="Close Details"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <div className="font-mono text-[12px] bg-slate-900 text-slate-300 p-3 rounded-lg break-all leading-relaxed shadow-inner border border-slate-800">
           <span className="text-blue-400 font-bold uppercase mr-2">{entry.method}</span>
@@ -153,10 +201,37 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }
         )}
 
         {activeTab === 'body' && (
-          <div className="h-full flex flex-col gap-4">
+          <div className="h-full flex flex-col gap-6">
+            {entry.request_body && (
+              <section className="flex-shrink-0 flex flex-col max-h-[40%]">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Request Body</h3>
+                  <button 
+                    onClick={handleCopyRequestBody}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+                  >
+                    {copiedRequest ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedRequest ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div className="flex-1 bg-slate-50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 shadow-inner">
+                  {renderRequestBody()}
+                </div>
+              </section>
+            )}
+
             <section className="flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Response Body</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Response Body</h3>
+                  <button 
+                    onClick={handleCopyResponseBody}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+                  >
+                    {copiedResponse ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedResponse ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
                 <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                   <button 
                     onClick={() => setViewMode('preview')}
