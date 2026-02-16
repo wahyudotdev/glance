@@ -14,6 +14,7 @@ import (
 	"agent-proxy/internal/interceptor"
 	"agent-proxy/internal/model"
 	"agent-proxy/internal/rules"
+
 	"github.com/elazarl/goproxy"
 )
 
@@ -74,13 +75,33 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 
 			// Apply rules
 			rule := engine.Match(r)
+
+			// Handle CORS Preflight for any URL that has a rule
+			if r.Method == "OPTIONS" && rule != nil {
+				resp := goproxy.NewResponse(r, goproxy.ContentTypeText, 204, "")
+				resp.Header.Set("Access-Control-Allow-Origin", "*")
+				resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+				resp.Header.Set("Access-Control-Allow-Headers", "*")
+				resp.Header.Set("Access-Control-Max-Age", "86400")
+				return r, resp
+			}
+
 			if rule != nil {
 				if rule.Type == rules.RuleMock && rule.Response != nil {
 					entry.ModifiedBy = "mock"
 					resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
+
+					// Apply configured headers
 					for k, v := range rule.Response.Headers {
 						resp.Header.Set(k, v)
 					}
+
+					// Auto-inject CORS headers to prevent browser blocks
+					resp.Header.Set("Access-Control-Allow-Origin", "*")
+					resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+					resp.Header.Set("Access-Control-Allow-Headers", "*")
+					resp.Header.Set("Access-Control-Allow-Credentials", "true")
+
 					log.Printf("[MOCK] %s %s -> %d", r.Method, r.URL.String(), rule.Response.Status)
 					return r, resp
 				}
