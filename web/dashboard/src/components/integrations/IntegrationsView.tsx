@@ -32,7 +32,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </p>
               <button 
                 onClick={async () => {
-                  try { await axios.post('http://localhost:8081/api/client/chromium'); }
+                  try { await axios.post('/api/client/chromium'); }
                   catch (e) { alert('Failed to launch Chromium: ' + e); }
                 }}
                 className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200"
@@ -51,11 +51,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </p>
               <div className="relative group mb-4">
                 <pre className="bg-slate-900 text-indigo-200 p-4 rounded-xl text-[10px] font-mono overflow-x-auto">
-                  eval "$(curl -s http://localhost:8081/setup)"
+                  eval "$(curl -s {window.location.origin}/setup)"
                 </pre>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText('eval "$(curl -s http://localhost:8081/setup)"');
+                    navigator.clipboard.writeText(`eval "$(curl -s ${window.location.origin}/setup)"`);
                     setScriptCopied(true);
                     setTimeout(() => setScriptCopied(false), 2000);
                   }}
@@ -80,7 +80,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                   <Code className="text-amber-600" size={24} />
                 </div>
                 <a 
-                  href="http://localhost:8081/api/ca/cert" 
+                  href="/api/ca/cert" 
                   className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-all"
                 >
                   Download CA Certificate

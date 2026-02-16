@@ -45,7 +45,7 @@ const App: React.FC = () => {
 
   const fetchTraffic = async () => {
     try {
-      const response = await axios.get('http://localhost:8081/api/traffic');
+      const response = await axios.get('/api/traffic');
       setEntries(response.data || []);
     } catch (error) {
       console.error('Error fetching traffic:', error);
@@ -54,7 +54,7 @@ const App: React.FC = () => {
 
   const handleClear = async () => {
     try {
-      await axios.delete('http://localhost:8081/api/traffic');
+      await axios.delete('/api/traffic');
       setEntries([]);
       setSelectedEntry(null);
       setIsClearModalOpen(false);
@@ -66,7 +66,7 @@ const App: React.FC = () => {
   const fetchJavaProcesses = async () => {
     setIsLoadingJava(true);
     try {
-      const response = await axios.get('http://localhost:8081/api/client/java/processes');
+      const response = await axios.get('/api/client/java/processes');
       setJavaProcesses(response.data || []);
     } catch (error) {
       console.error('Error fetching Java processes:', error);
@@ -77,7 +77,7 @@ const App: React.FC = () => {
 
   const fetchTerminalScript = async () => {
     try {
-      const response = await axios.get('http://localhost:8081/api/client/terminal/setup');
+      const response = await axios.get('/api/client/terminal/setup');
       setTerminalScript(response.data);
     } catch (error) {
       console.error('Error fetching terminal script:', error);
@@ -86,7 +86,7 @@ const App: React.FC = () => {
 
   const handleInterceptJava = async (pid: string) => {
     try {
-      await axios.post(`http://localhost:8081/api/client/java/intercept/${pid}`);
+      await axios.post(`/api/client/java/intercept/${pid}`);
       alert(`Successfully injected proxy into PID ${pid}! Traffic should start appearing.`);
     } catch (error) {
       alert('Failed to intercept: ' + error);
@@ -95,7 +95,7 @@ const App: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get('http://localhost:8081/api/status');
+      const response = await axios.get('/api/status');
       setProxyAddr(response.data.proxy_addr);
     } catch (error) {
       console.error('Error fetching status:', error);
@@ -104,7 +104,7 @@ const App: React.FC = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await axios.get('http://localhost:8081/api/config');
+      const response = await axios.get('/api/config');
       setConfig(response.data);
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -113,7 +113,7 @@ const App: React.FC = () => {
 
   const saveConfig = async (newConfig: Config) => {
     try {
-      await axios.post('http://localhost:8081/api/config', newConfig);
+      await axios.post('/api/config', newConfig);
       setConfig(newConfig);
       setIsSettingsSavedModalOpen(true);
     } catch (error) {

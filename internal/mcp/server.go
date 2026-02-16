@@ -221,13 +221,13 @@ func (ms *MCPServer) clearTrafficHandler(ctx context.Context, request mcp.CallTo
 }
 
 func (ms *MCPServer) getProxyStatusHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	status := fmt.Sprintf("Proxy is running on: %s\nDashboard available at: http://localhost:8081", ms.proxyAddr)
+	status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
 	return mcp.NewToolResultText(status), nil
 }
 
 func (ms *MCPServer) proxyStatusResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 	rules := ms.engine.GetRules()
-	status := fmt.Sprintf(`{"proxy_addr": "%s", "dashboard_url": "http://localhost:8081", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
+	status := fmt.Sprintf(`{"proxy_addr": "%s", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
 	return []mcp.ResourceContents{
 		mcp.TextResourceContents{
 			URI:      "proxy://status",

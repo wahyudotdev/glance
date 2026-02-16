@@ -3,6 +3,9 @@ package api
 import (
 	"agent-proxy/internal/config"
 	"agent-proxy/internal/interceptor"
+	"log"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
@@ -22,9 +25,17 @@ func NewAPIServer(store *interceptor.TrafficStore, proxyAddr string) *APIServer 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowMethods: "GET,POST,OPTIONS,DELETE",
-		AllowHeaders: "Content-Type",
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "*",
 	}))
+
+	// Add request logging for API debugging
+	app.Use(func(c *fiber.Ctx) error {
+		if strings.HasPrefix(c.Path(), "/api") {
+			log.Printf("[API] %s %s", c.Method(), c.Path())
+		}
+		return c.Next()
+	})
 
 	return &APIServer{
 		store:       store,
