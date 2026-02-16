@@ -14,6 +14,7 @@ import { ResponseEditor } from './components/traffic/ResponseEditor';
 import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { RulesView } from './components/settings/RulesView';
+import { RuleEditor } from './components/settings/RuleEditor';
 import type { Rule } from './components/settings/RulesView';
 
 // UI Components
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
+  const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
   
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -73,6 +75,7 @@ const App: React.FC = () => {
   // Data State
   const [entries, setEntries] = useState<TrafficEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [filter, setFilter] = useState('');
   const [proxyAddr, setProxyAddr] = useState(':8000');
   const [currentPage, setCurrentPage] = useState(1);
@@ -233,29 +236,29 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateRule = async (pattern: string, method: string, strategy: string) => {
+  const handleCreateRule = async (rule: Partial<Rule>) => {
     try {
-      await apiFetch('/api/rules/breakpoint', {
+      await apiFetch('/api/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_pattern: pattern, method, strategy })
+        body: JSON.stringify(rule)
       });
       fetchRules();
-      toast('success', 'Rule Created', 'Requests matching this pattern will now be paused.');
+      toast('success', 'Rule Created', 'The new rule has been added.');
     } catch (error) {
       toast('error', 'Create Rule Failed', String(error));
     }
   };
 
-  const handleUpdateRule = async (id: string, pattern: string, method: string, strategy: string) => {
+  const handleUpdateRule = async (id: string, rule: Partial<Rule>) => {
     try {
       await apiFetch(`/api/rules/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_pattern: pattern, method, strategy })
+        body: JSON.stringify(rule)
       });
       fetchRules();
-      toast('success', 'Rule Updated', 'The breakpoint rule has been modified.');
+      toast('success', 'Rule Updated', 'The rule has been modified.');
     } catch (error) {
       toast('error', 'Update Rule Failed', String(error));
     }
@@ -352,18 +355,31 @@ const App: React.FC = () => {
 
   const handleCreateBreakpoint = async (entry: TrafficEntry) => {
     try {
-      await apiFetch('/api/rules/breakpoint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url_pattern: entry.url,
-          method: entry.method,
-          strategy: 'both'
-        })
+      await handleCreateRule({
+        type: 'breakpoint',
+        url_pattern: entry.url,
+        method: entry.method,
+        strategy: 'both'
       });
-      toast('success', 'Breakpoint Added', `Future ${entry.method} traffic to this URL will be paused (Both Req/Res).`);
     } catch (error) {
       toast('error', 'Failed to Add Breakpoint', String(error));
+    }
+  };
+
+  const handleCreateMock = async (entry: TrafficEntry) => {
+    try {
+      await handleCreateRule({
+        type: 'mock',
+        url_pattern: entry.url,
+        method: entry.method,
+        response: {
+          status: entry.status || 200,
+          body: entry.response_body || '',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      });
+    } catch (error) {
+      toast('error', 'Failed to Add Mock', String(error));
     }
   };
 
@@ -597,6 +613,7 @@ const App: React.FC = () => {
                                         onEdit={() => setIsRequestEditorOpen(true)}
                                         onClose={() => setSelectedEntry(null)}
                                         onBreak={handleCreateBreakpoint}
+                                        onMock={handleCreateMock}
                                       />
                     
                   </div>
@@ -627,7 +644,10 @@ const App: React.FC = () => {
               isLoading={isLoadingRules}
               onDelete={handleDeleteRule}
               onCreate={handleCreateRule}
-              onUpdate={handleUpdateRule}
+              onEdit={(rule) => {
+                setSelectedRule(rule);
+                setIsRuleEditorOpen(true);
+              }}
             />
           )}
 
@@ -673,6 +693,13 @@ const App: React.FC = () => {
           onAbort={handleAbortIntercept}
         />
       )}
+
+      <RuleEditor 
+        isOpen={isRuleEditorOpen}
+        onClose={() => setIsRuleEditorOpen(false)}
+        rule={selectedRule}
+        onSave={handleUpdateRule}
+      />
 
       <Toast toasts={toasts} onClose={removeToast} />
     </div>

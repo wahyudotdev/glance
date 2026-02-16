@@ -71,7 +71,7 @@ func (s *APIServer) RegisterRoutes() {
 	s.app.Post("/api/config", s.handleSaveConfig)
 	s.app.Post("/api/request/execute", s.handleExecuteRequest)
 	s.app.Get("/api/rules", s.handleListRules)
-	s.app.Post("/api/rules/breakpoint", s.handleCreateBreakpointRule)
+	s.app.Post("/api/rules", s.handleCreateRule)
 	s.app.Put("/api/rules/:id", s.handleUpdateRule)
 	s.app.Delete("/api/rules/:id", s.handleDeleteRule)
 	s.app.Post("/api/intercept/continue/:id", s.handleContinueRequest)
@@ -275,24 +275,14 @@ func (s *APIServer) handleAbortRequest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "aborted"})
 }
 
-func (s *APIServer) handleCreateBreakpointRule(c *fiber.Ctx) error {
-	type BreakpointRuleRequest struct {
-		URLPattern string `json:"url_pattern"`
-		Method     string `json:"method"`
-		Strategy   string `json:"strategy"`
-	}
-
-	reqData := new(BreakpointRuleRequest)
-	if err := c.BodyParser(reqData); err != nil {
+func (s *APIServer) handleCreateRule(c *fiber.Ctx) error {
+	rule := new(rules.Rule)
+	if err := c.BodyParser(rule); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	rule := &rules.Rule{
-		ID:         uuid.New().String(),
-		Type:       rules.RuleBreakpoint,
-		URLPattern: reqData.URLPattern,
-		Method:     reqData.Method,
-		Strategy:   rules.BreakpointStrategy(reqData.Strategy),
+	if rule.ID == "" {
+		rule.ID = uuid.New().String()
 	}
 
 	s.proxy.Engine.AddRule(rule)
@@ -305,25 +295,12 @@ func (s *APIServer) handleListRules(c *fiber.Ctx) error {
 
 func (s *APIServer) handleUpdateRule(c *fiber.Ctx) error {
 	id := c.Params("id")
-	type UpdateRuleRequest struct {
-		URLPattern string `json:"url_pattern"`
-		Method     string `json:"method"`
-		Strategy   string `json:"strategy"`
-	}
-
-	reqData := new(UpdateRuleRequest)
-	if err := c.BodyParser(reqData); err != nil {
+	rule := new(rules.Rule)
+	if err := c.BodyParser(rule); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	rule := &rules.Rule{
-		ID:         id,
-		Type:       rules.RuleBreakpoint,
-		URLPattern: reqData.URLPattern,
-		Method:     reqData.Method,
-		Strategy:   rules.BreakpointStrategy(reqData.Strategy),
-	}
-
+	rule.ID = id
 	s.proxy.Engine.UpdateRule(rule)
 	return c.JSON(rule)
 }

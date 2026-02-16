@@ -8,9 +8,10 @@ interface DetailsPanelProps {
   onEdit?: (entry: TrafficEntry) => void;
   onClose?: () => void;
   onBreak?: (entry: TrafficEntry) => void;
+  onMock?: (entry: TrafficEntry) => void;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak, onMock }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
@@ -139,6 +140,14 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             >
               <ShieldAlert size={14} />
               Break on next
+            </button>
+            <button 
+              onClick={() => onMock?.(entry)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95"
+              title="Return this response automatically for future requests"
+            >
+              <Eye size={14} />
+              Mock this
             </button>
             <button 
               onClick={handleCopyCurl}
