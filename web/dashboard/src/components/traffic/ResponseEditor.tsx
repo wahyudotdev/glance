@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, Trash2, Activity } from 'lucide-react';
+import { X, Play, Plus, Trash2, Activity, AlignLeft } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 
 interface ResponseEditorProps {
@@ -21,7 +21,14 @@ export const ResponseEditor: React.FC<ResponseEditorProps> = ({
   useEffect(() => {
     if (entry) {
       setStatus(entry.status || 200);
-      setBody(entry.response_body || '');
+      
+      // Auto-prettify body if it's JSON
+      let finalBody = entry.response_body || '';
+      try {
+        const parsed = JSON.parse(finalBody);
+        finalBody = JSON.stringify(parsed, null, 2);
+      } catch (e) { /* Not JSON */ }
+      setBody(finalBody);
       
       const h: {key: string, value: string}[] = [];
       if (entry.response_headers) {
@@ -47,6 +54,15 @@ export const ResponseEditor: React.FC<ResponseEditorProps> = ({
     const newHeaders = [...headers];
     newHeaders[index][field] = val;
     setHeaders(newHeaders);
+  };
+
+  const prettifyJson = () => {
+    try {
+      const parsed = JSON.parse(body);
+      setBody(JSON.stringify(parsed, null, 2));
+    } catch (e) {
+      // Not valid JSON, ignore or show hint
+    }
   };
 
   const handleSubmit = async () => {
@@ -126,11 +142,21 @@ export const ResponseEditor: React.FC<ResponseEditorProps> = ({
           </section>
 
           <section className="flex-1 min-h-[200px] flex flex-col">
-            <h3 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-[0.2em]">Response Body</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Response Body</h3>
+              <button 
+                onClick={prettifyJson}
+                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold hover:bg-emerald-100 transition-all"
+                title="Format JSON"
+              >
+                <AlignLeft size={12} />
+                Prettify JSON
+              </button>
+            </div>
             <textarea 
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="flex-1 w-full p-4 bg-slate-900 text-emerald-400 rounded-2xl font-mono text-xs min-h-[200px] resize-none"
+              className="flex-1 w-full p-4 bg-slate-900 text-emerald-400 rounded-2xl font-mono text-xs min-h-[200px] resize-none focus:outline-none"
             />
           </section>
         </div>

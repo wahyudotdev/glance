@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, Trash2, Activity } from 'lucide-react';
+import { X, Play, Plus, Trash2, Activity, AlignLeft } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 
 interface RequestEditorProps {
@@ -24,7 +24,14 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
     if (initialRequest) {
       setMethod(initialRequest.method);
       setUrl(initialRequest.url);
-      setBody(initialRequest.request_body || '');
+      
+      // Auto-prettify body if it's JSON
+      let finalBody = initialRequest.request_body || '';
+      try {
+        const parsed = JSON.parse(finalBody);
+        finalBody = JSON.stringify(parsed, null, 2);
+      } catch (e) { /* Not JSON, keep original */ }
+      setBody(finalBody);
       
       const h: {key: string, value: string}[] = [];
       Object.entries(initialRequest.request_headers).forEach(([k, vs]) => {
@@ -53,6 +60,15 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
     const newHeaders = [...headers];
     newHeaders[index][field] = val;
     setHeaders(newHeaders);
+  };
+
+  const prettifyJson = () => {
+    try {
+      const parsed = JSON.parse(body);
+      setBody(JSON.stringify(parsed, null, 2));
+    } catch (e) {
+      // Not valid JSON
+    }
   };
 
   const handleSubmit = async () => {
@@ -158,7 +174,17 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
           {/* Body */}
           {(method !== 'GET' && method !== 'HEAD') && (
             <section className="flex-1 min-h-[200px] flex flex-col">
-              <h3 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-[0.2em]">Request Body</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Request Body</h3>
+                <button 
+                  onClick={prettifyJson}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold hover:bg-emerald-100 transition-all"
+                  title="Format JSON"
+                >
+                  <AlignLeft size={12} />
+                  Prettify JSON
+                </button>
+              </div>
               <textarea 
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
