@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
 import { Trash2, Check } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess } from './types/traffic';
 
@@ -41,12 +40,19 @@ const App: React.FC = () => {
     mcp_enabled: false
   });
 
-  // --- API Actions ---
+  // --- API Actions (Using Native Fetch) ---
+
+  const apiFetch = async (url: string, options?: RequestInit) => {
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(await res.text());
+    if (res.status === 204) return null;
+    return res.json();
+  };
 
   const fetchTraffic = async () => {
     try {
-      const response = await axios.get('/api/traffic');
-      setEntries(response.data || []);
+      const data = await apiFetch('/api/traffic');
+      setEntries(data || []);
     } catch (error) {
       console.error('Error fetching traffic:', error);
     }
@@ -54,7 +60,7 @@ const App: React.FC = () => {
 
   const handleClear = async () => {
     try {
-      await axios.delete('/api/traffic');
+      await apiFetch('/api/traffic', { method: 'DELETE' });
       setEntries([]);
       setSelectedEntry(null);
       setIsClearModalOpen(false);
@@ -66,8 +72,8 @@ const App: React.FC = () => {
   const fetchJavaProcesses = async () => {
     setIsLoadingJava(true);
     try {
-      const response = await axios.get('/api/client/java/processes');
-      setJavaProcesses(response.data || []);
+      const data = await apiFetch('/api/client/java/processes');
+      setJavaProcesses(data || []);
     } catch (error) {
       console.error('Error fetching Java processes:', error);
     } finally {
@@ -77,8 +83,9 @@ const App: React.FC = () => {
 
   const fetchTerminalScript = async () => {
     try {
-      const response = await axios.get('/api/client/terminal/setup');
-      setTerminalScript(response.data);
+      const res = await fetch('/api/client/terminal/setup');
+      const text = await res.text();
+      setTerminalScript(text);
     } catch (error) {
       console.error('Error fetching terminal script:', error);
     }
@@ -86,7 +93,7 @@ const App: React.FC = () => {
 
   const handleInterceptJava = async (pid: string) => {
     try {
-      await axios.post(`/api/client/java/intercept/${pid}`);
+      await apiFetch(`/api/client/java/intercept/${pid}`, { method: 'POST' });
       alert(`Successfully injected proxy into PID ${pid}! Traffic should start appearing.`);
     } catch (error) {
       alert('Failed to intercept: ' + error);
@@ -95,8 +102,8 @@ const App: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get('/api/status');
-      setProxyAddr(response.data.proxy_addr);
+      const data = await apiFetch('/api/status');
+      setProxyAddr(data.proxy_addr);
     } catch (error) {
       console.error('Error fetching status:', error);
     }
@@ -104,8 +111,8 @@ const App: React.FC = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await axios.get('/api/config');
-      setConfig(response.data);
+      const data = await apiFetch('/api/config');
+      setConfig(data);
     } catch (error) {
       console.error('Error fetching config:', error);
     }
@@ -113,7 +120,11 @@ const App: React.FC = () => {
 
   const saveConfig = async (newConfig: Config) => {
     try {
-      await axios.post('/api/config', newConfig);
+      await apiFetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
       setConfig(newConfig);
       setIsSettingsSavedModalOpen(true);
     } catch (error) {

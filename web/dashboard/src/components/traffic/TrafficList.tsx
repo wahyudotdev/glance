@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import dayjs from 'dayjs';
 import type { TrafficEntry } from '../../types/traffic';
 
 interface TrafficListProps {
@@ -8,6 +7,16 @@ interface TrafficListProps {
   selectedEntry: TrafficEntry | null;
   onSelect: (entry: TrafficEntry) => void;
 }
+
+const formatTime = (isoString: string) => {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+    hour12: false
+  }).format(new Date(isoString));
+};
 
 const getStatusColor = (status: number) => {
   if (status >= 200 && status < 300) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
@@ -61,10 +70,11 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
               <td className="px-4 py-3.5 text-slate-400 tabular-nums">
                 {entry.response_body ? `${(entry.response_body.length / 1024).toFixed(1)} KB` : '-'}
               </td>
-              <td className="pr-8 pl-4 py-3.5 text-right text-slate-400 tabular-nums group-hover:text-slate-600 flex items-center justify-end gap-2">
-                {dayjs(entry.start_time).format('HH:mm:ss.SSS')}
-                <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${selectedEntry?.id === entry.id ? 'opacity-100' : ''}`} />
-              </td>
+                                      <td className="pr-8 pl-4 py-3.5 text-right text-slate-400 tabular-nums group-hover:text-slate-600 flex items-center justify-end gap-2">
+                                        {formatTime(entry.start_time)}
+                                        <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${selectedEntry?.id === entry.id ? 'opacity-100' : ''}`} />
+                                      </td>
+              
             </tr>
           ))}
         </tbody>

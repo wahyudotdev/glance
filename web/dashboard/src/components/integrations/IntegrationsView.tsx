@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Globe, Terminal, Code, Activity, Copy, Check, Shield } from 'lucide-react';
 import type { JavaProcess } from '../../types/traffic';
 
@@ -32,7 +31,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </p>
               <button 
                 onClick={async () => {
-                  try { await axios.post('/api/client/chromium'); }
+                  try { await fetch('/api/client/chromium', { method: 'POST' }); }
                   catch (e) { alert('Failed to launch Chromium: ' + e); }
                 }}
                 className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200"
