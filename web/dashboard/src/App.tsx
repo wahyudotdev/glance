@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Trash2, Check, XCircle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { TrafficEntry, Config, JavaProcess } from './types/traffic';
+import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/traffic';
 
 // Layout Components
 import { Sidebar } from './components/layout/Sidebar';
@@ -47,7 +47,9 @@ const App: React.FC = () => {
   
   // Integration State
   const [javaProcesses, setJavaProcesses] = useState<JavaProcess[]>([]);
+  const [androidDevices, setAndroidDevices] = useState<AndroidDevice[]>([]);
   const [isLoadingJava, setIsLoadingJava] = useState(false);
+  const [isLoadingAndroid, setIsLoadingAndroid] = useState(false);
   const [terminalScript, setTerminalScript] = useState('');
   
   // Settings State
@@ -124,6 +126,18 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchAndroidDevices = async () => {
+    setIsLoadingAndroid(true);
+    try {
+      const data = await apiFetch('/api/client/android/devices');
+      setAndroidDevices(data || []);
+    } catch (error) {
+      notify('error', 'ADB Error', 'Could not list Android devices. Ensure adb is installed and devices are connected.');
+    } finally {
+      setIsLoadingAndroid(false);
+    }
+  };
+
   const fetchTerminalScript = async () => {
     try {
       const res = await fetch('/api/client/terminal/setup');
@@ -140,6 +154,33 @@ const App: React.FC = () => {
       notify('success', 'Interception Active', `Successfully injected proxy into PID ${pid}.`);
     } catch (error) {
       notify('error', 'Interception Failed', String(error));
+    }
+  };
+
+  const handleInterceptAndroid = async (id: string) => {
+    try {
+      await apiFetch(`/api/client/android/intercept/${id}`, { method: 'POST' });
+      notify('success', 'Proxy Configured', `Android device ${id} is now routing traffic through this proxy.`);
+    } catch (error) {
+      notify('error', 'Configuration Failed', String(error));
+    }
+  };
+
+  const handleClearAndroid = async (id: string) => {
+    try {
+      await apiFetch(`/api/client/android/clear/${id}`, { method: 'POST' });
+      notify('success', 'Proxy Cleared', `Android device ${id} proxy settings have been reset.`);
+    } catch (error) {
+      notify('error', 'Reset Failed', String(error));
+    }
+  };
+
+  const handlePushAndroidCert = async (id: string) => {
+    try {
+      await apiFetch(`/api/client/android/push-cert/${id}`, { method: 'POST' });
+      notify('success', 'CA Cert Pushed', 'Certificate pushed to /sdcard/ and install settings opened on device.');
+    } catch (error) {
+      notify('error', 'Push Failed', String(error));
     }
   };
 
@@ -255,6 +296,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentView === 'integrations') {
       fetchJavaProcesses();
+      fetchAndroidDevices();
       fetchTerminalScript();
     }
   }, [currentView]);
@@ -324,10 +366,16 @@ const App: React.FC = () => {
           {currentView === 'integrations' && (
             <IntegrationsView 
               javaProcesses={javaProcesses}
+              androidDevices={androidDevices}
               isLoadingJava={isLoadingJava}
+              isLoadingAndroid={isLoadingAndroid}
               terminalScript={terminalScript}
               onFetchJava={fetchJavaProcesses}
+              onFetchAndroid={fetchAndroidDevices}
               onInterceptJava={handleInterceptJava}
+              onInterceptAndroid={handleInterceptAndroid}
+              onClearAndroid={handleClearAndroid}
+              onPushAndroidCert={handlePushAndroidCert}
             />
           )}
 

@@ -25,3 +25,9 @@ export interface JavaProcess {
   pid: string;
   name: string;
 }
+
+export interface AndroidDevice {
+  id: string;
+  model: string;
+  name: string;
+}
