@@ -34,6 +34,7 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
             <th className="pl-8 pr-4 py-4 font-bold">Method</th>
             <th className="px-4 py-4">Status</th>
             <th className="px-4 py-4">Path & Host</th>
+            <th className="px-4 py-4 text-right">Latency</th>
             <th className="px-4 py-4">Size</th>
             <th className="pr-8 pl-4 py-4 text-right">Time</th>
           </tr>
@@ -67,9 +68,15 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-3.5 text-slate-400 tabular-nums">
-                {entry.response_body ? `${(entry.response_body.length / 1024).toFixed(1)} KB` : '-'}
-              </td>
+                                      <td className="px-4 py-3.5 text-right font-mono text-[11px] tabular-nums">
+                                        <span className={`${entry.duration / 1000000 > 500 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                          {entry.duration > 0 ? `${(entry.duration / 1000000).toFixed(0)}ms` : '-'}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3.5 text-slate-400 tabular-nums text-center">
+                                        {entry.response_body ? `${(entry.response_body.length / 1024).toFixed(1)} KB` : '-'}
+                                      </td>
+              
                                       <td className="pr-8 pl-4 py-3.5 text-right text-slate-400 tabular-nums group-hover:text-slate-600 flex items-center justify-end gap-2">
                                         {formatTime(entry.start_time)}
                                         <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${selectedEntry?.id === entry.id ? 'opacity-100' : ''}`} />

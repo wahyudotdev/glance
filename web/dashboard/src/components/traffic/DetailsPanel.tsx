@@ -5,9 +5,10 @@ import { generateCurl } from '../../lib/curl';
 
 interface DetailsPanelProps {
   entry: TrafficEntry;
+  width?: number;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, width = 450 }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [copied, setCopied] = useState(false);
 
@@ -19,11 +20,19 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry }) => {
   };
 
   return (
-    <div className="w-[450px] bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20">
+    <div 
+      className="bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20 flex-shrink-0"
+      style={{ width: `${width}px` }}
+    >
       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tight">
             <FileText size={16} className="text-blue-500" /> Request Details
+            {entry.duration > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-mono">
+                {(entry.duration / 1000000).toFixed(1)}ms
+              </span>
+            )}
           </h2>
           <button 
             onClick={handleCopyCurl}

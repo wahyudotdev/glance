@@ -33,6 +33,36 @@ const App: React.FC = () => {
     message: ''
   });
 
+  const [detailsWidth, setDetailsWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const stopResizing = () => {
+    setIsResizing(false);
+  };
+
+  const resize = (e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 300 && newWidth < window.innerWidth - 400) {
+        setDetailsWidth(newWidth);
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResizing);
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing]);
+
   const notify = (type: 'success' | 'error' | 'info', title: string, message: string) => {
     setNotification({ isOpen: true, type, title, message });
   };
@@ -359,7 +389,17 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {selectedEntry && <DetailsPanel entry={selectedEntry} />}
+              
+              {selectedEntry && (
+                <>
+                  {/* Resize Handle */}
+                  <div 
+                    className={`w-1.5 h-full cursor-col-resize hover:bg-blue-500/30 transition-colors flex-shrink-0 z-30 ${isResizing ? 'bg-blue-500/50' : 'bg-transparent'}`}
+                    onMouseDown={startResizing}
+                  />
+                  <DetailsPanel entry={selectedEntry} width={detailsWidth} />
+                </>
+              )}
             </>
           )}
 
