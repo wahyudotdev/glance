@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ShieldAlert, Eye, Edit3 } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 
 interface TrafficListProps {
@@ -51,11 +51,29 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
                 selectedEntry?.id === entry.id ? 'bg-blue-50 border-blue-100' : ''
               }`}
             >
-              <td className="pl-8 pr-4 py-3.5">
-                <span className="font-mono font-bold text-blue-600 tracking-tighter">
-                  {entry.method}
-                </span>
-              </td>
+                                      <td className="pl-8 pr-4 py-3.5">
+                                        <div className="flex flex-col gap-1">
+                                          <span className="font-mono font-bold text-blue-600 tracking-tighter">
+                                            {entry.method}
+                                          </span>
+                                          {entry.modified_by === 'mock' && (
+                                            <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
+                                              <Eye size={10} /> MOCKED
+                                            </span>
+                                          )}
+                                          {entry.modified_by === 'breakpoint' && (
+                                            <span className="flex items-center gap-1 text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 w-fit">
+                                              <ShieldAlert size={10} /> PAUSED
+                                            </span>
+                                          )}
+                                          {entry.modified_by === 'editor' && (
+                                            <span className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 w-fit">
+                                              <Edit3 size={10} /> EDITOR
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+              
               <td className="px-4 py-3.5">
                 <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border tabular-nums ${getStatusColor(entry.status)}`}>
                   {entry.status || '---'}

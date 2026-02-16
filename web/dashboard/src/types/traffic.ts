@@ -9,6 +9,7 @@ export interface TrafficEntry {
   status: number;
   start_time: string;
   duration: number;
+  modified_by?: 'mock' | 'breakpoint' | 'editor';
 }
 
 export interface Config {

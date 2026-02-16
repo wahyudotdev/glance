@@ -64,10 +64,10 @@ func (r *sqliteTrafficRepository) Add(entry *model.TrafficEntry) error {
 	_, err := r.db.Exec(`
 		INSERT INTO traffic (
 			id, method, url, request_headers, request_body,
-			status, response_headers, response_body, start_time, duration
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			status, response_headers, response_body, start_time, duration, modified_by
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		entry.ID, entry.Method, entry.URL, string(reqHeaders), entry.RequestBody,
-		entry.Status, string(resHeaders), entry.ResponseBody, entry.StartTime, int64(entry.Duration))
+		entry.Status, string(resHeaders), entry.ResponseBody, entry.StartTime, int64(entry.Duration), entry.ModifiedBy)
 
 	return err
 }
@@ -82,7 +82,7 @@ func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEn
 	rows, err := r.db.Query(`
 		SELECT 
 			id, method, url, request_headers, request_body,
-			status, response_headers, response_body, start_time, duration
+			status, response_headers, response_body, start_time, duration, modified_by
 		FROM traffic ORDER BY start_time DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -96,7 +96,7 @@ func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEn
 		var duration int64
 		err := rows.Scan(
 			&e.ID, &e.Method, &e.URL, &reqH, &e.RequestBody,
-			&e.Status, &resH, &e.ResponseBody, &e.StartTime, &duration)
+			&e.Status, &resH, &e.ResponseBody, &e.StartTime, &duration, &e.ModifiedBy)
 		if err != nil {
 			continue
 		}

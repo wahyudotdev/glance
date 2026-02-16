@@ -50,7 +50,8 @@ func createTables() {
 			response_body TEXT,
 			status INTEGER,
 			start_time DATETIME,
-			duration INTEGER
+			duration INTEGER,
+			modified_by TEXT
 		)`,
 	}
 

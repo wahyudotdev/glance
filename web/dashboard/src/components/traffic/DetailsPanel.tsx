@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert } from 'lucide-react';
+import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3 } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 
@@ -17,6 +17,8 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
   const [copied, setCopied] = useState(false);
   const [copiedRequest, setCopiedRequest] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
+
+  const isModified = entry.modified_by === 'mock' || entry.modified_by === 'breakpoint';
 
   const getContentType = () => {
     if (!entry.response_headers) return '';
@@ -117,14 +119,31 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
     >
       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tight">
-            <FileText size={16} className="text-blue-500" /> Request Details
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tight">
+              <FileText size={16} className="text-blue-500" /> Request Details
+            </h2>
+            {entry.modified_by === 'mock' && (
+              <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 uppercase tracking-tighter">
+                <Eye size={10} /> Mocked
+              </span>
+            )}
+            {entry.modified_by === 'breakpoint' && (
+              <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 uppercase tracking-tighter">
+                <ShieldAlert size={10} /> Paused
+              </span>
+            )}
+            {entry.modified_by === 'editor' && (
+              <span className="flex items-center gap-1 text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-tighter">
+                <Edit3 size={10} /> Editor
+              </span>
+            )}
             {entry.duration > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-mono">
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[9px] font-mono border border-slate-200">
                 {(entry.duration / 1000000).toFixed(1)}ms
               </span>
             )}
-          </h2>
+          </div>
           <div className="flex gap-2">
             <button 
               onClick={() => onEdit?.(entry)}
@@ -133,22 +152,26 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
               <Play size={14} fill="currentColor" />
               Edit & Resend
             </button>
-            <button 
-              onClick={() => onBreak?.(entry)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
-              title="Pause on the next request matching this URL/Method"
-            >
-              <ShieldAlert size={14} />
-              Break on next
-            </button>
-            <button 
-              onClick={() => onMock?.(entry)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95"
-              title="Return this response automatically for future requests"
-            >
-              <Eye size={14} />
-              Mock this
-            </button>
+            {!isModified && (
+              <>
+                <button 
+                  onClick={() => onBreak?.(entry)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
+                  title="Pause on the next request matching this URL/Method"
+                >
+                  <ShieldAlert size={14} />
+                  Break on next
+                </button>
+                <button 
+                  onClick={() => onMock?.(entry)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95"
+                  title="Return this response automatically for future requests"
+                >
+                  <Eye size={14} />
+                  Mock this
+                </button>
+              </>
+            )}
             <button 
               onClick={handleCopyCurl}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"

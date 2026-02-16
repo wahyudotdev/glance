@@ -16,6 +16,7 @@ type TrafficEntry struct {
 	ResponseBody    string        `json:"response_body"`
 	StartTime       time.Time     `json:"start_time"`
 	Duration        time.Duration `json:"duration"`
+	ModifiedBy      string        `json:"modified_by,omitempty"` // "mock" or "breakpoint"
 }
 
 type Config struct {

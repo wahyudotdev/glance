@@ -173,6 +173,7 @@ func (s *APIServer) handleExecuteRequest(c *fiber.Ctx) error {
 
 	// Capture the request start
 	entry, _ := interceptor.NewEntry(req)
+	entry.ModifiedBy = "editor"
 
 	// Execute
 	client := &http.Client{

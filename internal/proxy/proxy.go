@@ -76,6 +76,7 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 			rule := engine.Match(r)
 			if rule != nil {
 				if rule.Type == rules.RuleMock && rule.Response != nil {
+					entry.ModifiedBy = "mock"
 					resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
 					for k, v := range rule.Response.Headers {
 						resp.Header.Set(k, v)
@@ -85,6 +86,7 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 				}
 
 				if rule.Type == rules.RuleBreakpoint && (rule.Strategy == rules.StrategyRequest || rule.Strategy == rules.StrategyBoth || rule.Strategy == "") {
+					entry.ModifiedBy = "breakpoint"
 					log.Printf("[PAUSE REQ] Intercepting %s %s", r.Method, r.URL.String())
 					bp := &Breakpoint{
 						ID:      entry.ID,
@@ -141,6 +143,7 @@ func NewProxyWithStore(addr string, store *interceptor.TrafficStore) *Proxy {
 				// Check for Response Breakpoint
 				rule := engine.Match(resp.Request)
 				if rule != nil && rule.Type == rules.RuleBreakpoint && (rule.Strategy == rules.StrategyResponse || rule.Strategy == rules.StrategyBoth) {
+					entry.ModifiedBy = "breakpoint"
 					log.Printf("[PAUSE RES] Intercepting response for %s", resp.Request.URL.String())
 					bp := &Breakpoint{
 						ID:       entry.ID,

@@ -42,8 +42,15 @@ const App: React.FC = () => {
     setToasts((prev) => prev.filter(t => t.id !== id));
   };
 
-  const [detailsWidth, setDetailsWidth] = useState(450);
+  const [detailsWidth, setDetailsWidth] = useState(() => {
+    const saved = localStorage.getItem('agent-proxy-details-width');
+    return saved ? parseFloat(saved) : 70;
+  });
   const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('agent-proxy-details-width', detailsWidth.toString());
+  }, [detailsWidth]);
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -56,9 +63,14 @@ const App: React.FC = () => {
 
   const resize = (e: MouseEvent) => {
     if (isResizing) {
-      const newWidth = window.innerWidth - e.clientX;
-      if (newWidth > 300 && newWidth < window.innerWidth - 400) {
-        setDetailsWidth(newWidth);
+      // Sidebar is 256px (w-64)
+      const sidebarWidth = 256;
+      const availableWidth = window.innerWidth - sidebarWidth;
+      const mouseXFromRight = window.innerWidth - e.clientX;
+      const percentage = (mouseXFromRight / availableWidth) * 100;
+      
+      if (percentage > 20 && percentage < 80) {
+        setDetailsWidth(percentage);
       }
     }
   };
@@ -605,7 +617,7 @@ const App: React.FC = () => {
                   />
                   <div 
                     className="flex-shrink-0 h-full overflow-hidden flex flex-col"
-                    style={{ width: `${detailsWidth}px` }}
+                    style={{ width: `${detailsWidth}%` }}
                     onClick={(e) => e.stopPropagation()}
                   >
                                       <DetailsPanel 
