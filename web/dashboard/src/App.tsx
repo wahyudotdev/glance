@@ -6,6 +6,7 @@ import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/t
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { MCPDocs } from './components/layout/MCPDocs';
+import { TerminalDocs } from './components/layout/TerminalDocs';
 
 // Feature Components
 import { TrafficList } from './components/traffic/TrafficList';
@@ -66,6 +67,7 @@ const App: React.FC = () => {
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
   const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
+  const [isTerminalDocsOpen, setIsTerminalDocsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
 
@@ -496,8 +498,9 @@ const App: React.FC = () => {
 
           {currentView === 'integrations' && (
             <IntegrationsView 
-              javaProcesses={javaProcesses} androidDevices={androidDevices} isLoadingJava={isLoadingJava} isLoadingAndroid={isLoadingAndroid} terminalScript={terminalScript}
+              javaProcesses={javaProcesses} androidDevices={androidDevices} isLoadingJava={isLoadingJava} isLoadingAndroid={isLoadingAndroid}
               onFetchJava={fetchJavaProcesses} onFetchAndroid={fetchAndroidDevices} onInterceptJava={handleInterceptJava} onInterceptAndroid={handleInterceptAndroid} onClearAndroid={handleClearAndroid} onPushAndroidCert={handlePushAndroidCert}
+              onShowTerminalDocs={() => setIsTerminalDocsOpen(true)}
             />
           )}
 
@@ -535,6 +538,12 @@ const App: React.FC = () => {
       <MCPDocs 
         isOpen={isMCPDocsOpen} onClose={() => setIsMCPDocsOpen(false)}
         mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.mcp_addr}/sse`}
+      />
+
+      <TerminalDocs 
+        isOpen={isTerminalDocsOpen}
+        onClose={() => setIsTerminalDocsOpen(false)}
+        terminalScript={terminalScript}
       />
     </div>
   );

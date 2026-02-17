@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Terminal, Code, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle } from 'lucide-react';
+import { Globe, Terminal, Code, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle } from 'lucide-react';
 import type { JavaProcess, AndroidDevice } from '../../types/traffic';
 
 interface IntegrationsViewProps {
@@ -7,19 +7,19 @@ interface IntegrationsViewProps {
   androidDevices: AndroidDevice[];
   isLoadingJava: boolean;
   isLoadingAndroid: boolean;
-  terminalScript: string;
   onFetchJava: () => void;
   onFetchAndroid: () => void;
   onInterceptJava: (pid: string) => void;
   onInterceptAndroid: (id: string) => void;
   onClearAndroid: (id: string) => void;
   onPushAndroidCert: (id: string) => void;
+  onShowTerminalDocs: () => void;
 }
 
 export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ 
-  javaProcesses, androidDevices, isLoadingJava, isLoadingAndroid, terminalScript, 
+  javaProcesses, androidDevices, isLoadingJava, isLoadingAndroid, 
   onFetchJava, onFetchAndroid, onInterceptJava, onInterceptAndroid, onClearAndroid,
-  onPushAndroidCert
+  onPushAndroidCert, onShowTerminalDocs
 }) => {
   const [scriptCopied, setScriptCopied] = useState(false);
 
@@ -28,30 +28,90 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
       <div className="max-w-4xl mx-auto space-y-12">
         <section>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">Client Integrations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mb-6">
-                <Globe className="text-blue-600 dark:text-blue-400" size={24} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {/* Left Column: Quick Setup */}
+            <div className="flex flex-col gap-6">
+              {/* Chromium Card */}
+              <div className="flex-1 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
+                      <Globe className="text-blue-600 dark:text-blue-400" size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold dark:text-slate-100">Chromium / Chrome</h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">Launch a pre-configured browser</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                    Automatically route all traffic through this proxy and ignore certificate errors for a fresh session.
+                  </p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    try { await fetch('/api/client/chromium', { method: 'POST' }); }
+                    catch (e) { alert('Failed to launch Chromium: ' + e); }
+                  }}
+                  className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-none"
+                >
+                  Launch Browser
+                </button>
               </div>
-              <h3 className="text-lg font-bold mb-2 dark:text-slate-100">Chromium / Chrome</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                Launch a fresh browser instance pre-configured to route all traffic through this proxy and ignore certificate errors.
-              </p>
-              <button 
-                onClick={async () => {
-                  try { await fetch('/api/client/chromium', { method: 'POST' }); }
-                  catch (e) { alert('Failed to launch Chromium: ' + e); }
-                }}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-none"
-              >
-                Launch Browser
-              </button>
+
+              {/* Existing Terminal Card */}
+              <div className="flex-1 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center shrink-0">
+                        <Terminal className="text-indigo-600 dark:text-indigo-400" size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold dark:text-slate-100">Existing Terminal</h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Inject proxy into your shell</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={onShowTerminalDocs}
+                      className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                      title="View Manual Setup"
+                    >
+                      <HelpCircle size={16} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                    Instantly enable interception in any terminal session by running the one-liner below.
+                  </p>
+                </div>
+                <div className="relative group">
+                  <pre className="bg-slate-900 text-indigo-200 p-3 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800 pr-10">
+                    eval "$(curl -s {window.location.origin}/setup)"
+                  </pre>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`eval "$(curl -s ${window.location.origin}/setup)"`);
+                      setScriptCopied(true);
+                      setTimeout(() => setScriptCopied(false), 2000);
+                    }}
+                    className="absolute top-2.5 right-2 p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all"
+                  >
+                    {scriptCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+            {/* Right Column: Android Setup */}
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all h-full flex flex-col">
               <div className="flex items-start justify-between mb-6">
-                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
-                  <Smartphone className="text-emerald-600 dark:text-emerald-400" size={24} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Smartphone className="text-emerald-600 dark:text-emerald-400" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold dark:text-slate-100">Android (ADB)</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Connect via USB/WiFi</p>
+                  </div>
                 </div>
                 <button 
                   onClick={onFetchAndroid}
@@ -61,10 +121,6 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                   <Activity size={16} />
                 </button>
               </div>
-              <h3 className="text-lg font-bold mb-2 dark:text-slate-100">Android (ADB)</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                Connect devices via USB/WiFi to intercept traffic. Requires 'adb' in PATH.
-              </p>
               
               <div className="space-y-4">
                 <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden min-h-[100px]">
@@ -180,39 +236,6 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                   </details>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center mb-6">
-                <Terminal className="text-indigo-600 dark:text-indigo-400" size={24} />
-              </div>
-              <h3 className="text-lg font-bold mb-2 dark:text-slate-100">Existing Terminal</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                Run this one-liner in any terminal to instantly enable interception.
-              </p>
-              <div className="relative group mb-4">
-                <pre className="bg-slate-900 text-indigo-200 p-4 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800">
-                  eval "$(curl -s {window.location.origin}/setup)"
-                </pre>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(`eval "$(curl -s ${window.location.origin}/setup)"`);
-                    setScriptCopied(true);
-                    setTimeout(() => setScriptCopied(false), 2000);
-                  }}
-                  className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all"
-                >
-                  {scriptCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                </button>
-              </div>
-              <details className="text-[10px] text-slate-400 dark:text-slate-500 cursor-pointer">
-                <summary className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Alternative: Manual Setup</summary>
-                <div className="mt-2 relative group">
-                  <pre className="bg-slate-900 text-indigo-200 p-4 rounded-xl text-[9px] font-mono overflow-x-auto max-h-32 border border-slate-800">
-                    {terminalScript || '# Fetching setup script...'}
-                  </pre>
-                </div>
-              </details>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all md:col-span-2">
