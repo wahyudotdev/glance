@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"glance/internal/config"
 	"glance/internal/interceptor"
+	"glance/internal/mcp"
 	"glance/internal/model"
 	"glance/internal/proxy"
 	"io"
@@ -26,6 +27,7 @@ import (
 type Server struct {
 	store       *interceptor.TrafficStore
 	proxy       *proxy.Proxy
+	mcp         *mcp.Server
 	app         *fiber.App
 	proxyAddr   string
 	restartChan chan bool
@@ -33,7 +35,7 @@ type Server struct {
 }
 
 // NewServer creates and initializes a new Server instance.
-func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string) *Server {
+func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string, mcpServer *mcp.Server) *Server {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
@@ -59,6 +61,7 @@ func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string
 	return &Server{
 		store:       store,
 		proxy:       p,
+		mcp:         mcpServer,
 		app:         app,
 		proxyAddr:   proxyAddr,
 		restartChan: make(chan bool, 1),
@@ -108,8 +111,14 @@ func (s *Server) RegisterRoutes() {
 }
 
 func (s *Server) handleStatus(c *fiber.Ctx) error {
+	mcpSessions := 0
+	if s.mcp != nil {
+		mcpSessions = s.mcp.ActiveSessions()
+	}
 	return c.JSON(fiber.Map{
-		"proxy_addr": s.proxyAddr,
+		"proxy_addr":   s.proxyAddr,
+		"mcp_sessions": mcpSessions,
+		"mcp_enabled":  s.mcp != nil,
 	})
 }
 

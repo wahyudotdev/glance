@@ -6,6 +6,8 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
   const [totalEntries, setTotalEntries] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [proxyAddr, setProxyAddr] = useState(':8000');
+  const [mcpSessions, setMcpSessions] = useState(0);
+  const [mcpEnabled, setMcpEnabled] = useState(false);
   const [filter, setFilter] = useState('');
 
   const currentPageRef = useRef(currentPage);
@@ -39,10 +41,18 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     try {
       const data = await apiFetch('/api/status');
       setProxyAddr(data.proxy_addr);
+      setMcpSessions(data.mcp_sessions || 0);
+      setMcpEnabled(data.mcp_enabled || false);
     } catch (error) {
       console.error('Error fetching status:', error);
     }
   };
+
+  useEffect(() => {
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, []);
 
   const clearTraffic = async () => {
     try {
@@ -68,6 +78,8 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     totalEntries,
     currentPage,
     proxyAddr,
+    mcpSessions,
+    mcpEnabled,
     filter,
     setFilter,
     filteredEntries,

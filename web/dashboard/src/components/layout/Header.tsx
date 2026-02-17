@@ -3,6 +3,8 @@ import { Search, Trash2, Zap, Sun, Moon } from 'lucide-react';
 
 interface HeaderProps {
   proxyAddr: string;
+  mcpSessions: number;
+  mcpEnabled: boolean;
   filter: string;
   setFilter: (filter: string) => void;
   onClearTraffic: () => void;
@@ -12,6 +14,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ 
   proxyAddr, 
+  mcpSessions,
+  mcpEnabled,
   filter, 
   setFilter, 
   onClearTraffic, 
@@ -23,8 +27,20 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">
           <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
-          <span className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
-          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400"><Zap size={12} /> MITM Active</span>
+          {mcpEnabled && (
+            <>
+              <span className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
+              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                <Zap size={12} fill="currentColor" /> 
+                MCP Server ON
+                {mcpSessions > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white rounded-md text-[9px] font-black animate-in zoom-in duration-300 tabular-nums">
+                    {mcpSessions} {mcpSessions === 1 ? 'SESSION' : 'SESSIONS'}
+                  </span>
+                )}
+              </span>
+            </>
+          )}
         </div>
       </div>
       

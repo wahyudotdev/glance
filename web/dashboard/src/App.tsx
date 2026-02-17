@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
   // Traffic Hook
   const {
-    entries, totalEntries, currentPage, proxyAddr, filter, setFilter,
+    entries, totalEntries, currentPage, proxyAddr, mcpSessions, mcpEnabled, filter, setFilter,
     filteredEntries, fetchTraffic, fetchStatus, clearTraffic,
     setEntries, setTotalEntries, currentPageRef, pageSizeRef
   } = useTraffic(config, toast);
@@ -454,6 +454,8 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>
         <Header 
           proxyAddr={proxyAddr} 
+          mcpSessions={mcpSessions}
+          mcpEnabled={mcpEnabled}
           filter={filter} 
           setFilter={setFilter} 
           onClearTraffic={() => setIsClearModalOpen(true)} 

@@ -45,6 +45,11 @@ func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr 
 	return ms
 }
 
+// ActiveSessions returns the number of currently active MCP sessions (stub).
+func (ms *Server) ActiveSessions() int {
+	return 0
+}
+
 func (ms *Server) registerTools() {
 	// Register list_traffic tool
 	ms.server.AddTool(mcp.NewTool("list_traffic",
