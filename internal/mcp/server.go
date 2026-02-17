@@ -11,14 +11,12 @@ import (
 	"glance/internal/repository"
 	"glance/internal/rules"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Server manages the MCP connection and tool registrations.
@@ -27,13 +25,15 @@ type Server struct {
 	engine       *rules.Engine
 	scenarioRepo repository.ScenarioRepository
 	proxyAddr    string
-	server       *server.MCPServer
+	server       *mcp.Server
 }
 
-// NewServer creates and initializes a new Server instance.
+// NewServer creates and initializes a new Server instance using the official SDK.
 func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string, scenarioRepo repository.ScenarioRepository) *Server {
-	// Initialize the MCP server
-	s := server.NewMCPServer("Glance", "1.0.0")
+	s := mcp.NewServer(&mcp.Implementation{
+		Name:    "Glance",
+		Version: "1.0.0",
+	}, nil)
 
 	ms := &Server{
 		store:        store,
@@ -49,652 +49,549 @@ func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr 
 	return ms
 }
 
-// ActiveSessions returns the number of currently active MCP sessions (stub).
+// ActiveSessions returns the number of currently active MCP sessions.
 func (ms *Server) ActiveSessions() int {
-	return 0
+	count := 0
+	ms.server.Sessions()(func(ss *mcp.ServerSession) bool {
+		count++
+		return true
+	})
+	return count
+}
+
+// NewToolResultText is a helper to create a simple text-based tool result.
+func NewToolResultText(text string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: text},
+		},
+	}
 }
 
 func (ms *Server) registerTools() {
-	// Register list_traffic tool
-	ms.server.AddTool(mcp.NewTool("list_traffic",
-		mcp.WithDescription("List captured HTTP traffic summaries. Returns up to 20 recent entries."),
-		mcp.WithString("filter", mcp.Description("Optional keyword to filter URL or Method")),
-	), ms.listTrafficHandler)
-
-	// Register get_traffic_details tool
-	ms.server.AddTool(mcp.NewTool("get_traffic_details",
-		mcp.WithDescription("Get full details of a specific traffic entry including headers and body."),
-		mcp.WithString("id", mcp.Description("The ID of the traffic entry")),
-	), ms.getTrafficDetailsHandler)
-
-	// Register clear_traffic tool
-	ms.server.AddTool(mcp.NewTool("clear_traffic",
-		mcp.WithDescription("Clear all captured traffic logs."),
-	), ms.clearTrafficHandler)
-
-	// Register get_proxy_status tool
-	ms.server.AddTool(mcp.NewTool("get_proxy_status",
-		mcp.WithDescription("Get the current proxy address and status."),
-	), ms.getProxyStatusHandler)
-
-	// Register add_mock_rule tool
-	ms.server.AddTool(mcp.NewTool("add_mock_rule",
-		mcp.WithDescription("Add a mocking rule to intercept and return a static response for a specific URL."),
-		mcp.WithString("url_pattern", mcp.Description("Keyword or pattern to match in URL")),
-		mcp.WithString("method", mcp.Description("HTTP Method (e.g. GET, POST)")),
-		mcp.WithNumber("status", mcp.Description("HTTP Status code to return (e.g. 200, 404)")),
-		mcp.WithString("body", mcp.Description("Response body to return")),
-	), ms.addMockRuleHandler)
-
-	// --- New Tools ---
-
-	// Rules Management
-	ms.server.AddTool(mcp.NewTool("list_rules",
-		mcp.WithDescription("List all active interception rules (mocks and breakpoints)."),
-	), ms.listRulesHandler)
-
-	ms.server.AddTool(mcp.NewTool("add_breakpoint_rule",
-		mcp.WithDescription("Add a breakpoint rule to pause traffic for manual inspection."),
-		mcp.WithString("url_pattern", mcp.Description("URL pattern to match")),
-		mcp.WithString("method", mcp.Description("HTTP Method (optional)")),
-		mcp.WithString("strategy", mcp.Description("Interception strategy: 'request', 'response', or 'both'")),
-	), ms.addBreakpointRuleHandler)
-
-	ms.server.AddTool(mcp.NewTool("delete_rule",
-		mcp.WithDescription("Delete an interception rule by ID."),
-		mcp.WithString("id", mcp.Description("The ID of the rule to delete")),
-	), ms.deleteRuleHandler)
-
-	// Traffic Execution
-	ms.server.AddTool(mcp.NewTool("execute_request",
-		mcp.WithDescription("Execute a custom HTTP request through the proxy. Can be used to replay an existing request by providing base_id."),
-		mcp.WithString("method", mcp.Description("HTTP Method (e.g. GET, POST)")),
-		mcp.WithString("url", mcp.Description("Target URL")),
-		mcp.WithString("headers", mcp.Description("JSON string of headers (e.g. {\"Content-Type\": [\"application/json\"]})")),
-		mcp.WithString("body", mcp.Description("Request body")),
-		mcp.WithString("base_id", mcp.Description("Optional: The ID of an existing request to use as a template (replay)")),
-	), ms.executeRequestHandler)
-
-	// Scenario Tools
-	ms.server.AddTool(mcp.NewTool("list_scenarios",
-		mcp.WithDescription("List all recorded traffic scenarios (sequences of requests for test generation)."),
-	), ms.listScenariosHandler)
-
-	ms.server.AddTool(mcp.NewTool("get_scenario",
-		mcp.WithDescription("Get full details of a scenario, including the sequence of requests, responses, and variable mappings."),
-		mcp.WithString("id", mcp.Description("The ID of the scenario")),
-	), ms.getScenarioHandler)
-
-	ms.server.AddTool(mcp.NewTool("add_scenario",
-		mcp.WithDescription("Create a new traffic scenario."),
-		mcp.WithString("name", mcp.Description("The name of the scenario")),
-		mcp.WithString("description", mcp.Description("A brief description of the scenario")),
-	), ms.addScenarioHandler)
-
-	ms.server.AddTool(mcp.NewTool("update_scenario",
-		mcp.WithDescription("Update an existing scenario's metadata or steps. Steps and mappings should be provided as JSON strings."),
-		mcp.WithString("id", mcp.Description("The ID of the scenario to update")),
-		mcp.WithString("name", mcp.Description("New name (optional)")),
-		mcp.WithString("description", mcp.Description("New description (optional)")),
-		mcp.WithString("steps_json", mcp.Description("JSON array of steps: [{\"traffic_entry_id\": \"...\", \"order\": 1, \"notes\": \"...\"}]")),
-		mcp.WithString("mappings_json", mcp.Description("JSON array of mappings: [{\"name\": \"...\", \"source_entry_id\": \"...\", \"source_path\": \"...\", \"target_json_path\": \"...\"}]")),
-	), ms.updateScenarioHandler)
-
-	ms.server.AddTool(mcp.NewTool("delete_scenario",
-		mcp.WithDescription("Delete a scenario by ID."),
-		mcp.WithString("id", mcp.Description("The ID of the scenario to delete")),
-	), ms.deleteScenarioHandler)
-}
-
-func (ms *Server) addScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_scenario\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
+	// 1. list_traffic
+	type listTrafficArgs struct {
+		Filter string `json:"filter" jsonschema:"Optional keyword to filter URL or Method"`
 	}
-
-	name, _ := args["name"].(string)
-	description, _ := args["description"].(string)
-
-	if name == "" {
-		return nil, fmt.Errorf("name is required")
-	}
-
-	scenario := &model.Scenario{
-		ID:          uuid.New().String(),
-		Name:        name,
-		Description: description,
-		CreatedAt:   time.Now(),
-	}
-
-	if err := ms.scenarioRepo.Add(scenario); err != nil {
-		return nil, err
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Scenario '%s' created with ID: %s", name, scenario.ID)), nil
-}
-
-func (ms *Server) updateScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mupdate_scenario\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-
-	id, _ := args["id"].(string)
-	if id == "" {
-		return nil, fmt.Errorf("id is required")
-	}
-
-	scenario, err := ms.scenarioRepo.GetByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("scenario not found: %v", err)
-	}
-
-	if name, ok := args["name"].(string); ok && name != "" {
-		scenario.Name = name
-	}
-	if desc, ok := args["description"].(string); ok {
-		scenario.Description = desc
-	}
-
-	if stepsJSON, ok := args["steps_json"].(string); ok && stepsJSON != "" {
-		var steps []model.ScenarioStep
-		if err := json.Unmarshal([]byte(stepsJSON), &steps); err != nil {
-			return nil, fmt.Errorf("invalid steps_json: %v", err)
-		}
-		scenario.Steps = steps
-	}
-
-	if mappingsJSON, ok := args["mappings_json"].(string); ok && mappingsJSON != "" {
-		var mappings []model.VariableMapping
-		if err := json.Unmarshal([]byte(mappingsJSON), &mappings); err != nil {
-			return nil, fmt.Errorf("invalid mappings_json: %v", err)
-		}
-		scenario.VariableMappings = mappings
-	}
-
-	if err := ms.scenarioRepo.Update(scenario); err != nil {
-		return nil, err
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Scenario '%s' (%s) updated successfully.", scenario.Name, id)), nil
-}
-
-func (ms *Server) deleteScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mdelete_scenario\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-	id, _ := args["id"].(string)
-	if id == "" {
-		return nil, fmt.Errorf("id is required")
-	}
-
-	if err := ms.scenarioRepo.Delete(id); err != nil {
-		return nil, err
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Scenario %s deleted", id)), nil
-}
-
-func (ms *Server) listScenariosHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_scenarios\033[0m")
-	scenarios, err := ms.scenarioRepo.GetAll()
-	if err != nil {
-		return nil, err
-	}
-	var sb strings.Builder
-	for _, s := range scenarios {
-		sb.WriteString(fmt.Sprintf("ID: %s | Name: %s | Description: %s\n", s.ID, s.Name, s.Description))
-	}
-	if sb.Len() == 0 {
-		return mcp.NewToolResultText("No scenarios found."), nil
-	}
-	return mcp.NewToolResultText(sb.String()), nil
-}
-
-func (ms *Server) getScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_scenario\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-	id, _ := args["id"].(string)
-	scenario, err := ms.scenarioRepo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Scenario: %s\nDescription: %s\n\n", scenario.Name, scenario.Description))
-
-	sb.WriteString("Variable Mappings:\n")
-	for _, m := range scenario.VariableMappings {
-		sb.WriteString(fmt.Sprintf("- Variable '%s' is extracted from %s (%s) and used in %s\n",
-			m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath))
-	}
-	sb.WriteString("\nSteps (Sequence):\n")
-
-	// To provide full context, we need to fetch the actual traffic entries for each step
-	entries, _ := ms.store.GetPage(0, 1000)
-	entryMap := make(map[string]*model.TrafficEntry)
-	for _, e := range entries {
-		entryMap[e.ID] = e
-	}
-
-	for _, step := range scenario.Steps {
-		e, found := entryMap[step.TrafficEntryID]
-		if !found {
-			sb.WriteString(fmt.Sprintf("%d. [MISSING ENTRY %s]\n", step.Order, step.TrafficEntryID))
-			continue
-		}
-		sb.WriteString(fmt.Sprintf("%d. [%s] %s (Status: %d)\n", step.Order, e.Method, e.URL, e.Status))
-		if step.Notes != "" {
-			sb.WriteString(fmt.Sprintf("   Note: %s\n", step.Notes))
-		}
-		// Brief details for AI to understand the structure
-		sb.WriteString(fmt.Sprintf("   Request Headers: %v\n", e.RequestHeaders))
-		if e.RequestBody != "" {
-			sb.WriteString(fmt.Sprintf("   Request Body: %s\n", e.RequestBody))
-		}
-		if e.ResponseBody != "" {
-			// Truncate response body if too long for MCP message
-			body := e.ResponseBody
-			if len(body) > 1000 {
-				body = body[:1000] + "... [truncated]"
-			}
-			sb.WriteString(fmt.Sprintf("   Response Body: %s\n", body))
-		}
-		sb.WriteString("\n")
-	}
-
-	return mcp.NewToolResultText(sb.String()), nil
-}
-
-func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_mock_rule\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-
-	urlPattern, _ := args["url_pattern"].(string)
-	method, _ := args["method"].(string)
-	status, _ := args["status"].(float64)
-	body, _ := args["body"].(string)
-
-	if urlPattern == "" {
-		return nil, fmt.Errorf("url_pattern is required")
-	}
-
-	rule := &model.Rule{
-		ID:         uuid.New().String(),
-		Type:       model.RuleMock,
-		URLPattern: urlPattern,
-		Method:     method,
-		Response: &model.MockResponse{
-			Status: int(status),
-			Body:   body,
-			Headers: map[string]string{
-				"Content-Type": "application/json",
-				"X-Mocked-By":  "Glance",
-			},
-		},
-	}
-
-	ms.engine.AddRule(rule)
-	return mcp.NewToolResultText(fmt.Sprintf("Mock rule added for %s %s (Returns %d)", method, urlPattern, int(status))), nil
-}
-
-func (ms *Server) listRulesHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_rules\033[0m")
-	rules := ms.engine.GetRules()
-	var sb strings.Builder
-	for _, r := range rules {
-		sb.WriteString(fmt.Sprintf("ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
-			r.ID, r.Type, r.Method, r.URLPattern, r.Strategy))
-	}
-	if sb.Len() == 0 {
-		return mcp.NewToolResultText("No active rules."), nil
-	}
-	return mcp.NewToolResultText(sb.String()), nil
-}
-
-func (ms *Server) addBreakpointRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_breakpoint_rule\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-
-	urlPattern, _ := args["url_pattern"].(string)
-	method, _ := args["method"].(string)
-	strategy, _ := args["strategy"].(string)
-
-	if urlPattern == "" {
-		return nil, fmt.Errorf("url_pattern is required")
-	}
-
-	rule := &model.Rule{
-		ID:         uuid.New().String(),
-		Type:       model.RuleBreakpoint,
-		URLPattern: urlPattern,
-		Method:     method,
-		Strategy:   model.BreakpointStrategy(strategy),
-	}
-
-	ms.engine.AddRule(rule)
-	return mcp.NewToolResultText(fmt.Sprintf("Breakpoint added for %s %s (Strategy: %s)", method, urlPattern, strategy)), nil
-}
-
-func (ms *Server) deleteRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mdelete_rule\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-	id, _ := args["id"].(string)
-	ms.engine.DeleteRule(id)
-	return mcp.NewToolResultText(fmt.Sprintf("Rule %s deleted", id)), nil
-}
-
-func (ms *Server) executeRequestHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mexecute_request\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-
-	method, _ := args["method"].(string)
-	urlStr, _ := args["url"].(string)
-	headersJSON, _ := args["headers"].(string)
-	bodyStr, _ := args["body"].(string)
-	baseID, _ := args["base_id"].(string)
-
-	var finalMethod, finalURL, finalBody string
-	finalHeaders := http.Header{}
-
-	// 1. If base_id is provided, load the template
-	if baseID != "" {
-		entries, _ := ms.store.GetPage(0, 500)
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_traffic",
+		Description: "List captured HTTP traffic summaries. Returns up to 20 recent entries.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTrafficArgs) (*mcp.CallToolResult, any, error) {
+		entries, _ := ms.store.GetPage(0, 100)
+		var results []string
+		count := 0
 		for _, e := range entries {
-			if e.ID == baseID {
-				finalMethod = e.Method
-				finalURL = e.URL
-				finalHeaders = e.RequestHeaders.Clone()
-				finalBody = e.RequestBody
+			if args.Filter != "" {
+				combined := strings.ToLower(e.Method + " " + e.URL)
+				if !strings.Contains(combined, strings.ToLower(args.Filter)) {
+					continue
+				}
+			}
+			line := fmt.Sprintf("[%s] %s (Status: %d, ID: %s)", e.Method, e.URL, e.Status, e.ID)
+			results = append(results, line)
+			count++
+			if count >= 20 {
 				break
 			}
 		}
-	}
+		if len(results) == 0 {
+			return NewToolResultText("No traffic found matching the criteria."), nil, nil
+		}
+		return NewToolResultText(strings.Join(results, "\n")), nil, nil
+	})
 
-	// 2. Apply overrides from arguments
-	if method != "" {
-		finalMethod = method
+	// 2. get_traffic_details
+	type getTrafficDetailsArgs struct {
+		ID string `json:"id" jsonschema:"The ID of the traffic entry"`
 	}
-	if urlStr != "" {
-		finalURL = urlStr
-	}
-	if bodyStr != "" {
-		finalBody = bodyStr
-	}
-	if headersJSON != "" {
-		var customHeaders map[string][]string
-		if err := json.Unmarshal([]byte(headersJSON), &customHeaders); err == nil {
-			for k, vs := range customHeaders {
-				finalHeaders[k] = vs
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "get_traffic_details",
+		Description: "Get full details of a specific traffic entry including headers and body.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTrafficDetailsArgs) (*mcp.CallToolResult, any, error) {
+		entries, _ := ms.store.GetPage(0, 100)
+		for _, e := range entries {
+			if e.ID == args.ID {
+				details := fmt.Sprintf("ID: %s\nMethod: %s\nURL: %s\nStatus: %d\nDuration: %v\n\nRequest Headers:\n%v\n\nRequest Body:\n%s\n\nResponse Headers:\n%v\n\nResponse Body:\n%s",
+					e.ID, e.Method, e.URL, e.Status, e.Duration, e.RequestHeaders, e.RequestBody, e.ResponseHeaders, e.ResponseBody)
+				return NewToolResultText(details), nil, nil
 			}
 		}
+		return NewToolResultText("Traffic entry not found."), nil, nil
+	})
+
+	// 3. clear_traffic
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "clear_traffic",
+		Description: "Clear all captured traffic logs.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		ms.store.ClearEntries()
+		return NewToolResultText("Traffic logs cleared."), nil, nil
+	})
+
+	// 4. get_proxy_status
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "get_proxy_status",
+		Description: "Get the current proxy address and status.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
+		return NewToolResultText(status), nil, nil
+	})
+
+	// 5. add_mock_rule
+	type addMockRuleArgs struct {
+		URLPattern string  `json:"url_pattern" jsonschema:"Keyword or pattern to match in URL"`
+		Method     string  `json:"method" jsonschema:"HTTP Method (e.g. GET, POST)"`
+		Status     float64 `json:"status" jsonschema:"HTTP Status code to return (e.g. 200, 404)"`
+		Body       string  `json:"body" jsonschema:"Response body to return"`
 	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "add_mock_rule",
+		Description: "Add a mocking rule to intercept and return a static response for a specific URL.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addMockRuleArgs) (*mcp.CallToolResult, any, error) {
+		rule := &model.Rule{
+			ID:         uuid.New().String(),
+			Type:       model.RuleMock,
+			URLPattern: args.URLPattern,
+			Method:     args.Method,
+			Response: &model.MockResponse{
+				Status: int(args.Status),
+				Body:   args.Body,
+				Headers: map[string]string{
+					"Content-Type": "application/json",
+					"X-Mocked-By":  "Glance",
+				},
+			},
+		}
+		ms.engine.AddRule(rule)
+		return NewToolResultText(fmt.Sprintf("Mock rule added for %s %s (Returns %d)", args.Method, args.URLPattern, int(args.Status))), nil, nil
+	})
 
-	if finalMethod == "" || finalURL == "" {
-		return nil, fmt.Errorf("method and url are required (or valid base_id)")
+	// 6. list_rules
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_rules",
+		Description: "List all active interception rules (mocks and breakpoints).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		rules := ms.engine.GetRules()
+		var sb strings.Builder
+		for _, r := range rules {
+			sb.WriteString(fmt.Sprintf("ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
+				r.ID, r.Type, r.Method, r.URLPattern, r.Strategy))
+		}
+		if sb.Len() == 0 {
+			return NewToolResultText("No active rules."), nil, nil
+		}
+		return NewToolResultText(sb.String()), nil, nil
+	})
+
+	// 7. add_breakpoint_rule
+	type addBreakpointRuleArgs struct {
+		URLPattern string `json:"url_pattern" jsonschema:"URL pattern to match"`
+		Method     string `json:"method" jsonschema:"HTTP Method (optional)"`
+		Strategy   string `json:"strategy" jsonschema:"Interception strategy: 'request', 'response', or 'both'"`
 	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "add_breakpoint_rule",
+		Description: "Add a breakpoint rule to pause traffic for manual inspection.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addBreakpointRuleArgs) (*mcp.CallToolResult, any, error) {
+		rule := &model.Rule{
+			ID:         uuid.New().String(),
+			Type:       model.RuleBreakpoint,
+			URLPattern: args.URLPattern,
+			Method:     args.Method,
+			Strategy:   model.BreakpointStrategy(args.Strategy),
+		}
+		ms.engine.AddRule(rule)
+		return NewToolResultText(fmt.Sprintf("Breakpoint added for %s %s (Strategy: %s)", args.Method, args.URLPattern, args.Strategy)), nil, nil
+	})
 
-	req, err := http.NewRequest(finalMethod, finalURL, strings.NewReader(finalBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %v", err)
+	// 8. delete_rule
+	type deleteRuleArgs struct {
+		ID string `json:"id" jsonschema:"The ID of the rule to delete"`
 	}
-	req.Header = finalHeaders
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "delete_rule",
+		Description: "Delete an interception rule by ID.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args deleteRuleArgs) (*mcp.CallToolResult, any, error) {
+		ms.engine.DeleteRule(args.ID)
+		return NewToolResultText(fmt.Sprintf("Rule %s deleted", args.ID)), nil, nil
+	})
 
-	// Capture start
-	entry, _ := interceptor.NewEntry(req)
-	entry.ModifiedBy = "editor"
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	start := time.Now()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %v", err)
+	// 9. execute_request
+	type executeRequestArgs struct {
+		Method  string `json:"method" jsonschema:"HTTP Method (e.g. GET, POST)"`
+		URL     string `json:"url" jsonschema:"Target URL"`
+		Headers string `json:"headers" jsonschema:"JSON string of headers (e.g. {\"Content-Type\": [\"application/json\"]})"`
+		Body    string `json:"body" jsonschema:"Request body"`
+		BaseID  string `json:"base_id" jsonschema:"Optional: The ID of an existing request to use as a template (replay)"`
 	}
-	defer func() { _ = resp.Body.Close() }()
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "execute_request",
+		Description: "Execute a custom HTTP request through the proxy. Can be used to replay an existing request by providing base_id.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args executeRequestArgs) (*mcp.CallToolResult, any, error) {
+		var finalMethod, finalURL, finalBody string
+		finalHeaders := http.Header{}
 
-	// Capture response
-	entry.Duration = time.Since(start)
-	entry.Status = resp.StatusCode
-	entry.ResponseHeaders = resp.Header.Clone()
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	entry.ResponseBody = string(bodyBytes)
+		if args.BaseID != "" {
+			entries, _ := ms.store.GetPage(0, 500)
+			for _, e := range entries {
+				if e.ID == args.BaseID {
+					finalMethod = e.Method
+					finalURL = e.URL
+					finalHeaders = e.RequestHeaders.Clone()
+					finalBody = e.RequestBody
+					break
+				}
+			}
+		}
 
-	contentType := resp.Header.Get("Content-Type")
-	if strings.HasPrefix(contentType, "image/") {
-		encoded := base64.StdEncoding.EncodeToString(bodyBytes)
-		entry.ResponseBody = fmt.Sprintf("data:%s;base64,%s", contentType, encoded)
+		if args.Method != "" {
+			finalMethod = args.Method
+		}
+		if args.URL != "" {
+			finalURL = args.URL
+		}
+		if args.Body != "" {
+			finalBody = args.Body
+		}
+		if args.Headers != "" {
+			var customHeaders map[string][]string
+			if err := json.Unmarshal([]byte(args.Headers), &customHeaders); err == nil {
+				for k, vs := range customHeaders {
+					finalHeaders[k] = vs
+				}
+			}
+		}
+
+		if finalMethod == "" || finalURL == "" {
+			return nil, nil, fmt.Errorf("method and url are required (or valid base_id)")
+		}
+
+		req, err := http.NewRequest(finalMethod, finalURL, strings.NewReader(finalBody))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create request: %v", err)
+		}
+		req.Header = finalHeaders
+
+		entry, _ := interceptor.NewEntry(req)
+		entry.ModifiedBy = "editor"
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		start := time.Now()
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		entry.Duration = time.Since(start)
+		entry.Status = resp.StatusCode
+		entry.ResponseHeaders = resp.Header.Clone()
+		entry.ResponseBody = string(bodyBytes)
+
+		contentType := resp.Header.Get("Content-Type")
+		if strings.HasPrefix(contentType, "image/") {
+			encoded := base64.StdEncoding.EncodeToString(bodyBytes)
+			entry.ResponseBody = fmt.Sprintf("data:%s;base64,%s", contentType, encoded)
+		}
+
+		ms.store.AddEntry(entry)
+		return NewToolResultText(fmt.Sprintf("Request executed successfully.\nStatus: %d\nNew Entry ID: %s", resp.StatusCode, entry.ID)), nil, nil
+	})
+
+	// 10. list_scenarios
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_scenarios",
+		Description: "List all recorded traffic scenarios (sequences of requests for test generation).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		scenarios, err := ms.scenarioRepo.GetAll()
+		if err != nil {
+			return nil, nil, err
+		}
+		var sb strings.Builder
+		for _, s := range scenarios {
+			sb.WriteString(fmt.Sprintf("ID: %s | Name: %s | Description: %s\n", s.ID, s.Name, s.Description))
+		}
+		if sb.Len() == 0 {
+			return NewToolResultText("No scenarios found."), nil, nil
+		}
+		return NewToolResultText(sb.String()), nil, nil
+	})
+
+	// 11. get_scenario
+	type getScenarioArgs struct {
+		ID string `json:"id" jsonschema:"The ID of the scenario"`
 	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "get_scenario",
+		Description: "Get full details of a scenario, including the sequence of requests, responses, and variable mappings.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getScenarioArgs) (*mcp.CallToolResult, any, error) {
+		scenario, err := ms.scenarioRepo.GetByID(args.ID)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	ms.store.AddEntry(entry)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Scenario: %s\nDescription: %s\n\n", scenario.Name, scenario.Description))
+		sb.WriteString("Variable Mappings:\n")
+		for _, m := range scenario.VariableMappings {
+			sb.WriteString(fmt.Sprintf("- Variable '%s' is extracted from %s (%s) and used in %s\n",
+				m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath))
+		}
+		sb.WriteString("\nSteps (Sequence):\n")
 
-	return mcp.NewToolResultText(fmt.Sprintf("Request executed successfully.\nStatus: %d\nNew Entry ID: %s", resp.StatusCode, entry.ID)), nil
+		entries, _ := ms.store.GetPage(0, 1000)
+		entryMap := make(map[string]*model.TrafficEntry)
+		for _, e := range entries {
+			entryMap[e.ID] = e
+		}
+
+		for _, step := range scenario.Steps {
+			e, found := entryMap[step.TrafficEntryID]
+			if !found {
+				sb.WriteString(fmt.Sprintf("%d. [MISSING ENTRY %s]\n", step.Order, step.TrafficEntryID))
+				continue
+			}
+			sb.WriteString(fmt.Sprintf("%d. [%s] %s (Status: %d)\n", step.Order, e.Method, e.URL, e.Status))
+			if step.Notes != "" {
+				sb.WriteString(fmt.Sprintf("   Note: %s\n", step.Notes))
+			}
+			sb.WriteString(fmt.Sprintf("   Request Headers: %v\n", e.RequestHeaders))
+			if e.RequestBody != "" {
+				sb.WriteString(fmt.Sprintf("   Request Body: %s\n", e.RequestBody))
+			}
+			if e.ResponseBody != "" {
+				body := e.ResponseBody
+				if len(body) > 1000 {
+					body = body[:1000] + "... [truncated]"
+				}
+				sb.WriteString(fmt.Sprintf("   Response Body: %s\n", body))
+			}
+			sb.WriteString("\n")
+		}
+		return NewToolResultText(sb.String()), nil, nil
+	})
+
+	// 12. add_scenario
+	type addScenarioArgs struct {
+		Name        string `json:"name" jsonschema:"The name of the scenario"`
+		Description string `json:"description" jsonschema:"A brief description of the scenario"`
+	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "add_scenario",
+		Description: "Create a new traffic scenario.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addScenarioArgs) (*mcp.CallToolResult, any, error) {
+		if args.Name == "" {
+			return nil, nil, fmt.Errorf("name is required")
+		}
+		scenario := &model.Scenario{
+			ID:          uuid.New().String(),
+			Name:        args.Name,
+			Description: args.Description,
+			CreatedAt:   time.Now(),
+		}
+		if err := ms.scenarioRepo.Add(scenario); err != nil {
+			return nil, nil, err
+		}
+		return NewToolResultText(fmt.Sprintf("Scenario '%s' created with ID: %s", args.Name, scenario.ID)), nil, nil
+	})
+
+	// 13. update_scenario
+	type updateScenarioArgs struct {
+		ID           string `json:"id" jsonschema:"The ID of the scenario to update"`
+		Name         string `json:"name" jsonschema:"New name (optional)"`
+		Description  string `json:"description" jsonschema:"New description (optional)"`
+		StepsJSON    string `json:"steps_json" jsonschema:"JSON array of steps"`
+		MappingsJSON string `json:"mappings_json" jsonschema:"JSON array of mappings"`
+	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "update_scenario",
+		Description: "Update an existing scenario's metadata or steps.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args updateScenarioArgs) (*mcp.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("id is required")
+		}
+		scenario, err := ms.scenarioRepo.GetByID(args.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("scenario not found: %v", err)
+		}
+		if args.Name != "" {
+			scenario.Name = args.Name
+		}
+		if args.Description != "" {
+			scenario.Description = args.Description
+		}
+		if args.StepsJSON != "" {
+			var steps []model.ScenarioStep
+			if err := json.Unmarshal([]byte(args.StepsJSON), &steps); err != nil {
+				return nil, nil, fmt.Errorf("invalid steps_json: %v", err)
+			}
+			scenario.Steps = steps
+		}
+		if args.MappingsJSON != "" {
+			var mappings []model.VariableMapping
+			if err := json.Unmarshal([]byte(args.MappingsJSON), &mappings); err != nil {
+				return nil, nil, fmt.Errorf("invalid mappings_json: %v", err)
+			}
+			scenario.VariableMappings = mappings
+		}
+		if err := ms.scenarioRepo.Update(scenario); err != nil {
+			return nil, nil, err
+		}
+		return NewToolResultText(fmt.Sprintf("Scenario '%s' (%s) updated successfully.", scenario.Name, args.ID)), nil, nil
+	})
+
+	// 14. delete_scenario
+	type deleteScenarioArgs struct {
+		ID string `json:"id" jsonschema:"The ID of the scenario to delete"`
+	}
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "delete_scenario",
+		Description: "Delete a scenario by ID.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args deleteScenarioArgs) (*mcp.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("id is required")
+		}
+		if err := ms.scenarioRepo.Delete(args.ID); err != nil {
+			return nil, nil, err
+		}
+		return NewToolResultText(fmt.Sprintf("Scenario %s deleted", args.ID)), nil, nil
+	})
 }
 
 func (ms *Server) registerResources() {
-	// Register proxy status resource
-	ms.server.AddResource(mcp.NewResource("proxy://status",
-		"Current Proxy Status",
-		mcp.WithResourceDescription("Configuration and status of the agent proxy"),
-		mcp.WithMIMEType("application/json"),
-	), ms.proxyStatusResourceHandler)
+	ms.server.AddResource(&mcp.Resource{
+		URI:      "proxy://status",
+		Name:     "Current Proxy Status",
+		MIMEType: "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+		rules := ms.engine.GetRules()
+		status := fmt.Sprintf(`{"proxy_addr": "%s", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      "proxy://status",
+					MIMEType: "application/json",
+					Text:     status,
+				},
+			},
+		}, nil
+	})
 
-	// Register latest traffic resource
-	ms.server.AddResource(mcp.NewResource("traffic://latest",
-		"Latest Traffic",
-		mcp.WithResourceDescription("The most recent 10 HTTP requests captured"),
-		mcp.WithMIMEType("application/json"),
-	), ms.latestTrafficResourceHandler)
+	ms.server.AddResource(&mcp.Resource{
+		URI:      "traffic://latest",
+		Name:     "Latest Traffic",
+		MIMEType: "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+		entries, _ := ms.store.GetPage(0, 10)
+		var sb strings.Builder
+		sb.WriteString("[\n")
+		for i, e := range entries {
+			sb.WriteString(fmt.Sprintf(`  {"id": "%s", "method": "%s", "url": "%s", "status": %d}`, e.ID, e.Method, e.URL, e.Status))
+			if i < len(entries)-1 {
+				sb.WriteString(",\n")
+			}
+		}
+		sb.WriteString("\n]")
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      "traffic://latest",
+					MIMEType: "application/json",
+					Text:     sb.String(),
+				},
+			},
+		}, nil
+	})
 }
 
 func (ms *Server) registerPrompts() {
-	// Register analyze-traffic prompt
-	ms.server.AddPrompt(mcp.NewPrompt("analyze-traffic",
-		mcp.WithPromptDescription("Analyze recent traffic for errors or anomalies"),
-	), ms.analyzeTrafficPromptHandler)
-
-	// Register generate-api-docs prompt
-	ms.server.AddPrompt(mcp.NewPrompt("generate-api-docs",
-		mcp.WithPromptDescription("Generate API documentation from captured traffic"),
-	), ms.generateAPIDocsPromptHandler)
-
-	// Register generate-scenario-test prompt
-	ms.server.AddPrompt(mcp.NewPrompt("generate-scenario-test",
-		mcp.WithPromptDescription("Generate an automated test script for a specific scenario"),
-		mcp.WithArgument("id", mcp.ArgumentDescription("The ID of the scenario"), mcp.RequiredArgument()),
-		mcp.WithArgument("framework", mcp.ArgumentDescription("Test framework (playwright, cypress, go)")),
-	), ms.generateScenarioTestPromptHandler)
-}
-
-func (ms *Server) generateScenarioTestPromptHandler(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-	id, ok := request.Params.Arguments["id"]
-	if !ok {
-		return nil, fmt.Errorf("scenario id is required")
-	}
-	framework := request.Params.Arguments["framework"]
-	if framework == "" {
-		framework = "playwright"
-	}
-
-	scenario, err := ms.scenarioRepo.GetByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("scenario not found: %v", err)
-	}
-
-	// Reuse logic from getScenarioHandler to build the context
-	// (Alternatively, we could tell the AI to call get_scenario(id) first)
-	prompt := fmt.Sprintf("Please generate an automated test script using %s for the following scenario: '%s'.\n", framework, scenario.Name)
-	prompt += "Use the variable mappings provided to handle dynamic values between requests."
-
-	return mcp.NewGetPromptResult(prompt,
-		[]mcp.PromptMessage{
-			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent(fmt.Sprintf("Scenario ID: %s", id))),
-		},
-	), nil
-}
-
-func (ms *Server) analyzeTrafficPromptHandler(_ context.Context, _ mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-	entries, _ := ms.store.GetPage(0, 5)
-
-	var trafficData strings.Builder
-	for _, e := range entries {
-		trafficData.WriteString(fmt.Sprintf("[%s] %s (Status: %d)\n", e.Method, e.URL, e.Status))
-	}
-
-	return mcp.NewGetPromptResult("Analyze this traffic for errors:",
-		[]mcp.PromptMessage{
-			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent(trafficData.String())),
-		},
-	), nil
-}
-
-func (ms *Server) generateAPIDocsPromptHandler(_ context.Context, _ mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-	return mcp.NewGetPromptResult("Generate OpenAPI documentation based on the captured traffic logs. Focus on request/response structures and status codes.",
-		[]mcp.PromptMessage{
-			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent("Please use the latest traffic logs to generate documentation.")),
-		},
-	), nil
-}
-
-func (ms *Server) listTrafficHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_traffic\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		args = make(map[string]interface{})
-	}
-	filter, _ := args["filter"].(string)
-
-	// Fetch a larger set to allow filtering, or we could add filtering to the repo
-	entries, _ := ms.store.GetPage(0, 100)
-	var results []string
-
-	for _, e := range entries {
-		if filter != "" {
-			combined := strings.ToLower(e.Method + " " + e.URL)
-			if !strings.Contains(combined, strings.ToLower(filter)) {
-				continue
-			}
+	ms.server.AddPrompt(&mcp.Prompt{
+		Name:        "analyze-traffic",
+		Description: "Analyze recent traffic for errors or anomalies",
+	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		entries, _ := ms.store.GetPage(0, 5)
+		var trafficData strings.Builder
+		for _, e := range entries {
+			trafficData.WriteString(fmt.Sprintf("[%s] %s (Status: %d)\n", e.Method, e.URL, e.Status))
 		}
+		return &mcp.GetPromptResult{
+			Description: "Analyze this traffic for errors:",
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: trafficData.String(),
+					},
+				},
+			},
+		}, nil
+	})
 
-		line := fmt.Sprintf("[%s] %s (Status: %d, ID: %s)", e.Method, e.URL, e.Status, e.ID)
-		results = append(results, line)
+	ms.server.AddPrompt(&mcp.Prompt{
+		Name:        "generate-api-docs",
+		Description: "Generate API documentation from captured traffic",
+	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return &mcp.GetPromptResult{
+			Description: "Generate OpenAPI documentation based on the captured traffic logs.",
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: "Please use the latest traffic logs to generate documentation.",
+					},
+				},
+			},
+		}, nil
+	})
 
-		if len(results) >= 20 {
-			break
-		}
-	}
-
-	if len(results) == 0 {
-		return mcp.NewToolResultText("No traffic found matching the criteria."), nil
-	}
-
-	return mcp.NewToolResultText(strings.Join(results, "\n")), nil
-}
-
-func (ms *Server) getTrafficDetailsHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_traffic_details\033[0m | Args: %v", request.Params.Arguments)
-	args, ok := request.Params.Arguments.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing arguments")
-	}
-	id, _ := args["id"].(string)
-	if id == "" {
-		return nil, fmt.Errorf("missing id")
-	}
-
-	// We search in the latest 100 entries
-	entries, _ := ms.store.GetPage(0, 100)
-	for _, e := range entries {
-		if e.ID == id {
-			details := fmt.Sprintf("ID: %s\nMethod: %s\nURL: %s\nStatus: %d\nDuration: %v\n\nRequest Headers:\n%v\n\nRequest Body:\n%s\n\nResponse Headers:\n%v\n\nResponse Body:\n%s",
-				e.ID, e.Method, e.URL, e.Status, e.Duration, e.RequestHeaders, e.RequestBody, e.ResponseHeaders, e.ResponseBody)
-			return mcp.NewToolResultText(details), nil
-		}
-	}
-
-	return mcp.NewToolResultText("Traffic entry not found."), nil
-}
-
-func (ms *Server) clearTrafficHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mclear_traffic\033[0m")
-	ms.store.ClearEntries()
-	return mcp.NewToolResultText("Traffic logs cleared."), nil
-}
-
-func (ms *Server) getProxyStatusHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_proxy_status\033[0m")
-	status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
-	return mcp.NewToolResultText(status), nil
-}
-
-func (ms *Server) proxyStatusResourceHandler(_ context.Context, _ mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-	rules := ms.engine.GetRules()
-	status := fmt.Sprintf(`{"proxy_addr": "%s", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
-	return []mcp.ResourceContents{
-		mcp.TextResourceContents{
-			URI:      "proxy://status",
-			MIMEType: "application/json",
-			Text:     status,
+	ms.server.AddPrompt(&mcp.Prompt{
+		Name:        "generate-scenario-test",
+		Description: "Generate an automated test script for a specific scenario",
+		Arguments: []*mcp.PromptArgument{
+			{Name: "id", Description: "The ID of the scenario", Required: true},
+			{Name: "framework", Description: "Test framework (playwright, cypress, go)"},
 		},
-	}, nil
-}
-
-func (ms *Server) latestTrafficResourceHandler(_ context.Context, _ mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-	entries, _ := ms.store.GetPage(0, 10)
-
-	var sb strings.Builder
-	sb.WriteString("[\n")
-	for i, e := range entries {
-		sb.WriteString(fmt.Sprintf(`  {"id": "%s", "method": "%s", "url": "%s", "status": %d}`, e.ID, e.Method, e.URL, e.Status))
-		if i < len(entries)-1 {
-			sb.WriteString(",\n")
+	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		id := req.Params.Arguments["id"]
+		framework := req.Params.Arguments["framework"]
+		if framework == "" {
+			framework = "playwright"
 		}
-	}
-	sb.WriteString("\n]")
-
-	return []mcp.ResourceContents{
-		mcp.TextResourceContents{
-			URI:      "traffic://latest",
-			MIMEType: "application/json",
-			Text:     sb.String(),
-		},
-	}, nil
+		scenario, err := ms.scenarioRepo.GetByID(id)
+		if err != nil {
+			return nil, err
+		}
+		prompt := fmt.Sprintf("Please generate an automated test script using %s for the following scenario: '%s'.\n", framework, scenario.Name)
+		prompt += "Use the variable mappings provided to handle dynamic values between requests."
+		return &mcp.GetPromptResult{
+			Description: prompt,
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: fmt.Sprintf("Scenario ID: %s", id),
+					},
+				},
+			},
+		}, nil
+	})
 }
 
 // StartSTDIO starts the MCP server using standard I/O.
 func (ms *Server) StartSTDIO() error {
-	return server.ServeStdio(ms.server)
+	return ms.server.Run(context.Background(), &mcp.StdioTransport{})
 }
 
 // ServeSSE starts the MCP server using Server-Sent Events.
 func (ms *Server) ServeSSE(addr string) error {
-	// SSE server for MCP
-	sse := ms.GetSSEServer()
-	return sse.Start(addr)
+	handler := ms.GetStreamableHandler()
+	return http.ListenAndServe(addr, handler)
 }
 
-// GetSSEServer returns the configured SSE server instance.
-func (ms *Server) GetSSEServer() *server.SSEServer {
-	return server.NewSSEServer(ms.server,
-		server.WithSSEEndpoint("/mcp"),
-		server.WithMessageEndpoint("/mcp/messages"),
-	)
+// GetStreamableHandler returns an HTTP handler that supports Streamable HTTP (and SSE).
+func (ms *Server) GetStreamableHandler() http.Handler {
+	return mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+		return ms.server
+	}, nil)
 }

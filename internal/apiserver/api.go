@@ -375,11 +375,32 @@ func (s *Server) Listen(addr string) (string, error) {
 	mux := http.NewServeMux()
 
 	if s.mcp != nil {
-		sse := s.mcp.GetSSEServer()
-		// Mount MCP handlers directly to mux for real net/http behavior
-		mux.Handle("/mcp", sse.SSEHandler())
-		mux.Handle("/mcp/messages", sse.MessageHandler())
-		fmt.Printf("\033[32m[✓]\033[0m MCP server (SSE) unified on \033[34m\033[1mhttp://%s/mcp\033[0m\n", displayAddr)
+		// Use the official SDK's StreamableHTTPHandler (handles GET and POST)
+		mcpHandler := s.mcp.GetStreamableHandler()
+
+		// CORS and Logging Middleware for standard net/http
+		mcpWrapper := func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Handle CORS
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-MCP-Protocol-Version")
+
+				if r.Method == "OPTIONS" {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+
+				// Log MCP Request
+				log.Printf("\033[35m[MCP]\033[0m %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
+				h.ServeHTTP(w, r)
+			})
+		}
+
+		// Mount official handler with wrapper
+		mux.Handle("/mcp", mcpWrapper(mcpHandler))
+		fmt.Printf("\033[32m[✓]\033[0m MCP server (Streamable HTTP) unified on \033[34m\033[1mhttp://%s/mcp\033[0m\n", displayAddr)
 	}
 
 	// Use adaptor to mount the entire Fiber app on the remaining routes
