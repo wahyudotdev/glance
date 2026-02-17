@@ -66,6 +66,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ config, setConfig, o
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.mcp_enabled ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
+            <div className="flex flex-col gap-1.5 mt-4">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">MCP Server Address (SSE)</label>
+              <input 
+                type="text" 
+                value={config.mcp_addr}
+                onChange={(e) => setConfig({...config, mcp_addr: e.target.value})}
+                disabled={!config.mcp_enabled}
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono dark:text-slate-200 transition-colors disabled:opacity-50"
+              />
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">

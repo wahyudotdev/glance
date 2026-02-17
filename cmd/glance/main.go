@@ -72,6 +72,8 @@ func main() {
 
 	apiAddr := flag.String("api-addr", cfg.APIAddr, "api/dashboard listen address")
 
+	mcpAddr := flag.String("mcp-addr", cfg.MCPAddr, "MCP server listen address (SSE)")
+
 	mcpMode := flag.Bool("mcp", cfg.MCPEnabled, "run as MCP server")
 
 	versionFlag := flag.Bool("version", false, "display version information")
@@ -89,37 +91,75 @@ func main() {
 	printBanner()
 
 	// Update config with flags if they were provided (flags override saved config)
-	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpMode != cfg.MCPEnabled {
+
+	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpAddr != cfg.MCPAddr || *mcpMode != cfg.MCPEnabled {
+
 		cfg.ProxyAddr = *proxyAddr
+
 		cfg.APIAddr = *apiAddr
+
+		cfg.MCPAddr = *mcpAddr
+
 		cfg.MCPEnabled = *mcpMode
+
 		if err := config.Save(cfg); err != nil {
+
 			log.Printf("Warning: Failed to save updated config: %v", err)
+
 		}
+
 	}
+
 	// Check for Java Agent injection mode (used internally)
+
 	if len(flag.Args()) > 0 && flag.Args()[0] == "inject-agent" {
+
 		return
+
 	}
 
 	store := interceptor.NewTrafficStore(trafficRepo)
+
 	engine := rules.NewEngine(ruleRepo)
+
 	p := proxy.NewProxyWithRepositories(*proxyAddr, store, engine)
 
 	actualProxyAddr, err := p.Start()
+
 	if err != nil {
+
 		log.Fatalf("Failed to start proxy: %v", err)
+
 	}
+
 	fmt.Printf("%s[✓]%s Proxy server running on %s%s%s\n", colorGreen, colorReset, colorBold, formatAddr(actualProxyAddr), colorReset)
 
 	// Initialize MCP Server if requested
+
 	var mcpServer *mcp.Server
+
 	if *mcpMode {
+
 		mcpServer = mcp.NewServer(p.Store, p.Engine, actualProxyAddr, scenarioRepo)
+
+		go func() {
+
+			fmt.Printf("%s[✓]%s MCP server (SSE) running on %s%s/mcp%s\n", colorGreen, colorReset, colorBold, formatAddr(*mcpAddr), colorReset)
+
+			if err := mcpServer.ServeSSE(*mcpAddr); err != nil {
+
+				log.Printf("MCP Server error: %v", err)
+
+			}
+
+		}()
+
 	}
 
 	// Start API Server
+
 	apiServer := apiserver.NewServer(p.Store, p, actualProxyAddr, mcpServer, scenarioRepo)
+
 	apiServer.RegisterRoutes()
 
 	// Connect Proxy to WebSocket Hub

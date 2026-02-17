@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -344,11 +343,7 @@ func (s *Server) BroadcastIntercept(bp *proxy.Breakpoint) {
 	}
 
 	data, _ := json.Marshal(msg)
-	s.Hub.mu.Lock()
-	for client := range s.Hub.clients {
-		_ = client.WriteMessage(websocket.TextMessage, data) //nolint:errcheck
-	}
-	s.Hub.mu.Unlock()
+	s.Hub.BroadcastData(data)
 }
 
 // Listen starts the API server on the provided address and returns the actual address it bound to.
@@ -371,46 +366,5 @@ func (s *Server) Listen(addr string) (string, error) {
 	fmt.Printf("\033[32m[✓]\033[0m API server running on \033[1m%s\033[0m\n", displayAddr)
 	fmt.Printf("\033[32m[✓]\033[0m Dashboard available at \033[34m\033[1mhttp://%s\033[0m\n", displayAddr)
 
-	// Create a standard http.ServeMux to handle MCP correctly (real SSE flushing)
-	mux := http.NewServeMux()
-
-	if s.mcp != nil {
-		// Use the official SDK's StreamableHTTPHandler (handles GET and POST)
-		mcpHandler := s.mcp.GetStreamableHandler()
-
-		// CORS and Logging Middleware for standard net/http
-		mcpWrapper := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Handle CORS
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-MCP-Protocol-Version")
-
-				if r.Method == "OPTIONS" {
-					w.WriteHeader(http.StatusNoContent)
-					return
-				}
-
-				// Log MCP Request
-				log.Printf("\033[35m[MCP]\033[0m %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// Mount official handler with wrapper
-		mux.Handle("/mcp", mcpWrapper(mcpHandler))
-		fmt.Printf("\033[32m[✓]\033[0m MCP server (Streamable HTTP) unified on \033[34m\033[1mhttp://%s/mcp\033[0m\n", displayAddr)
-	}
-
-	// Use adaptor to mount the entire Fiber app on the remaining routes
-	mux.HandleFunc("/", adaptor.FiberApp(s.app))
-
-	// Use a standard http server to host the mux
-	srv := &http.Server{
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	return actualAddr, srv.Serve(ln)
+	return actualAddr, s.app.Listener(ln)
 }

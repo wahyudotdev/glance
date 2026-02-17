@@ -15,6 +15,7 @@ export interface TrafficEntry {
 export interface Config {
   proxy_addr: string;
   api_addr: string;
+  mcp_addr: string;
   mcp_enabled: boolean;
   history_limit: number;
   max_response_size: number;

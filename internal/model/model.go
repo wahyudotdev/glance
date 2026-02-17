@@ -25,6 +25,7 @@ type TrafficEntry struct {
 type Config struct {
 	ProxyAddr       string `json:"proxy_addr"`
 	APIAddr         string `json:"api_addr"`
+	MCPAddr         string `json:"mcp_addr"`
 	MCPEnabled      bool   `json:"mcp_enabled"`
 	HistoryLimit    int    `json:"history_limit"`
 	MaxResponseSize int64  `json:"max_response_size"` // in bytes

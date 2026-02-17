@@ -12,7 +12,7 @@ import (
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
 	clients    map[*websocket.Conn]bool
-	broadcast  chan *model.TrafficEntry
+	broadcast  chan []byte
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
 	mu         sync.Mutex
@@ -22,7 +22,7 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[*websocket.Conn]bool),
-		broadcast:  make(chan *model.TrafficEntry),
+		broadcast:  make(chan []byte),
 		register:   make(chan *websocket.Conn),
 		unregister: make(chan *websocket.Conn),
 	}
@@ -47,13 +47,7 @@ func (h *Hub) Run() {
 			h.mu.Unlock()
 			log.Println("WebSocket client unregistered")
 
-		case entry := <-h.broadcast:
-			data, err := json.Marshal(entry)
-			if err != nil {
-				log.Printf("Error marshaling traffic entry: %v", err)
-				continue
-			}
-
+		case data := <-h.broadcast:
 			h.mu.Lock()
 			for client := range h.clients {
 				if err := client.WriteMessage(websocket.TextMessage, data); err != nil {
@@ -69,5 +63,15 @@ func (h *Hub) Run() {
 
 // Broadcast sends a traffic entry to all registered clients.
 func (h *Hub) Broadcast(entry *model.TrafficEntry) {
-	h.broadcast <- entry
+	data, err := json.Marshal(entry)
+	if err != nil {
+		log.Printf("Error marshaling traffic entry: %v", err)
+		return
+	}
+	h.broadcast <- data
+}
+
+// BroadcastData sends raw data to all registered clients.
+func (h *Hub) BroadcastData(data []byte) {
+	h.broadcast <- data
 }

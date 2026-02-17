@@ -48,6 +48,7 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<Config>({
     proxy_addr: ':15500',
     api_addr: ':15501',
+    mcp_addr: ':15502',
     mcp_enabled: false,
     history_limit: 500,
     max_response_size: 1048576,
@@ -489,6 +490,7 @@ const App: React.FC = () => {
       const needsRestart = originalConfig && (
         newConfig.proxy_addr !== originalConfig.proxy_addr ||
         newConfig.api_addr !== originalConfig.api_addr ||
+        newConfig.mcp_addr !== originalConfig.mcp_addr ||
         newConfig.mcp_enabled !== originalConfig.mcp_enabled
       );
 
@@ -600,29 +602,32 @@ const App: React.FC = () => {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
+          let entry: TrafficEntry;
+
           if (msg.type === 'intercepted') {
-            setSelectedEntry(msg.entry);
+            entry = msg.entry;
+            setSelectedEntry(entry);
             if (msg.intercept_type === 'response') {
               setIsResponseEditorOpen(true);
-              toast('info', 'Response Paused', `${msg.entry.url} - Ready for edit.`);
+              toast('info', 'Response Paused', `${entry.url} - Ready for edit.`);
             } else {
               setIsRequestEditorOpen(true);
-              toast('info', 'Request Paused', `${msg.entry.url} - Ready for edit.`);
+              toast('info', 'Request Paused', `${entry.url} - Ready for edit.`);
             }
-            return;
-          }
-
-          const entry: TrafficEntry = msg;
-          setTotalEntries(prev => prev + 1);
-
-          if (isRecordingRef.current) {
-            const filter = recordingFilterRef.current.toLowerCase();
-            if (!filter || entry.url.toLowerCase().includes(filter)) {
-              setRecordedEntries(prev => [...prev, entry]);
-            }
+          } else {
+            entry = msg;
           }
 
           setEntries((prev) => {
+            // Check if entry already exists (e.g. was intercepted as request, now finishing as response)
+            const exists = prev.some(e => e.id === entry.id);
+            if (exists) {
+              return prev.map(e => e.id === entry.id ? entry : e);
+            }
+
+            // Only increment total for new entries
+            setTotalEntries(curr => curr + 1);
+
             if (currentPageRef.current === 1) {
               const updated = [...prev, entry];
               const pageSize = pageSizeRef.current;
@@ -631,6 +636,13 @@ const App: React.FC = () => {
             }
             return prev;
           });
+
+          if (isRecordingRef.current) {
+            const filter = recordingFilterRef.current.toLowerCase();
+            if (!filter || entry.url.toLowerCase().includes(filter)) {
+              setRecordedEntries(prev => [...prev, entry]);
+            }
+          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
@@ -864,7 +876,7 @@ const App: React.FC = () => {
 
       <MCPDocs 
         isOpen={isMCPDocsOpen} onClose={() => setIsMCPDocsOpen(false)}
-        mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.api_addr}/mcp`}
+        mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.mcp_addr}/mcp`}
       />
 
       <TerminalDocs 

@@ -18,6 +18,21 @@ const formatTime = (isoString: string) => {
   }).format(new Date(isoString));
 };
 
+const parseUrl = (urlString: string) => {
+  try {
+    const url = new URL(urlString);
+    return {
+      path: url.pathname + url.search,
+      host: url.host
+    };
+  } catch (e) {
+    return {
+      path: urlString,
+      host: 'unknown'
+    };
+  }
+};
+
 const getStatusColor = (status: number) => {
   if (status >= 200 && status < 300) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30';
   if (status >= 300 && status < 400) return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30';
@@ -82,10 +97,10 @@ export const TrafficList: React.FC<TrafficListProps> = ({ entries, selectedEntry
               <td className="px-4 py-3.5 max-w-xl">
                 <div className="flex flex-col">
                   <span className="text-slate-700 dark:text-slate-200 font-medium truncate font-mono">
-                    {new URL(entry.url).pathname}{new URL(entry.url).search}
+                    {parseUrl(entry.url).path}
                   </span>
                   <span className="text-slate-400 dark:text-slate-500 text-[11px] truncate">
-                    {new URL(entry.url).host}
+                    {parseUrl(entry.url).host}
                   </span>
                 </div>
               </td>

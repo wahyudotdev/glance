@@ -97,6 +97,22 @@ func NewProxyWithRepositories(addr string, store *interceptor.TrafficStore, engi
 			if rule != nil {
 				if rule.Type == model.RuleMock && rule.Response != nil {
 					entry.ModifiedBy = "mock"
+					entry.Status = rule.Response.Status
+					entry.ResponseHeaders = make(http.Header)
+					for k, v := range rule.Response.Headers {
+						entry.ResponseHeaders.Set(k, v)
+					}
+					entry.ResponseBody = rule.Response.Body
+					entry.Duration = time.Since(entry.StartTime)
+
+					// Save to store and broadcast
+					if proxy.Store != nil {
+						proxy.Store.AddEntry(entry)
+					}
+					if proxy.OnEntry != nil {
+						proxy.OnEntry(entry)
+					}
+
 					resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
 
 					// Apply configured headers
@@ -130,6 +146,13 @@ func NewProxyWithRepositories(addr string, store *interceptor.TrafficStore, engi
 					proxy.bpMu.Unlock()
 
 					if proxy.OnIntercept != nil {
+						// Provide immediate feedback to UI and persist
+						if proxy.Store != nil {
+							proxy.Store.AddEntry(entry)
+						}
+						if proxy.OnEntry != nil {
+							proxy.OnEntry(entry)
+						}
 						proxy.OnIntercept(bp)
 					}
 
