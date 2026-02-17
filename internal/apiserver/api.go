@@ -11,6 +11,7 @@ import (
 	"glance/internal/proxy"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -332,7 +333,20 @@ func (s *Server) BroadcastIntercept(bp *proxy.Breakpoint) {
 	s.Hub.mu.Unlock()
 }
 
-// Listen starts the API server on the provided address.
-func (s *Server) Listen(addr string) error {
-	return s.app.Listen(addr)
+// Listen starts the API server on the provided address and returns the actual address it bound to.
+func (s *Server) Listen(addr string) (string, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Printf("API Port %s is in use, falling back to a random port...", addr)
+		ln, err = net.Listen("tcp", ":0")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	actualAddr := ln.Addr().String()
+	log.Printf("API server starting on %s", actualAddr)
+	log.Printf("Dashboard available at http://localhost%s", actualAddr)
+
+	return actualAddr, s.app.Listener(ln)
 }

@@ -43,9 +43,9 @@ const App: React.FC = () => {
 
   // Settings State
   const [config, setConfig] = useState<Config>({
-    proxy_addr: ':8000',
-    api_addr: ':8081',
-    mcp_addr: ':8082',
+    proxy_addr: ':15500',
+    api_addr: ':15501',
+    mcp_addr: ':15502',
     mcp_enabled: false,
     history_limit: 500,
     max_response_size: 1048576,
