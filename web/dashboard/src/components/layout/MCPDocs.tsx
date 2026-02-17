@@ -71,6 +71,11 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
                 { name: 'add_mock_rule', desc: 'Create static responses' },
                 { name: 'add_breakpoint_rule', desc: 'Pause traffic for edit' },
                 { name: 'delete_rule', desc: 'Remove an active rule' },
+                { name: 'list_scenarios', desc: 'Read saved sequences' },
+                { name: 'get_scenario', desc: 'Full sequence context' },
+                { name: 'add_scenario', desc: 'Create new sequence' },
+                { name: 'update_scenario', desc: 'Edit steps & mappings' },
+                { name: 'delete_scenario', desc: 'Remove a scenario' },
                 { name: 'clear_traffic', desc: 'Reset history' }
               ].map(tool => (
                 <div key={tool.name} className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl transition-colors">

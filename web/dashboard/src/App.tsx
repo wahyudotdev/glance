@@ -675,6 +675,7 @@ const App: React.FC = () => {
           recordedCount={recordedEntries.length}
           recordingFilter={recordingFilter}
           setRecordingFilter={setRecordingFilter}
+          onShowMCP={() => setIsMCPDocsOpen(true)}
         />
 
         <main className="flex-1 flex overflow-hidden" onClick={() => setSelectedEntry(null)}>

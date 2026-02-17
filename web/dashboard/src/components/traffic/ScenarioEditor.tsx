@@ -22,6 +22,7 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
   const [steps, setSteps] = useState<ScenarioStep[]>([]);
   const [mappings, setMappings] = useState<VariableMapping[]>([]);
   const [activeTab, setActiveTab] = useState<'steps' | 'mappings'>('steps');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialScenario) {
@@ -52,6 +53,32 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
 
   const removeStep = (index: number) => {
     setSteps(prev => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 })));
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    // Optional: add visual hint for drop target
+  };
+
+  const handleDrop = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const updatedSteps = [...steps];
+    const [movedStep] = updatedSteps.splice(draggedIndex, 1);
+    updatedSteps.splice(index, 0, movedStep);
+    
+    // Update order field
+    setSteps(updatedSteps.map((s, i) => ({ ...s, order: i + 1 })));
+    setDraggedIndex(null);
   };
 
   const updateStepNote = (index: number, notes: string) => {
@@ -173,9 +200,17 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
                   return (
                     <div 
                       key={step.id || index}
-                      className="group flex gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={() => handleDrop(index)}
+                      className={`group flex gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all ${
+                        draggedIndex === index 
+                          ? 'opacity-40 border-blue-500 border-dashed' 
+                          : 'border-slate-200 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800'
+                      }`}
                     >
-                      <div className="flex flex-col items-center pt-1">
+                      <div className="flex flex-col items-center pt-1 shrink-0">
                         <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500">
                           {index + 1}
                         </div>
@@ -196,6 +231,8 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
                           </div>
                           <button 
                             onClick={() => removeStep(index)}
+                            onDragStart={(e) => e.stopPropagation()}
+                            draggable={false}
                             className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                           >
                             <Trash2 size={16} />
@@ -208,6 +245,8 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
                           className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg text-xs italic focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all dark:text-slate-300"
                           value={step.notes || ''}
                           onChange={(e) => updateStepNote(index, e.target.value)}
+                          onDragStart={(e) => e.stopPropagation()}
+                          draggable={false}
                         />
                       </div>
                     </div>

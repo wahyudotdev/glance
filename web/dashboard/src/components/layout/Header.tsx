@@ -15,6 +15,7 @@ interface HeaderProps {
   recordedCount: number;
   recordingFilter: string;
   setRecordingFilter: (filter: string) => void;
+  onShowMCP: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -30,7 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleRecording,
   recordedCount,
   recordingFilter,
-  setRecordingFilter
+  setRecordingFilter,
+  onShowMCP
 }) => {
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-colors">
@@ -40,15 +42,19 @@ export const Header: React.FC<HeaderProps> = ({
           {mcpEnabled && (
             <>
               <span className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
-              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                <Zap size={12} fill="currentColor" /> 
-                MCP Server ON
+              <button 
+                onClick={onShowMCP}
+                className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors group"
+                title="View MCP Documentation & Status"
+              >
+                <Zap size={12} fill="currentColor" className="group-hover:scale-110 transition-transform" /> 
+                <span className="font-bold">MCP Server ON</span>
                 {mcpSessions > 0 && (
                   <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white rounded-md text-[9px] font-black animate-in zoom-in duration-300 tabular-nums">
                     {mcpSessions} {mcpSessions === 1 ? 'SESSION' : 'SESSIONS'}
                   </span>
                 )}
-              </span>
+              </button>
             </>
           )}
         </div>
