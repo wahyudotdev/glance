@@ -345,8 +345,13 @@ func (s *Server) Listen(addr string) (string, error) {
 	}
 
 	actualAddr := ln.Addr().String()
-	log.Printf("API server starting on %s", actualAddr)
-	log.Printf("Dashboard available at http://localhost%s", actualAddr)
+	displayAddr := actualAddr
+	if strings.HasPrefix(actualAddr, "[::]") {
+		displayAddr = "localhost" + strings.TrimPrefix(actualAddr, "[::]")
+	}
+
+	fmt.Printf("\033[32m[✓]\033[0m API server running on \033[1m%s\033[0m\n", displayAddr)
+	fmt.Printf("\033[32m[✓]\033[0m Dashboard available at \033[34m\033[1mhttp://%s\033[0m\n", displayAddr)
 
 	return actualAddr, s.app.Listener(ln)
 }

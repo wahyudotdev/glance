@@ -21,7 +21,6 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-colors">
       <div className="flex items-center gap-4">
-        <h1 className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">Glance</h1>
         <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">
           <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
           <span className="w-px h-3 bg-slate-300 dark:bg-slate-700" />

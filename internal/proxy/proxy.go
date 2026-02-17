@@ -234,7 +234,6 @@ func (p *Proxy) Start() (string, error) {
 	}
 
 	actualAddr := ln.Addr().String()
-	log.Printf("Proxy server starting on %s", actualAddr)
 
 	// Use the listener with the server
 	go http.Serve(ln, p.server) //nolint:errcheck,gosec

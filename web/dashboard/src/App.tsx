@@ -75,11 +75,18 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('glance-details-width');
     return saved ? parseFloat(saved) : 70;
   });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('glance-sidebar-collapsed') === 'true';
+  });
   const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('glance-details-width', detailsWidth.toString());
   }, [detailsWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('glance-sidebar-collapsed', isSidebarCollapsed.toString());
+  }, [isSidebarCollapsed]);
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -90,7 +97,7 @@ const App: React.FC = () => {
 
   const resize = (e: MouseEvent) => {
     if (isResizing) {
-      const sidebarWidth = 256;
+      const sidebarWidth = isSidebarCollapsed ? 80 : 256;
       const availableWidth = window.innerWidth - sidebarWidth;
       const mouseXFromRight = window.innerWidth - e.clientX;
       const percentage = (mouseXFromRight / availableWidth) * 100;
@@ -437,7 +444,12 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900 transition-colors">
-      <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+      <Sidebar 
+        currentView={currentView} 
+        setCurrentView={setCurrentView} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
 
       <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>
         <Header 
