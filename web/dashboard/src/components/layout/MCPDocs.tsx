@@ -35,7 +35,7 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
               What is MCP?
             </h4>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Agent Proxy implements the <strong>Model Context Protocol (MCP)</strong>. This allows AI tools like Claude Desktop or other agents to directly see your traffic, create mocks, and execute requests on your behalf.
+              Glance implements the <strong>Model Context Protocol (MCP)</strong>. This allows AI tools like Claude Desktop or other agents to directly see your traffic, create mocks, and execute requests on your behalf.
             </p>
           </section>
 
@@ -48,7 +48,7 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
             <pre className="bg-slate-900 text-blue-300 p-4 rounded-xl text-[10px] font-mono overflow-x-auto">
 {`{
   "mcpServers": {
-    "agent-proxy": {
+    "glance": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sse", "${mcpUrl}"]
     }

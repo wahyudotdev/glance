@@ -13,7 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, on
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 shadow-sm z-10">
       <div className="flex items-center gap-4">
-        <h1 className="text-lg font-bold tracking-tight text-slate-800">Agent Proxy</h1>
+        <h1 className="text-lg font-bold tracking-tight text-slate-800">Glance</h1>
         <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
           <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
           <span className="w-px h-3 bg-slate-300" />

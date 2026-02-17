@@ -2,13 +2,13 @@
 package apiserver
 
 import (
-	"agent-proxy/internal/config"
-	"agent-proxy/internal/interceptor"
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/proxy"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"glance/internal/config"
+	"glance/internal/interceptor"
+	"glance/internal/model"
+	"glance/internal/proxy"
 	"io"
 	"log"
 	"net/http"

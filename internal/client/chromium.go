@@ -6,7 +6,7 @@ import (
 	"runtime"
 )
 
-// LaunchChromium starts a Chromium-based browser configured to use the agent proxy.
+// LaunchChromium starts a Chromium-based browser configured to use the Glance.
 func LaunchChromium(proxyAddr string) error {
 	var cmd *exec.Cmd
 	// Base flags for proxy and ignoring cert errors (for local MITM)
@@ -15,8 +15,8 @@ func LaunchChromium(proxyAddr string) error {
 		"--ignore-certificate-errors",
 		"--no-first-run",
 		"--no-default-browser-check",
-		"--user-data-dir=/tmp/agent-proxy-chrome", // Isolated session
-		"http://localhost:8081",                   // Open dashboard automatically
+		"--user-data-dir=/tmp/glance-chrome", // Isolated session
+		"http://localhost:8081",              // Open dashboard automatically
 	}
 
 	switch runtime.GOOS {

@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"agent-proxy/internal/model"
 	"database/sql"
+	"glance/internal/model"
 	"log"
 	"net/http"
 	"testing"

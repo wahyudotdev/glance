@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-API_URL=${AGENT_PROXY_API:-"http://localhost:8081"}
+API_URL=${MCPROXY_API:-"http://localhost:8081"}
 
 # Colors for output
 BLUE='\033[0;34m'
@@ -20,8 +20,8 @@ fi
 SETUP_SCRIPT=$(curl -s "${API_URL}/api/client/terminal/setup")
 
 if [ $? -ne 0 ] || [ -z "$SETUP_SCRIPT" ]; then
-    echo -e "${RED}Error: Could not connect to agent-proxy API at ${API_URL}${NC}"
-    echo "Make sure agent-proxy is running."
+    echo -e "${RED}Error: Could not connect to glance API at ${API_URL}${NC}"
+    echo "Make sure glance is running."
     return 1
 fi
 

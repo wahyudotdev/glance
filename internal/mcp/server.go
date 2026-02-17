@@ -2,13 +2,13 @@
 package mcp
 
 import (
-	"agent-proxy/internal/interceptor"
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/rules"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"glance/internal/interceptor"
+	"glance/internal/model"
+	"glance/internal/rules"
 	"io"
 	"net/http"
 	"strings"
@@ -30,7 +30,7 @@ type Server struct {
 // NewServer creates and initializes a new Server instance.
 func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string) *Server {
 	// Initialize the MCP server
-	s := server.NewMCPServer("Agent Proxy", "1.0.0")
+	s := server.NewMCPServer("Glance", "1.0.0")
 
 	ms := &Server{
 		store:     store,
@@ -132,7 +132,7 @@ func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequ
 			Body:   body,
 			Headers: map[string]string{
 				"Content-Type": "application/json",
-				"X-Mocked-By":  "Agent-Proxy",
+				"X-Mocked-By":  "Glance",
 			},
 		},
 	}

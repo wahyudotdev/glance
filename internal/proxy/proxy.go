@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"agent-proxy/internal/ca"
-	"agent-proxy/internal/interceptor"
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/rules"
+	"glance/internal/ca"
+	"glance/internal/interceptor"
+	"glance/internal/model"
+	"glance/internal/rules"
 
 	"github.com/elazarl/goproxy"
 )

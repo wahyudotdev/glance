@@ -1,4 +1,4 @@
-# Requirements: Golang HTTP Debugging Proxy (Agent Proxy)
+# Requirements: Golang HTTP Debugging Proxy (Glance)
 
 An application inspired by HTTP Toolkit for intercepting, inspecting, and mocking HTTP/HTTPS traffic.
 

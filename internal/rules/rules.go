@@ -2,8 +2,8 @@
 package rules
 
 import (
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/repository"
+	"glance/internal/model"
+	"glance/internal/repository"
 	"log"
 	"net/http"
 	"strings"

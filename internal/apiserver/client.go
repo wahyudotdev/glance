@@ -1,7 +1,7 @@
 package apiserver
 
 import (
-	"agent-proxy/internal/client"
+	"glance/internal/client"
 	"net"
 
 	"github.com/elazarl/goproxy"

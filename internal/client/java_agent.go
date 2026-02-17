@@ -58,7 +58,7 @@ func findToolsJar(pid string) string {
 // BuildAndAttachAgent dynamically compiles a Java agent and attaches it to a running JVM.
 func BuildAndAttachAgent(pid string, proxyAddr string) error {
 	// ... (compilation setup remains same until step 5)
-	tmpDir, err := os.MkdirTemp("", "agent-proxy-java")
+	tmpDir, err := os.MkdirTemp("", "glance-java")
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func BuildAndAttachAgent(pid string, proxyAddr string) error {
 
 	javaFile := filepath.Join(tmpDir, "ProxyAgent.java")
 	manifestFile := filepath.Join(tmpDir, "MANIFEST.MF")
-	jarFile := filepath.Join(os.TempDir(), "agent-proxy-injector.jar")
+	jarFile := filepath.Join(os.TempDir(), "glance-injector.jar")
 
 	caCertBase64 := base64.StdEncoding.EncodeToString([]byte(goproxy.CA_CERT))
 
@@ -118,12 +118,12 @@ public class ProxyAgent {
                     }
                 });
 
-                System.out.println("[AgentProxy] Aggressive TLS trust-all injected");
+                System.out.println("[Glance] Aggressive TLS trust-all injected");
             } catch (Exception e) {
-                System.err.println("[AgentProxy] Failed to inject aggressive trust: " + e.getMessage());
+                System.err.println("[Glance] Failed to inject aggressive trust: " + e.getMessage());
             }
 
-            System.out.println("[AgentProxy] Interception enabled for " + host + ":" + port);
+            System.out.println("[Glance] Interception enabled for " + host + ":" + port);
         } catch (Exception e) {
             e.printStackTrace();
         }

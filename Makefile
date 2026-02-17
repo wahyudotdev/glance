@@ -1,8 +1,8 @@
 # Makefile for Agent Proxy
 
-BINARY_NAME=agent-proxy
+BINARY_NAME=glance
 FRONTEND_DIR=web/dashboard
-BACKEND_STATIC_DIR=internal/api/dist
+BACKEND_STATIC_DIR=internal/apiserver/dist
 BUILD_DIR=build
 
 # Build flags
@@ -25,29 +25,29 @@ build-frontend:
 
 build-backend:
 	@echo "Building Go binary for current platform..."
-	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/agent-proxy
+	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/glance
 
 build-all: build-frontend build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64
 
 build-darwin-amd64:
 	@echo "Building for Darwin AMD64..."
 	mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/agent-proxy
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/glance
 
 build-darwin-arm64:
 	@echo "Building for Darwin ARM64..."
 	mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/agent-proxy
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/glance
 
 build-linux-amd64:
 	@echo "Building for Linux AMD64..."
 	mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/agent-proxy
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/glance
 
 build-windows-amd64:
 	@echo "Building for Windows AMD64..."
 	mkdir -p $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/agent-proxy
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/glance
 
 clean:
 	@echo "Cleaning up..."

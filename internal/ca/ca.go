@@ -32,7 +32,7 @@ func SetupCA() {
 
 	// Save CA to a temporary file
 	tmpDir := os.TempDir()
-	CAPath = filepath.Join(tmpDir, "agent-proxy-ca.crt")
+	CAPath = filepath.Join(tmpDir, "glance-ca.crt")
 	err = os.WriteFile(CAPath, []byte(goproxy.CA_CERT), 0600) // Restricted permissions for security
 	if err != nil {
 		log.Printf("Warning: Failed to save CA certificate to %s: %v", CAPath, err)

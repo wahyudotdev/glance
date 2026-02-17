@@ -2,7 +2,7 @@
 package repository
 
 import (
-	"agent-proxy/internal/model"
+	"glance/internal/model"
 )
 
 // ConfigRepository defines the interface for managing application configuration.

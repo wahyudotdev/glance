@@ -130,8 +130,8 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                       <p className="text-[11px] text-slate-600">Run these commands to move the CA to the System Store (requires root & writable /system):</p>
                       <pre className="bg-slate-900 text-blue-300 p-3 rounded-lg text-[9px] font-mono whitespace-pre-wrap leading-relaxed">
                         # Download CA first, then in your terminal:{"\n"}
-                        HASH=$(openssl x509 -inform PEM -subject_hash_old -in agent-proxy-ca.crt | head -1){"\n"}
-                        adb push agent-proxy-ca.crt /sdcard/$HASH.0{"\n"}
+                        HASH=$(openssl x509 -inform PEM -subject_hash_old -in glance-ca.crt | head -1){"\n"}
+                        adb push glance-ca.crt /sdcard/$HASH.0{"\n"}
                         adb shell "su -c 'mount -o rw,remount /system && cp /sdcard/$HASH.0 /system/etc/security/cacerts/ && chmod 644 /system/etc/security/cacerts/$HASH.0'"
                       </pre>
                     </div>
@@ -172,7 +172,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                     <div className="px-4 py-4 bg-slate-50 border-t border-slate-100 space-y-3">
                       <ul className="text-[11px] text-slate-600 list-disc ml-4 space-y-2">
                         <li><strong>Check Manifest:</strong> Ensure <code>android:networkSecurityConfig="@xml/network_security_config"</code> is inside the <code>&lt;application&gt;</code> tag in <code>AndroidManifest.xml</code>.</li>
-                        <li><strong>Verify Installation:</strong> Go to Settings &rarr; Security &rarr; User Credentials. Ensure "Agent Proxy CA" is listed.</li>
+                        <li><strong>Verify Installation:</strong> Go to Settings &rarr; Security &rarr; User Credentials. Ensure "Glance CA" is listed.</li>
                         <li><strong>System Time:</strong> Ensure the Android device's date/time is correct. If the device time is in the past, the CA cert will be rejected.</li>
                         <li><strong>SSL Pinning:</strong> If the app uses Certificate Pinning (common in apps like Facebook, banking, or some custom OkHttp setups), standard trust configurations <strong>will not work</strong>. You must disable pinning in the source code or use a tool like <strong>Frida</strong> or <strong>Xposed</strong> to bypass it.</li>
                         <li><strong>Restart App:</strong> Fully kill and restart the Android app after applying any security config changes.</li>

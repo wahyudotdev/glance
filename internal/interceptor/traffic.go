@@ -2,12 +2,12 @@
 package interceptor
 
 import (
-	"agent-proxy/internal/config"
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/repository"
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"glance/internal/config"
+	"glance/internal/model"
+	"glance/internal/repository"
 	"io"
 	"log"
 	"net/http"

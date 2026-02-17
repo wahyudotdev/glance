@@ -1,8 +1,8 @@
 package client
 
 import (
-	"agent-proxy/internal/ca"
 	"fmt"
+	"glance/internal/ca"
 	"strings"
 )
 

@@ -1,4 +1,4 @@
-// Package model defines the data structures used throughout the Agent Proxy.
+// Package model defines the data structures used throughout the Glance.
 package model
 
 import (

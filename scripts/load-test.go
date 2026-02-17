@@ -1,4 +1,4 @@
-// Package main provides a load testing script for the agent proxy.
+// Package main provides a load testing script for the Glance.
 package main
 
 import (

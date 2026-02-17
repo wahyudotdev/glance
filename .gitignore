@@ -1,3 +1,6 @@
 .env
 dist/
 build/
+glance
+mcproxy
+agent-proxy

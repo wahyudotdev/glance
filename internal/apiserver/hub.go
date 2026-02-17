@@ -5,8 +5,8 @@ import (
 	"log"
 	"sync"
 
-	"agent-proxy/internal/model"
 	"github.com/gofiber/websocket/v2"
+	"glance/internal/model"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.

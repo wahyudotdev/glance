@@ -16,7 +16,7 @@ var DB *sql.DB
 // Init initializes the default database in the user's home directory.
 func Init() {
 	home, _ := os.UserHomeDir()
-	dbPath := filepath.Join(home, ".agent-proxy.db")
+	dbPath := filepath.Join(home, ".glance.db")
 
 	var err error
 	DB, err = sql.Open("sqlite", dbPath)

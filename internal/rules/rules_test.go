@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"agent-proxy/internal/model"
+	"glance/internal/model"
 	"net/http"
 	"testing"
 )

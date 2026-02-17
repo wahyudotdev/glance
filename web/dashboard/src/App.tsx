@@ -45,13 +45,13 @@ const App: React.FC = () => {
   };
 
   const [detailsWidth, setDetailsWidth] = useState(() => {
-    const saved = localStorage.getItem('agent-proxy-details-width');
+    const saved = localStorage.getItem('glance-details-width');
     return saved ? parseFloat(saved) : 70;
   });
   const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('agent-proxy-details-width', detailsWidth.toString());
+    localStorage.setItem('glance-details-width', detailsWidth.toString());
   }, [detailsWidth]);
 
   const startResizing = (e: React.MouseEvent) => {
@@ -328,7 +328,7 @@ const App: React.FC = () => {
       setOriginalConfig(newConfig);
 
       if (needsRestart) {
-        toast('info', 'Restart Required', 'Some changes will take effect only after you restart the Agent Proxy.');
+        toast('info', 'Restart Required', 'Some changes will take effect only after you restart the Glance.');
       } else {
         toast('success', 'Settings Saved', 'Your configuration has been updated successfully.');
       }

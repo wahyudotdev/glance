@@ -2,8 +2,8 @@
 package config
 
 import (
-	"agent-proxy/internal/model"
-	"agent-proxy/internal/repository"
+	"glance/internal/model"
+	"glance/internal/repository"
 )
 
 var repo repository.ConfigRepository

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Link, Settings, Code, ShieldAlert } from 'lucide-react';
+import { Globe, Sparkles, Settings, Code, ShieldAlert } from 'lucide-react';
 
 interface SidebarProps {
   currentView: 'traffic' | 'integrations' | 'settings' | 'rules';
@@ -14,9 +14,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
         onClick={() => setCurrentView('traffic')}
       >
         <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
-          <Link className="text-white" size={24} />
+          <Sparkles className="text-white" size={24} />
         </div>
-        <span className="font-bold text-lg tracking-tight text-slate-800">Agent Proxy</span>
+        <span className="font-bold text-lg tracking-tight text-slate-800">Glance</span>
       </div>
       
       <nav className="flex flex-col gap-1 px-4">

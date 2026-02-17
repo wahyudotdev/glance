@@ -7,7 +7,7 @@ import (
 
 func (s *Server) handleDownloadCA(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/x-x509-ca-cert")
-	c.Set("Content-Disposition", `attachment; filename="agent-proxy-ca.crt"`)
+	c.Set("Content-Disposition", `attachment; filename="glance-ca.crt"`)
 	return c.Send(goproxy.CA_CERT)
 }
 

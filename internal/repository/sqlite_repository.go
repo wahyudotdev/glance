@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"agent-proxy/internal/model"
 	"database/sql"
 	"encoding/json"
+	"glance/internal/model"
 	"log"
 	"sync"
 	"time"

@@ -110,10 +110,10 @@ func ClearAndroidProxy(deviceID string, proxyPort string) error {
 
 // PushCertToDevice pushes the CA certificate to the device and opens the CA install settings
 func PushCertToDevice(deviceID string, certBytes []byte) error {
-	remotePath := "/sdcard/agent-proxy-ca.crt"
+	remotePath := "/sdcard/glance-ca.crt"
 
 	// 1. Create a temporary local file for the cert
-	tmpFile := filepath.Join(os.TempDir(), "agent-proxy-ca.crt")
+	tmpFile := filepath.Join(os.TempDir(), "glance-ca.crt")
 	if err := os.WriteFile(tmpFile, certBytes, 0600); err != nil {
 		return fmt.Errorf("failed to write temporary cert file: %v", err)
 	}
