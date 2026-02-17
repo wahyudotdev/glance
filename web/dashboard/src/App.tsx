@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/traffic';
 
 // Layout Components
@@ -70,11 +70,19 @@ const App: React.FC = () => {
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
   const [isScenarioEditorOpen, setIsScenarioEditorOpen] = useState(false);
+  const [isDeleteScenarioModalOpen, setIsDeleteScenarioModalOpen] = useState(false);
   const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
   const [isTerminalDocsOpen, setIsTerminalDocsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [scenarioToDelete, setScenarioToDelete] = useState<Scenario | null>(null);
+
+  // Quick Create Scenario Modal State
+  const [isQuickCreateModalOpen, setIsQuickCreateModalOpen] = useState(false);
+  const [quickScenarioName, setQuickScenarioName] = useState('');
+  const [quickScenarioDesc, setQuickScenarioDesc] = useState('');
+  const [pendingEntry, setPendingEntry] = useState<TrafficEntry | null>(null);
 
   // Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -153,10 +161,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteScenario = async (id: string) => {
+  const handleDeleteScenario = (id: string) => {
+    const scenario = scenarios.find(s => s.id === id);
+    if (scenario) {
+      setScenarioToDelete(scenario);
+      setIsDeleteScenarioModalOpen(true);
+    }
+  };
+
+  const handleConfirmDeleteScenario = async () => {
+    if (!scenarioToDelete) return;
     try {
-      await apiFetch(`/api/scenarios/${id}`, { method: 'DELETE' });
-      setScenarios(prev => prev.filter(s => s.id !== id));
+      await apiFetch(`/api/scenarios/${scenarioToDelete.id}`, { method: 'DELETE' });
+      setScenarios(prev => prev.filter(s => s.id !== scenarioToDelete.id));
+      setIsDeleteScenarioModalOpen(false);
+      setScenarioToDelete(null);
       toast('success', 'Scenario Deleted', 'The scenario has been removed.');
     } catch (error) {
       toast('error', 'Delete Failed', String(error));
@@ -360,35 +379,74 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddToScenario = (entry: TrafficEntry) => {
-    if (isScenarioEditorOpen && selectedScenario) {
-      const updatedSteps = [...(selectedScenario.steps || [])];
-      updatedSteps.push({
-        id: '',
-        traffic_entry_id: entry.id,
-        order: updatedSteps.length + 1,
-        notes: ''
-      });
-      setSelectedScenario({ ...selectedScenario, steps: updatedSteps });
-      toast('success', 'Added to Scenario', `Added ${entry.method} ${new URL(entry.url).pathname} to the current sequence.`);
-    } else {
-      // Create new scenario with this one step
-      const newScenario: Scenario = {
-        id: '',
-        name: `New Scenario ${new Date().toLocaleTimeString()}`,
-        description: '',
-        steps: [{
+  const handleAddToScenario = async (entry: TrafficEntry, scenarioId: string | 'new') => {
+    if (scenarioId === 'new') {
+      setPendingEntry(entry);
+      setQuickScenarioName(`New Scenario ${new Date().toLocaleTimeString()}`);
+      setQuickScenarioDesc('');
+      setIsQuickCreateModalOpen(true);
+      return;
+    }
+
+    // Add to existing scenario
+    const existing = scenarios.find(s => s.id === scenarioId);
+    if (!existing) return;
+
+    const updated: Scenario = {
+      ...existing,
+      steps: [
+        ...(existing.steps || []),
+        {
           id: '',
           traffic_entry_id: entry.id,
-          order: 1,
+          order: (existing.steps?.length || 0) + 1,
           notes: ''
-        }],
-        variable_mappings: [],
-        created_at: new Date().toISOString()
-      };
-      setSelectedScenario(newScenario);
-      setIsScenarioEditorOpen(true);
-      toast('info', 'New Scenario', 'Started a new scenario with this request.');
+        }
+      ]
+    };
+
+    try {
+      await apiFetch(`/api/scenarios/${scenarioId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      await fetchScenarios();
+      toast('success', 'Added to Scenario', `Successfully added to "${existing.name}".`);
+    } catch (error) {
+      toast('error', 'Add Failed', String(error));
+    }
+  };
+
+  const handleConfirmCreateScenario = async () => {
+    if (!pendingEntry || !quickScenarioName) return;
+
+    const newScenario: Scenario = {
+      id: '',
+      name: quickScenarioName,
+      description: quickScenarioDesc,
+      steps: [{
+        id: '',
+        traffic_entry_id: pendingEntry.id,
+        order: 1,
+        notes: ''
+      }],
+      variable_mappings: [],
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      await apiFetch('/api/scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newScenario)
+      });
+      await fetchScenarios();
+      setIsQuickCreateModalOpen(false);
+      setPendingEntry(null);
+      toast('success', 'Scenario Created', `Successfully created "${quickScenarioName}".`);
+    } catch (error) {
+      toast('error', 'Creation Failed', String(error));
     }
   };
 
@@ -659,7 +717,15 @@ const App: React.FC = () => {
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div className="flex-shrink-0 h-full overflow-hidden flex flex-col" style={{ width: `${detailsWidth}%` }} onClick={(e) => e.stopPropagation()}>
-                    <DetailsPanel entry={selectedEntry} onEdit={() => setIsRequestEditorOpen(true)} onClose={() => setSelectedEntry(null)} onBreak={handleCreateBreakpoint} onMock={handleCreateMock} onAddToScenario={handleAddToScenario} />
+                    <DetailsPanel 
+                      entry={selectedEntry} 
+                      scenarios={scenarios}
+                      onEdit={() => setIsRequestEditorOpen(true)} 
+                      onClose={() => setSelectedEntry(null)} 
+                      onBreak={handleCreateBreakpoint} 
+                      onMock={handleCreateMock} 
+                      onAddToScenario={handleAddToScenario} 
+                    />
                   </div>
                 </>
               )}
@@ -701,6 +767,71 @@ const App: React.FC = () => {
         isOpen={isClearModalOpen} onClose={() => setIsClearModalOpen(false)} title="Clear Traffic Logs?" description="This will permanently delete all captured requests from the current session. This action cannot be undone."
         icon={<Trash2 size={32} />} iconBgColor="bg-rose-50 dark:bg-rose-900/20 text-rose-500" confirmLabel="Clear All" confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200" onConfirm={handleClear}
       />
+
+      <Modal 
+        isOpen={isDeleteScenarioModalOpen} 
+        onClose={() => { setIsDeleteScenarioModalOpen(false); setScenarioToDelete(null); }} 
+        title="Delete Scenario?" 
+        description={`Are you sure you want to delete "${scenarioToDelete?.name}"? This action cannot be undone.`}
+        icon={<Trash2 size={32} />} 
+        iconBgColor="bg-rose-50 dark:bg-rose-900/20 text-rose-500" 
+        confirmLabel="Delete Scenario" 
+        confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200" 
+        onConfirm={handleConfirmDeleteScenario}
+      />
+
+      {/* Quick Create Scenario Modal */}
+      {isQuickCreateModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsQuickCreateModalOpen(false)} />
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white/50 dark:border-slate-800/50">
+            <div className="p-8">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6 tracking-tight flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <Play size={20} />
+                </div>
+                Create New Scenario
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Scenario Name</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-slate-100 font-bold"
+                    value={quickScenarioName}
+                    onChange={(e) => setQuickScenarioName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Description (Optional)</label>
+                  <textarea 
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-slate-100 resize-none h-24"
+                    value={quickScenarioDesc}
+                    onChange={(e) => setQuickScenarioDesc(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex border-t border-slate-100 dark:border-slate-800 p-4 gap-3 bg-slate-50/50 dark:bg-slate-950/50">
+              <button 
+                onClick={() => setIsQuickCreateModalOpen(false)}
+                className="flex-1 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmCreateScenario}
+                disabled={!quickScenarioName}
+                className="flex-1 px-4 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+              >
+                Create & Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <RequestEditor 
         isOpen={isRequestEditorOpen} onClose={() => setIsRequestEditorOpen(false)} initialRequest={selectedEntry} onExecute={handleExecuteRequest}

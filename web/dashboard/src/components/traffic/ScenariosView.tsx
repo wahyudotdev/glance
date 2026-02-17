@@ -19,7 +19,6 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({
 }) => {
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this scenario?')) return;
     onDelete(id);
   };
 

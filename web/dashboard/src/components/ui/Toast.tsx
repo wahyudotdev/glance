@@ -15,7 +15,7 @@ interface ToastProps {
 
 export const Toast: React.FC<ToastProps> = ({ toasts, onClose }) => {
   return (
-    <div className="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none">
+    <div className="fixed bottom-6 left-6 z-[200] flex flex-col gap-3 pointer-events-none">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} onClose={() => onClose(t.id)} />
       ))}
@@ -25,7 +25,7 @@ export const Toast: React.FC<ToastProps> = ({ toasts, onClose }) => {
 
 const ToastItem: React.FC<{ toast: ToastMessage; onClose: () => void }> = ({ toast, onClose }) => {
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    const timer = setTimeout(onClose, 2000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -42,7 +42,7 @@ const ToastItem: React.FC<{ toast: ToastMessage; onClose: () => void }> = ({ toa
   };
 
   return (
-    <div className={`pointer-events-auto min-w-[300px] max-w-md p-4 rounded-2xl border shadow-xl flex gap-3 animate-in slide-in-from-top-4 duration-300 transition-colors ${bgs[toast.type]}`}>
+    <div className={`pointer-events-auto min-w-[300px] max-w-md p-4 rounded-2xl border shadow-xl flex gap-3 animate-in slide-in-from-bottom-4 duration-300 transition-colors ${bgs[toast.type]}`}>
       <div className="mt-0.5 shrink-0">{icons[toast.type]}</div>
       <div className="flex-1 min-w-0">
         <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight">{toast.title}</h4>

@@ -1,23 +1,25 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus } from 'lucide-react';
-import type { TrafficEntry } from '../../types/traffic';
+import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus, Plus } from 'lucide-react';
+import type { TrafficEntry, Scenario } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 
 interface DetailsPanelProps {
   entry: TrafficEntry;
+  scenarios: Scenario[];
   onEdit?: (entry: TrafficEntry) => void;
   onClose?: () => void;
   onBreak?: (entry: TrafficEntry) => void;
   onMock?: (entry: TrafficEntry) => void;
-  onAddToScenario?: (entry: TrafficEntry) => void;
+  onAddToScenario?: (entry: TrafficEntry, scenarioId: string | 'new') => void;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak, onMock, onAddToScenario }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, onEdit, onClose, onBreak, onMock, onAddToScenario }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
   const [copiedRequest, setCopiedRequest] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
+  const [showScenarioDropdown, setShowScenarioDropdown] = useState(false);
 
   const isModified = entry.modified_by === 'mock' || entry.modified_by === 'breakpoint';
 
@@ -174,14 +176,59 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
               </>
             )}
             {onAddToScenario && (
-              <button 
-                onClick={() => onAddToScenario(entry)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
-                title="Add this request to a new or existing scenario"
-              >
-                <ListPlus size={14} />
-                Add to Scenario
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowScenarioDropdown(!showScenarioDropdown)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
+                  title="Add this request to a new or existing scenario"
+                >
+                  <ListPlus size={14} />
+                  Add to Scenario
+                </button>
+
+                {showScenarioDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setShowScenarioDropdown(false)} 
+                    />
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-40 py-2 animate-in zoom-in-95 duration-100 origin-top-right">
+                      <div className="px-4 py-2 border-b border-slate-50 dark:border-slate-700/50 mb-1">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select Scenario</span>
+                      </div>
+                      
+                      <div className="max-h-64 overflow-y-auto">
+                        {scenarios.map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              onAddToScenario(entry, s.id);
+                              setShowScenarioDropdown(false);
+                            }}
+                            className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-2"
+                          >
+                            <Play size={12} className="shrink-0" />
+                            <span className="truncate">{s.name}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mt-1 pt-1 border-t border-slate-50 dark:border-slate-700/50">
+                        <button
+                          onClick={() => {
+                            onAddToScenario(entry, 'new');
+                            setShowScenarioDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors flex items-center gap-2"
+                        >
+                          <Plus size={14} />
+                          Create New Scenario
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button 
               onClick={handleCopyCurl}
