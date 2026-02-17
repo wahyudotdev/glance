@@ -238,80 +238,83 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all md:col-span-2">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
-                    <Code className="text-amber-600 dark:text-amber-400" size={24} />
+            {/* Column 1 Bottom: Java Auto-Attach */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Activity className="text-amber-600 dark:text-amber-400" size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold dark:text-slate-100">CA Certificate</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Required for HTTPS interception</p>
+                    <h3 className="text-base font-bold dark:text-slate-100">Java Auto-Attach</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Inject into running processes</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <a 
-                    href="/api/ca/cert" 
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-bold text-white transition-all shadow-lg shadow-blue-200 dark:shadow-none"
-                  >
-                    Download .crt
-                  </a>
+                <button 
+                  onClick={onFetchJava}
+                  className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all ${isLoadingJava ? 'animate-spin text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
+                >
+                  <Activity size={14} />
+                </button>
+              </div>
+              
+              <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex-1">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-y-auto min-h-[120px]">
+                  {javaProcesses.length > 0 ? javaProcesses.map(proc => (
+                    <div key={proc.pid} className="px-4 py-3 flex items-center justify-between hover:bg-white dark:hover:bg-slate-900 transition-colors group cursor-default">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 font-mono group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{proc.name}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">PID: {proc.pid}</span>
+                      </div>
+                      <button 
+                        onClick={() => onInterceptJava(proc.pid)}
+                        className="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Intercept
+                      </button>
+                    </div>
+                  )) : (
+                    <div className="px-4 py-8 text-center text-slate-400 dark:text-slate-600 text-xs italic">
+                      No processes detected. Make sure 'jps' is in your PATH.
+                    </div>
+                  )}
                 </div>
               </div>
-              <h3 className="text-lg font-bold mb-2 dark:text-slate-100">Java / JVM Applications</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                Detect running Java applications and get interception instructions.
-              </p>
-              
-              <div className="space-y-6">
-                <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between transition-colors">
-                    <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Running Java Processes</span>
-                    <button 
-                      onClick={onFetchJava}
-                      className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all ${isLoadingJava ? 'animate-spin text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
-                    >
-                      <Activity size={14} />
-                    </button>
+            </div>
+
+            {/* Column 2 Bottom: Java Manual Setup */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Code className="text-blue-600 dark:text-blue-400" size={20} />
                   </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-y-auto">
-                    {javaProcesses.length > 0 ? javaProcesses.map(proc => (
-                      <div key={proc.pid} className="px-4 py-3 flex items-center justify-between hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group cursor-default">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 font-mono group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{proc.name}</span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">PID: {proc.pid}</span>
-                        </div>
-                        <button 
-                          onClick={() => onInterceptJava(proc.pid)}
-                          className="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-all hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm active:scale-95 cursor-pointer"
-                        >
-                          Intercept
-                        </button>
-                      </div>
-                    )) : (
-                      <div className="px-4 py-8 text-center text-slate-400 dark:text-slate-600 text-xs italic">
-                        No Java processes detected. Make sure 'jps' is in your PATH.
-                      </div>
-                    )}
+                  <div>
+                    <h3 className="text-base font-bold dark:text-slate-100">Java Manual Setup</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Generic configuration</p>
                   </div>
                 </div>
-
+                <a 
+                  href="/api/ca/cert" 
+                  className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all flex items-center gap-2 text-[10px] font-bold"
+                  title="Download CA Certificate"
+                >
+                  <Copy size={14} /> CA Cert
+                </a>
+              </div>
+              
+              <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block tracking-widest">JVM Arguments</label>
-                  <div className="relative group">
-                    <pre className="bg-slate-900 text-amber-200 p-4 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800">
-                      -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=8080 \<br/>
-                      -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=8080
-                    </pre>
-                  </div>
+                  <pre className="bg-slate-900 text-amber-200 p-3 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800">
+                    -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=15500 \<br/>
+                    -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=15500
+                  </pre>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 transition-colors">
-                  <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-2">
-                    <Shield size={14} /> HTTPS Note
-                  </h4>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-500 leading-relaxed">
-                    For HTTPS, you must import the CA certificate into your Java keystore or use <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">-Djavax.net.ssl.trustStore</code> pointing to a keystore containing the CA.
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-3">
+                  <p className="text-[10px] text-amber-700 dark:text-amber-500 leading-relaxed italic">
+                    <strong>HTTPS:</strong> Import the CA cert into your keystore or use <code>-Djavax.net.ssl.trustStore</code>.
                   </p>
                 </div>
               </div>

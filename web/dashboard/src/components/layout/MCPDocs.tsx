@@ -49,8 +49,8 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
 {`{
   "mcpServers": {
     "glance": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sse", "${mcpUrl}"]
+      "type": "http",
+      "url": "${mcpUrl}"
     }
   }
 }`}
