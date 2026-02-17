@@ -124,6 +124,119 @@ func (ms *Server) registerTools() {
 		mcp.WithDescription("Get full details of a scenario, including the sequence of requests, responses, and variable mappings."),
 		mcp.WithString("id", mcp.Description("The ID of the scenario")),
 	), ms.getScenarioHandler)
+
+	ms.server.AddTool(mcp.NewTool("add_scenario",
+		mcp.WithDescription("Create a new traffic scenario."),
+		mcp.WithString("name", mcp.Description("The name of the scenario")),
+		mcp.WithString("description", mcp.Description("A brief description of the scenario")),
+	), ms.addScenarioHandler)
+
+	ms.server.AddTool(mcp.NewTool("update_scenario",
+		mcp.WithDescription("Update an existing scenario's metadata or steps. Steps and mappings should be provided as JSON strings."),
+		mcp.WithString("id", mcp.Description("The ID of the scenario to update")),
+		mcp.WithString("name", mcp.Description("New name (optional)")),
+		mcp.WithString("description", mcp.Description("New description (optional)")),
+		mcp.WithString("steps_json", mcp.Description("JSON array of steps: [{\"traffic_entry_id\": \"...\", \"order\": 1, \"notes\": \"...\"}]")),
+		mcp.WithString("mappings_json", mcp.Description("JSON array of mappings: [{\"name\": \"...\", \"source_entry_id\": \"...\", \"source_path\": \"...\", \"target_json_path\": \"...\"}]")),
+	), ms.updateScenarioHandler)
+
+	ms.server.AddTool(mcp.NewTool("delete_scenario",
+		mcp.WithDescription("Delete a scenario by ID."),
+		mcp.WithString("id", mcp.Description("The ID of the scenario to delete")),
+	), ms.deleteScenarioHandler)
+}
+
+func (ms *Server) addScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_scenario\033[0m | Args: %v", request.Params.Arguments)
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+
+	name, _ := args["name"].(string)
+	description, _ := args["description"].(string)
+
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+
+	scenario := &model.Scenario{
+		ID:          uuid.New().String(),
+		Name:        name,
+		Description: description,
+		CreatedAt:   time.Now(),
+	}
+
+	if err := ms.scenarioRepo.Add(scenario); err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Scenario '%s' created with ID: %s", name, scenario.ID)), nil
+}
+
+func (ms *Server) updateScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mupdate_scenario\033[0m | Args: %v", request.Params.Arguments)
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+
+	id, _ := args["id"].(string)
+	if id == "" {
+		return nil, fmt.Errorf("id is required")
+	}
+
+	scenario, err := ms.scenarioRepo.GetByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("scenario not found: %v", err)
+	}
+
+	if name, ok := args["name"].(string); ok && name != "" {
+		scenario.Name = name
+	}
+	if desc, ok := args["description"].(string); ok {
+		scenario.Description = desc
+	}
+
+	if stepsJSON, ok := args["steps_json"].(string); ok && stepsJSON != "" {
+		var steps []model.ScenarioStep
+		if err := json.Unmarshal([]byte(stepsJSON), &steps); err != nil {
+			return nil, fmt.Errorf("invalid steps_json: %v", err)
+		}
+		scenario.Steps = steps
+	}
+
+	if mappingsJSON, ok := args["mappings_json"].(string); ok && mappingsJSON != "" {
+		var mappings []model.VariableMapping
+		if err := json.Unmarshal([]byte(mappingsJSON), &mappings); err != nil {
+			return nil, fmt.Errorf("invalid mappings_json: %v", err)
+		}
+		scenario.VariableMappings = mappings
+	}
+
+	if err := ms.scenarioRepo.Update(scenario); err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Scenario '%s' (%s) updated successfully.", scenario.Name, id)), nil
+}
+
+func (ms *Server) deleteScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mdelete_scenario\033[0m | Args: %v", request.Params.Arguments)
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+	id, _ := args["id"].(string)
+	if id == "" {
+		return nil, fmt.Errorf("id is required")
+	}
+
+	if err := ms.scenarioRepo.Delete(id); err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Scenario %s deleted", id)), nil
 }
 
 func (ms *Server) listScenariosHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
