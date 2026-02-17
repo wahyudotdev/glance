@@ -51,22 +51,42 @@ func formatAddr(addr string) string {
 }
 
 func main() {
-	printBanner()
+
 	db.Init()
 
 	// Initialize repositories
+
 	configRepo := repository.NewSQLiteConfigRepository(db.DB)
+
 	trafficRepo := repository.NewSQLiteTrafficRepository(db.DB)
+
 	ruleRepo := repository.NewSQLiteRuleRepository(db.DB)
+
 	scenarioRepo := repository.NewSQLiteScenarioRepository(db.DB)
 
 	config.Init(configRepo)
+
 	cfg := config.Get()
 
 	proxyAddr := flag.String("proxy-addr", cfg.ProxyAddr, "proxy listen address")
+
 	apiAddr := flag.String("api-addr", cfg.APIAddr, "api/dashboard listen address")
+
 	mcpMode := flag.Bool("mcp", cfg.MCPEnabled, "run as MCP server")
+
+	versionFlag := flag.Bool("version", false, "display version information")
+
 	flag.Parse()
+
+	if *versionFlag {
+
+		fmt.Printf("Glance version %s\n", config.Version)
+
+		return
+
+	}
+
+	printBanner()
 
 	// Update config with flags if they were provided (flags override saved config)
 	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpMode != cfg.MCPEnabled {

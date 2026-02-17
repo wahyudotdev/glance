@@ -4,9 +4,10 @@ BINARY_NAME=glance
 FRONTEND_DIR=web/dashboard
 BACKEND_STATIC_DIR=internal/apiserver/dist
 BUILD_DIR=build
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 # Build flags
-LDFLAGS=-ldflags="-s -w"
+LDFLAGS=-ldflags="-s -w -X glance/internal/config.Version=$(VERSION)"
 
 .PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage load-test lint
 

@@ -125,12 +125,12 @@ func (s *Server) handleStatus(c *fiber.Ctx) error {
 		mcpSessions = s.mcp.ActiveSessions()
 	}
 	return c.JSON(fiber.Map{
+		"version":      config.Version,
 		"proxy_addr":   s.proxyAddr,
 		"mcp_sessions": mcpSessions,
 		"mcp_enabled":  s.mcp != nil,
 	})
 }
-
 func (s *Server) handleTraffic(c *fiber.Ctx) error {
 	cfg := config.Get()
 	page := c.QueryInt("page", 1)

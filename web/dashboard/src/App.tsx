@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
   // Traffic Hook
   const {
-    entries, totalEntries, currentPage, proxyAddr, mcpSessions, mcpEnabled, filter, setFilter,
+    entries, totalEntries, currentPage, proxyAddr, version, mcpSessions, mcpEnabled, filter, setFilter,
     filteredEntries, fetchTraffic, fetchStatus, clearTraffic,
     setEntries, setTotalEntries, currentPageRef, pageSizeRef
   } = useTraffic(config, toast);
@@ -664,6 +664,7 @@ const App: React.FC = () => {
         setCurrentView={setCurrentView} 
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        version={version}
       />
 
       <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>

@@ -6,13 +6,15 @@ interface SidebarProps {
   setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios') => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  version: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
   setCurrentView, 
   isCollapsed, 
-  onToggleCollapse 
+  onToggleCollapse,
+  version
 }) => {
   return (
     <aside className={`flex flex-col py-6 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 relative ${isCollapsed ? 'w-20' : 'w-64'}`}>
@@ -66,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className={`mt-auto px-6 pt-6 border-t border-slate-100 dark:border-slate-800 overflow-hidden ${isCollapsed ? 'px-0 flex justify-center' : ''}`}>
         <div className="flex flex-col gap-1">
           <span className={`text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest ${isCollapsed ? 'hidden' : ''}`}>Version</span>
-          <span className={`text-xs font-mono text-slate-500 dark:text-slate-400 ${isCollapsed ? 'scale-75' : ''}`}>v0.1.0</span>
+          <span className={`text-xs font-mono text-slate-500 dark:text-slate-400 ${isCollapsed ? 'scale-75' : ''}`}>{version.startsWith('v') ? version : `v${version}`}</span>
         </div>
       </div>
     </aside>

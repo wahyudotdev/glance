@@ -6,6 +6,7 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
   const [totalEntries, setTotalEntries] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [proxyAddr, setProxyAddr] = useState(':8000');
+  const [version, setVersion] = useState('dev');
   const [mcpSessions, setMcpSessions] = useState(0);
   const [mcpEnabled, setMcpEnabled] = useState(false);
   const [filter, setFilter] = useState('');
@@ -41,6 +42,7 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     try {
       const data = await apiFetch('/api/status');
       setProxyAddr(data.proxy_addr);
+      setVersion(data.version || 'dev');
       setMcpSessions(data.mcp_sessions || 0);
       setMcpEnabled(data.mcp_enabled || false);
     } catch (error) {
@@ -78,6 +80,7 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     totalEntries,
     currentPage,
     proxyAddr,
+    version,
     mcpSessions,
     mcpEnabled,
     filter,
