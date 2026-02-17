@@ -82,6 +82,29 @@ func createTables() {
 			strategy TEXT,
 			response_json TEXT
 		)`,
+		`CREATE TABLE IF NOT EXISTS scenarios (
+			id TEXT PRIMARY KEY,
+			name TEXT,
+			description TEXT,
+			created_at DATETIME
+		)`,
+		`CREATE TABLE IF NOT EXISTS scenario_steps (
+			id TEXT PRIMARY KEY,
+			scenario_id TEXT,
+			traffic_entry_id TEXT,
+			step_order INTEGER,
+			notes TEXT,
+			FOREIGN KEY(scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS variable_mappings (
+			id TEXT PRIMARY KEY,
+			scenario_id TEXT,
+			name TEXT,
+			source_entry_id TEXT,
+			source_path TEXT,
+			target_json_path TEXT,
+			FOREIGN KEY(scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, q := range queries {

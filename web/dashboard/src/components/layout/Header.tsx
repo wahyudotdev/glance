@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Trash2, Zap, Sun, Moon } from 'lucide-react';
+import { Search, Trash2, Zap, Sun, Moon, Circle, Square } from 'lucide-react';
 
 interface HeaderProps {
   proxyAddr: string;
@@ -10,6 +10,11 @@ interface HeaderProps {
   onClearTraffic: () => void;
   isDark: boolean;
   toggleDarkMode: () => void;
+  isRecording: boolean;
+  onToggleRecording: () => void;
+  recordedCount: number;
+  recordingFilter: string;
+  setRecordingFilter: (filter: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -20,7 +25,12 @@ export const Header: React.FC<HeaderProps> = ({
   setFilter, 
   onClearTraffic, 
   isDark,
-  toggleDarkMode
+  toggleDarkMode,
+  isRecording,
+  onToggleRecording,
+  recordedCount,
+  recordingFilter,
+  setRecordingFilter
 }) => {
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-colors">
@@ -41,6 +51,38 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </>
           )}
+        </div>
+
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full pr-1">
+          {!isRecording && (
+            <input 
+              type="text"
+              placeholder="Recording filter (url)..."
+              className="bg-transparent border-none text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 focus:outline-none w-40 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+              value={recordingFilter}
+              onChange={(e) => setRecordingFilter(e.target.value)}
+            />
+          )}
+          <button
+            onClick={onToggleRecording}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
+              isRecording 
+                ? 'bg-rose-500 text-white shadow-lg shadow-rose-200 dark:shadow-none animate-pulse' 
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
+            }`}
+          >
+            {isRecording ? (
+              <>
+                <Square size={10} fill="currentColor" />
+                Stop Recording ({recordedCount})
+              </>
+            ) : (
+              <>
+                <Circle size={10} fill="currentColor" />
+                Start Recording
+              </>
+            )}
+          </button>
         </div>
       </div>
       

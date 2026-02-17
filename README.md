@@ -14,6 +14,7 @@ Glance is a specialized MITM (Man-in-the-Middle) proxy designed for **AI Agents*
 - **Rule Engine**: Define rules to intercept and modify traffic on the fly.
 - **Mocks**: Return static responses (status, headers, body) for specific URL patterns.
 - **Breakpoints**: Pause matching requests or responses for manual modification in the dashboard before they proceed.
+- **Scenario Recording**: Group related requests into sequences to create automated test scripts or document complex workflows.
 - **CORS Support**: Mocked responses automatically handle preflight `OPTIONS` requests and include permissive headers.
 
 ### 🤖 AI Agent Integration (MCP)
@@ -37,12 +38,15 @@ Glance implements the Model Context Protocol, allowing AI agents to interact wit
 - `add_breakpoint_rule`: Create a breakpoint rule to pause traffic for manual inspection.
 - `list_rules`: List all active mocks and breakpoints.
 - `delete_rule`: Remove an interception rule by ID.
+- `list_scenarios`: List all recorded traffic scenarios.
+- `get_scenario`: Get full sequence details and variable mappings for a scenario.
 - `clear_traffic`: Reset/clear the captured traffic logs.
 - `get_proxy_status`: Get real-time proxy address and status.
 
 ### Prompts
 - `analyze-traffic`: Pre-defined prompt to have an AI analyze recent traffic for errors or anomalies.
 - `generate-api-docs`: Pre-defined prompt to generate OpenAPI documentation from captured traffic.
+- `generate-scenario-test`: Pre-defined prompt to transform a recorded scenario into an automated test script (e.g., Playwright).
 
 ### 📱 Client & Environment Support
 - **Java/JVM**: Specialized overrides for `HttpsURLConnection` to support already-running apps (Java 8+).

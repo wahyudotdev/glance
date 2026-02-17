@@ -27,3 +27,12 @@ type RuleRepository interface {
 	Update(rule *model.Rule) error
 	Delete(id string) error
 }
+
+// ScenarioRepository defines the interface for managing recorded traffic scenarios.
+type ScenarioRepository interface {
+	GetAll() ([]*model.Scenario, error)
+	GetByID(id string) (*model.Scenario, error)
+	Add(scenario *model.Scenario) error
+	Update(scenario *model.Scenario) error
+	Delete(id string) error
+}

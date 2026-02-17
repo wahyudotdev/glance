@@ -1,9 +1,9 @@
 import React from 'react';
-import { Globe, Sparkles, Settings, Code, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Globe, Sparkles, Settings, Code, ShieldAlert, ChevronLeft, ChevronRight, ListPlus } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'traffic' | 'integrations' | 'settings' | 'rules';
-  setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules') => void;
+  currentView: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios';
+  setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios') => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -43,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {[
           { id: 'traffic', label: 'Traffic Inspector', icon: <Globe size={20} /> },
           { id: 'integrations', label: 'Integrations', icon: <Code size={20} /> },
+          { id: 'scenarios', label: 'Traffic Scenarios', icon: <ListPlus size={20} /> },
           { id: 'rules', label: 'Breakpoint Rules', icon: <ShieldAlert size={20} /> },
           { id: 'settings', label: 'System Settings', icon: <Settings size={20} /> },
         ].map((item) => (

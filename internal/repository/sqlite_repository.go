@@ -7,6 +7,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type sqliteConfigRepository struct {
@@ -225,5 +227,160 @@ func (r *sqliteRuleRepository) Update(rule *model.Rule) error {
 
 func (r *sqliteRuleRepository) Delete(id string) error {
 	_, err := r.db.Exec("DELETE FROM rules WHERE id = ?", id)
+	return err
+}
+
+type sqliteScenarioRepository struct {
+	db *sql.DB
+}
+
+// NewSQLiteScenarioRepository creates a new SQLite-backed ScenarioRepository.
+func NewSQLiteScenarioRepository(db *sql.DB) ScenarioRepository {
+	return &sqliteScenarioRepository{db: db}
+}
+
+func (r *sqliteScenarioRepository) GetAll() ([]*model.Scenario, error) {
+	rows, err := r.db.Query("SELECT id FROM scenarios ORDER BY created_at DESC")
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	_ = rows.Close() // Close immediately to release the connection
+
+	var scenarios []*model.Scenario
+	for _, id := range ids {
+		s, err := r.GetByID(id)
+		if err != nil {
+			log.Printf("Error loading scenario %s: %v", id, err)
+			continue
+		}
+		scenarios = append(scenarios, s)
+	}
+	return scenarios, nil
+}
+
+func (r *sqliteScenarioRepository) GetByID(id string) (*model.Scenario, error) {
+	s := &model.Scenario{}
+	err := r.db.QueryRow("SELECT id, name, description, created_at FROM scenarios WHERE id = ?", id).
+		Scan(&s.ID, &s.Name, &s.Description, &s.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load steps
+	stepRows, err := r.db.Query("SELECT id, traffic_entry_id, step_order, notes FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC", id)
+	if err == nil {
+		defer func() { _ = stepRows.Close() }()
+		for stepRows.Next() {
+			var step model.ScenarioStep
+			if err := stepRows.Scan(&step.ID, &step.TrafficEntryID, &step.Order, &step.Notes); err == nil {
+				s.Steps = append(s.Steps, step)
+			}
+		}
+	}
+
+	// Load mappings
+	mappingRows, err := r.db.Query("SELECT name, source_entry_id, source_path, target_json_path FROM variable_mappings WHERE scenario_id = ?", id)
+	if err == nil {
+		defer func() { _ = mappingRows.Close() }()
+		for mappingRows.Next() {
+			var m model.VariableMapping
+			if err := mappingRows.Scan(&m.Name, &m.SourceEntryID, &m.SourcePath, &m.TargetJSONPath); err == nil {
+				s.VariableMappings = append(s.VariableMappings, m)
+			}
+		}
+	}
+
+	return s, nil
+}
+
+func (r *sqliteScenarioRepository) Add(s *model.Scenario) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.Exec("INSERT INTO scenarios (id, name, description, created_at) VALUES (?, ?, ?, ?)",
+		s.ID, s.Name, s.Description, s.CreatedAt)
+	if err != nil {
+		log.Printf("Error inserting scenario: %v", err)
+		return err
+	}
+
+	for _, step := range s.Steps {
+		if step.ID == "" {
+			step.ID = uuid.New().String()
+		}
+		_, err = tx.Exec("INSERT INTO scenario_steps (id, scenario_id, traffic_entry_id, step_order, notes) VALUES (?, ?, ?, ?, ?)",
+			step.ID, s.ID, step.TrafficEntryID, step.Order, step.Notes)
+		if err != nil {
+			log.Printf("Error inserting scenario step: %v", err)
+			return err
+		}
+	}
+
+	for _, m := range s.VariableMappings {
+		_, err = tx.Exec("INSERT INTO variable_mappings (id, scenario_id, name, source_entry_id, source_path, target_json_path) VALUES (?, ?, ?, ?, ?, ?)",
+			uuid.New().String(), s.ID, m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath)
+		if err != nil {
+			log.Printf("Error inserting variable mapping: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *sqliteScenarioRepository) Update(s *model.Scenario) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.Exec("UPDATE scenarios SET name = ?, description = ? WHERE id = ?", s.Name, s.Description, s.ID)
+	if err != nil {
+		log.Printf("Error updating scenario: %v", err)
+		return err
+	}
+
+	// Simple approach: delete and re-insert steps and mappings
+	_, _ = tx.Exec("DELETE FROM scenario_steps WHERE scenario_id = ?", s.ID)
+	_, _ = tx.Exec("DELETE FROM variable_mappings WHERE scenario_id = ?", s.ID)
+
+	for _, step := range s.Steps {
+		if step.ID == "" {
+			step.ID = uuid.New().String()
+		}
+		_, err = tx.Exec("INSERT INTO scenario_steps (id, scenario_id, traffic_entry_id, step_order, notes) VALUES (?, ?, ?, ?, ?)",
+			step.ID, s.ID, step.TrafficEntryID, step.Order, step.Notes)
+		if err != nil {
+			log.Printf("Error re-inserting scenario step: %v", err)
+			return err
+		}
+	}
+
+	for _, m := range s.VariableMappings {
+		_, err = tx.Exec("INSERT INTO variable_mappings (id, scenario_id, name, source_entry_id, source_path, target_json_path) VALUES (?, ?, ?, ?, ?, ?)",
+			uuid.New().String(), s.ID, m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath)
+		if err != nil {
+			log.Printf("Error re-inserting variable mapping: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *sqliteScenarioRepository) Delete(id string) error {
+	_, err := r.db.Exec("DELETE FROM scenarios WHERE id = ?", id)
 	return err
 }

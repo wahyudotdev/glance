@@ -32,3 +32,26 @@ export interface AndroidDevice {
   model: string;
   name: string;
 }
+
+export interface VariableMapping {
+  name: string;
+  source_entry_id: string;
+  source_path: string;
+  target_json_path: string;
+}
+
+export interface ScenarioStep {
+  id: string;
+  traffic_entry_id: string;
+  order: number;
+  notes?: string;
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  steps: ScenarioStep[];
+  variable_mappings: VariableMapping[];
+  created_at: string;
+}

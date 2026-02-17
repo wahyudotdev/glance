@@ -10,6 +10,7 @@ import (
 	"glance/internal/mcp"
 	"glance/internal/model"
 	"glance/internal/proxy"
+	"glance/internal/repository"
 	"io"
 	"log"
 	"net"
@@ -25,17 +26,18 @@ import (
 
 // Server manages the HTTP and WebSocket endpoints for the application.
 type Server struct {
-	store       *interceptor.TrafficStore
-	proxy       *proxy.Proxy
-	mcp         *mcp.Server
-	app         *fiber.App
-	proxyAddr   string
-	restartChan chan bool
-	Hub         *Hub
+	store        *interceptor.TrafficStore
+	proxy        *proxy.Proxy
+	mcp          *mcp.Server
+	scenarioRepo repository.ScenarioRepository
+	app          *fiber.App
+	proxyAddr    string
+	restartChan  chan bool
+	Hub          *Hub
 }
 
 // NewServer creates and initializes a new Server instance.
-func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string, mcpServer *mcp.Server) *Server {
+func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string, mcpServer *mcp.Server, scenarioRepo repository.ScenarioRepository) *Server {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
@@ -59,13 +61,14 @@ func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string
 	})
 
 	return &Server{
-		store:       store,
-		proxy:       p,
-		mcp:         mcpServer,
-		app:         app,
-		proxyAddr:   proxyAddr,
-		restartChan: make(chan bool, 1),
-		Hub:         hub,
+		store:        store,
+		proxy:        p,
+		mcp:          mcpServer,
+		scenarioRepo: scenarioRepo,
+		app:          app,
+		proxyAddr:    proxyAddr,
+		restartChan:  make(chan bool, 1),
+		Hub:          hub,
 	}
 }
 
@@ -84,6 +87,13 @@ func (s *Server) RegisterRoutes() {
 	s.app.Post("/api/intercept/continue/:id", s.handleContinueRequest)
 	s.app.Post("/api/intercept/response/continue/:id", s.handleContinueResponse)
 	s.app.Post("/api/intercept/abort/:id", s.handleAbortRequest)
+
+	// Scenario routes
+	s.app.Get("/api/scenarios", s.handleListScenarios)
+	s.app.Get("/api/scenarios/:id", s.handleGetScenario)
+	s.app.Post("/api/scenarios", s.handleCreateScenario)
+	s.app.Put("/api/scenarios/:id", s.handleUpdateScenario)
+	s.app.Delete("/api/scenarios/:id", s.handleDeleteScenario)
 
 	// WebSocket for real-time traffic
 	s.app.Get("/ws/traffic", websocket.New(func(c *websocket.Conn) {
@@ -347,7 +357,7 @@ func (s *Server) Listen(addr string) (string, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Printf("API Port %s is in use, falling back to a random port...", addr)
-		ln, err = net.Listen("tcp", ":0")
+		ln, err = net.Listen("tcp", ":0") //nolint:gosec
 		if err != nil {
 			return "", err
 		}

@@ -17,7 +17,10 @@ import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { RulesView } from './components/settings/RulesView';
 import { RuleEditor } from './components/settings/RuleEditor';
+import { ScenariosView } from './components/traffic/ScenariosView';
+import { ScenarioEditor } from './components/traffic/ScenarioEditor';
 import type { Rule } from './components/settings/RulesView';
+import type { Scenario } from './types/traffic';
 
 // UI Components
 import { Modal } from './components/ui/Modal';
@@ -61,15 +64,104 @@ const App: React.FC = () => {
   } = useTraffic(config, toast);
 
   // UI State
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules'>('traffic');
+  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
+  const [isScenarioEditorOpen, setIsScenarioEditorOpen] = useState(false);
   const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
   const [isTerminalDocsOpen, setIsTerminalDocsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+
+  // Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedEntries, setRecordedEntries] = useState<TrafficEntry[]>([]);
+  const [recordingFilter, setRecordingFilter] = useState('');
+  const isRecordingRef = React.useRef(isRecording);
+  const recordingFilterRef = React.useRef(recordingFilter);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    recordingFilterRef.current = recordingFilter;
+  }, [recordingFilter]);
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      // STOP recording -> Open editor with current recorded steps
+      const newScenario: Scenario = {
+        id: '',
+        name: `Recording ${new Date().toLocaleString()}`,
+        description: '',
+        steps: recordedEntries.map((e, i) => ({
+          id: '',
+          traffic_entry_id: e.id,
+          order: i + 1,
+          notes: ''
+        })),
+        variable_mappings: [],
+        created_at: new Date().toISOString()
+      };
+      setSelectedScenario(newScenario);
+      setIsScenarioEditorOpen(true);
+      setIsRecording(false);
+      setRecordedEntries([]);
+    } else {
+      // START recording
+      setRecordedEntries([]);
+      setIsRecording(true);
+      toast('info', 'Recording Started', 'All incoming requests will be added to the new scenario sequence.');
+    }
+  };
+
+  const fetchScenarios = async () => {
+    setIsLoadingScenarios(true);
+    try {
+      const data = await apiFetch('/api/scenarios');
+      setScenarios(data || []);
+    } catch (error) {
+      toast('error', 'Fetch Scenarios Failed', String(error));
+    } finally {
+      setIsLoadingScenarios(false);
+    }
+  };
+
+  const handleSaveScenario = async (scenario: Scenario) => {
+    try {
+      const isUpdate = !!scenario.id;
+      const url = isUpdate ? `/api/scenarios/${scenario.id}` : '/api/scenarios';
+      const method = isUpdate ? 'PUT' : 'POST';
+
+      await apiFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scenario)
+      });
+
+      await fetchScenarios();
+      setIsScenarioEditorOpen(false);
+      setSelectedScenario(null);
+      setCurrentView('scenarios');
+      toast('success', isUpdate ? 'Scenario Updated' : 'Scenario Created', `Successfully saved "${scenario.name}".`);
+    } catch (error) {
+      toast('error', 'Save Failed', String(error));
+    }
+  };
+
+  const handleDeleteScenario = async (id: string) => {
+    try {
+      await apiFetch(`/api/scenarios/${id}`, { method: 'DELETE' });
+      setScenarios(prev => prev.filter(s => s.id !== id));
+      toast('success', 'Scenario Deleted', 'The scenario has been removed.');
+    } catch (error) {
+      toast('error', 'Delete Failed', String(error));
+    }
+  };
 
   const [detailsWidth, setDetailsWidth] = useState(() => {
     const saved = localStorage.getItem('glance-details-width');
@@ -125,13 +217,29 @@ const App: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
   const [isLoadingRules, setIsLoadingRules] = useState(false);
 
+  // Scenarios State
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [isLoadingScenarios, setIsLoadingScenarios] = useState(false);
+
   // --- API Actions ---
 
   const apiFetch = async (url: string, options?: RequestInit) => {
-    const res = await fetch(url, options);
-    if (!res.ok) throw new Error(await res.text());
-    if (res.status === 204) return null;
-    return res.json();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(await res.text());
+      if (res.status === 204) return null;
+      return res.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   };
 
   const handleClear = async () => {
@@ -249,6 +357,38 @@ const App: React.FC = () => {
       toast('success', 'Rule Updated', 'The rule has been modified.');
     } catch (error) {
       toast('error', 'Update Rule Failed', String(error));
+    }
+  };
+
+  const handleAddToScenario = (entry: TrafficEntry) => {
+    if (isScenarioEditorOpen && selectedScenario) {
+      const updatedSteps = [...(selectedScenario.steps || [])];
+      updatedSteps.push({
+        id: '',
+        traffic_entry_id: entry.id,
+        order: updatedSteps.length + 1,
+        notes: ''
+      });
+      setSelectedScenario({ ...selectedScenario, steps: updatedSteps });
+      toast('success', 'Added to Scenario', `Added ${entry.method} ${new URL(entry.url).pathname} to the current sequence.`);
+    } else {
+      // Create new scenario with this one step
+      const newScenario: Scenario = {
+        id: '',
+        name: `New Scenario ${new Date().toLocaleTimeString()}`,
+        description: '',
+        steps: [{
+          id: '',
+          traffic_entry_id: entry.id,
+          order: 1,
+          notes: ''
+        }],
+        variable_mappings: [],
+        created_at: new Date().toISOString()
+      };
+      setSelectedScenario(newScenario);
+      setIsScenarioEditorOpen(true);
+      toast('info', 'New Scenario', 'Started a new scenario with this request.');
     }
   };
 
@@ -410,6 +550,14 @@ const App: React.FC = () => {
 
           const entry: TrafficEntry = msg;
           setTotalEntries(prev => prev + 1);
+
+          if (isRecordingRef.current) {
+            const filter = recordingFilterRef.current.toLowerCase();
+            if (!filter || entry.url.toLowerCase().includes(filter)) {
+              setRecordedEntries(prev => [...prev, entry]);
+            }
+          }
+
           setEntries((prev) => {
             if (currentPageRef.current === 1) {
               const updated = [...prev, entry];
@@ -440,6 +588,9 @@ const App: React.FC = () => {
     if (currentView === 'rules') {
       fetchRules();
     }
+    if (currentView === 'scenarios') {
+      fetchScenarios();
+    }
   }, [currentView]);
 
   return (
@@ -461,6 +612,11 @@ const App: React.FC = () => {
           onClearTraffic={() => setIsClearModalOpen(true)} 
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
+          isRecording={isRecording}
+          onToggleRecording={handleToggleRecording}
+          recordedCount={recordedEntries.length}
+          recordingFilter={recordingFilter}
+          setRecordingFilter={setRecordingFilter}
         />
 
         <main className="flex-1 flex overflow-hidden" onClick={() => setSelectedEntry(null)}>
@@ -503,7 +659,7 @@ const App: React.FC = () => {
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div className="flex-shrink-0 h-full overflow-hidden flex flex-col" style={{ width: `${detailsWidth}%` }} onClick={(e) => e.stopPropagation()}>
-                    <DetailsPanel entry={selectedEntry} onEdit={() => setIsRequestEditorOpen(true)} onClose={() => setSelectedEntry(null)} onBreak={handleCreateBreakpoint} onMock={handleCreateMock} />
+                    <DetailsPanel entry={selectedEntry} onEdit={() => setIsRequestEditorOpen(true)} onClose={() => setSelectedEntry(null)} onBreak={handleCreateBreakpoint} onMock={handleCreateMock} onAddToScenario={handleAddToScenario} />
                   </div>
                 </>
               )}
@@ -528,6 +684,16 @@ const App: React.FC = () => {
           {currentView === 'settings' && (
             <SettingsView config={config} setConfig={setConfig} onSave={saveConfig} onReset={fetchConfig} onShowMCP={() => setIsMCPDocsOpen(true)} />
           )}
+
+          {currentView === 'scenarios' && (
+            <ScenariosView 
+              scenarios={scenarios}
+              isLoading={isLoadingScenarios}
+              onSelect={(s) => { setSelectedScenario(s); setIsScenarioEditorOpen(true); }}
+              onDelete={handleDeleteScenario}
+              onCreateNew={() => { setSelectedScenario(null); setIsScenarioEditorOpen(true); }}
+            />
+          )}
         </main>
       </div>
 
@@ -546,6 +712,14 @@ const App: React.FC = () => {
       )}
 
       <RuleEditor isOpen={isRuleEditorOpen} onClose={() => setIsRuleEditorOpen(false)} rule={selectedRule} onSave={handleUpdateRule} />
+
+      <ScenarioEditor 
+        isOpen={isScenarioEditorOpen} 
+        onClose={() => { setIsScenarioEditorOpen(false); setSelectedScenario(null); }}
+        scenario={selectedScenario}
+        onSave={handleSaveScenario}
+        availableTraffic={entries} // Simplification: we might need a way to fetch missing entries
+      />
 
       <Toast toasts={toasts} onClose={removeToast} />
 

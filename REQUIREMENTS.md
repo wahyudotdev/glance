@@ -57,14 +57,27 @@ An application inspired by HTTP Toolkit for intercepting, inspecting, and mockin
     - `generate-api-docs`: Pre-defined prompt to generate OpenAPI documentation from the captured traffic.
 
 ### 1.6 Breakpoints (Manual Interception)
-- **Pause & Edit Flow:** 
+- **Pause & Edit Flow**: 
     - Automatically pause matching requests before they are sent to the server.
     - Allow manual modification of Method, URL, Headers, and Body in the Dashboard.
     - Resume the modified request or abort it.
-- **Breakpoint Rules:**
+- **Breakpoint Rules**:
     - Define filters (URL patterns, Methods) to trigger pauses.
     - "Break on next like this": Quick-create rules from existing captured traffic.
-- **Real-time Notification:** Instant UI feedback via WebSockets when a request is caught by a breakpoint.
+- **Real-time Notification**: Instant UI feedback via WebSockets when a request is caught by a breakpoint.
+
+### 1.7 Scenario Recording & AI Test Generation
+- **Scenario Management**:
+    - **Recording Mode**: Ability to start/stop a recording session to group related requests.
+    - **Manual Selection**: Create scenarios by selecting multiple entries from the traffic history.
+    - **Sequence Editing**: Reorder, delete, or annotate requests within a scenario.
+- **Variable Mapping (Smart Linking)**:
+    - Identify dependencies where a value from a previous response (e.g., an ID or Token) is used in a subsequent request.
+    - Manual or AI-assisted mapping of these dynamic variables to guide test script generation.
+- **Test Generation (MCP & UI)**:
+    - **MCP Tool `get_scenario`**: Allow AI agents to retrieve the full sequence of a scenario.
+    - **Automated Script Export**: One-click generation of test scripts (Playwright, Cypress, or Go) based on the scenario and variable mappings.
+    - **AI Prompt `generate-test-script`**: Specialized prompt to help AI agents transform traffic sequences into robust, parameterized automated tests.
 
 ## 2. User Interface
 - **Web Dashboard:** A modern, responsive web UI to manage the proxy and view traffic.

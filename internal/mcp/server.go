@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"glance/internal/interceptor"
 	"glance/internal/model"
+	"glance/internal/repository"
 	"glance/internal/rules"
 	"io"
 	"log"
@@ -22,22 +23,24 @@ import (
 
 // Server manages the MCP connection and tool registrations.
 type Server struct {
-	store     *interceptor.TrafficStore
-	engine    *rules.Engine
-	proxyAddr string
-	server    *server.MCPServer
+	store        *interceptor.TrafficStore
+	engine       *rules.Engine
+	scenarioRepo repository.ScenarioRepository
+	proxyAddr    string
+	server       *server.MCPServer
 }
 
 // NewServer creates and initializes a new Server instance.
-func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string) *Server {
+func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string, scenarioRepo repository.ScenarioRepository) *Server {
 	// Initialize the MCP server
 	s := server.NewMCPServer("Glance", "1.0.0")
 
 	ms := &Server{
-		store:     store,
-		engine:    engine,
-		proxyAddr: proxyAddr,
-		server:    s,
+		store:        store,
+		engine:       engine,
+		scenarioRepo: scenarioRepo,
+		proxyAddr:    proxyAddr,
+		server:       s,
 	}
 
 	ms.registerTools()
@@ -111,6 +114,90 @@ func (ms *Server) registerTools() {
 		mcp.WithString("body", mcp.Description("Request body")),
 		mcp.WithString("base_id", mcp.Description("Optional: The ID of an existing request to use as a template (replay)")),
 	), ms.executeRequestHandler)
+
+	// Scenario Tools
+	ms.server.AddTool(mcp.NewTool("list_scenarios",
+		mcp.WithDescription("List all recorded traffic scenarios (sequences of requests for test generation)."),
+	), ms.listScenariosHandler)
+
+	ms.server.AddTool(mcp.NewTool("get_scenario",
+		mcp.WithDescription("Get full details of a scenario, including the sequence of requests, responses, and variable mappings."),
+		mcp.WithString("id", mcp.Description("The ID of the scenario")),
+	), ms.getScenarioHandler)
+}
+
+func (ms *Server) listScenariosHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_scenarios\033[0m")
+	scenarios, err := ms.scenarioRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	var sb strings.Builder
+	for _, s := range scenarios {
+		sb.WriteString(fmt.Sprintf("ID: %s | Name: %s | Description: %s\n", s.ID, s.Name, s.Description))
+	}
+	if sb.Len() == 0 {
+		return mcp.NewToolResultText("No scenarios found."), nil
+	}
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
+func (ms *Server) getScenarioHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_scenario\033[0m | Args: %v", request.Params.Arguments)
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing arguments")
+	}
+	id, _ := args["id"].(string)
+	scenario, err := ms.scenarioRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Scenario: %s\nDescription: %s\n\n", scenario.Name, scenario.Description))
+
+	sb.WriteString("Variable Mappings:\n")
+	for _, m := range scenario.VariableMappings {
+		sb.WriteString(fmt.Sprintf("- Variable '%s' is extracted from %s (%s) and used in %s\n",
+			m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath))
+	}
+	sb.WriteString("\nSteps (Sequence):\n")
+
+	// To provide full context, we need to fetch the actual traffic entries for each step
+	entries, _ := ms.store.GetPage(0, 1000)
+	entryMap := make(map[string]*model.TrafficEntry)
+	for _, e := range entries {
+		entryMap[e.ID] = e
+	}
+
+	for _, step := range scenario.Steps {
+		e, found := entryMap[step.TrafficEntryID]
+		if !found {
+			sb.WriteString(fmt.Sprintf("%d. [MISSING ENTRY %s]\n", step.Order, step.TrafficEntryID))
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("%d. [%s] %s (Status: %d)\n", step.Order, e.Method, e.URL, e.Status))
+		if step.Notes != "" {
+			sb.WriteString(fmt.Sprintf("   Note: %s\n", step.Notes))
+		}
+		// Brief details for AI to understand the structure
+		sb.WriteString(fmt.Sprintf("   Request Headers: %v\n", e.RequestHeaders))
+		if e.RequestBody != "" {
+			sb.WriteString(fmt.Sprintf("   Request Body: %s\n", e.RequestBody))
+		}
+		if e.ResponseBody != "" {
+			// Truncate response body if too long for MCP message
+			body := e.ResponseBody
+			if len(body) > 1000 {
+				body = body[:1000] + "... [truncated]"
+			}
+			sb.WriteString(fmt.Sprintf("   Response Body: %s\n", body))
+		}
+		sb.WriteString("\n")
+	}
+
+	return mcp.NewToolResultText(sb.String()), nil
 }
 
 func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -315,6 +402,40 @@ func (ms *Server) registerPrompts() {
 	ms.server.AddPrompt(mcp.NewPrompt("generate-api-docs",
 		mcp.WithPromptDescription("Generate API documentation from captured traffic"),
 	), ms.generateAPIDocsPromptHandler)
+
+	// Register generate-scenario-test prompt
+	ms.server.AddPrompt(mcp.NewPrompt("generate-scenario-test",
+		mcp.WithPromptDescription("Generate an automated test script for a specific scenario"),
+		mcp.WithArgument("id", mcp.ArgumentDescription("The ID of the scenario"), mcp.RequiredArgument()),
+		mcp.WithArgument("framework", mcp.ArgumentDescription("Test framework (playwright, cypress, go)")),
+	), ms.generateScenarioTestPromptHandler)
+}
+
+func (ms *Server) generateScenarioTestPromptHandler(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	id, ok := request.Params.Arguments["id"]
+	if !ok {
+		return nil, fmt.Errorf("scenario id is required")
+	}
+	framework := request.Params.Arguments["framework"]
+	if framework == "" {
+		framework = "playwright"
+	}
+
+	scenario, err := ms.scenarioRepo.GetByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("scenario not found: %v", err)
+	}
+
+	// Reuse logic from getScenarioHandler to build the context
+	// (Alternatively, we could tell the AI to call get_scenario(id) first)
+	prompt := fmt.Sprintf("Please generate an automated test script using %s for the following scenario: '%s'.\n", framework, scenario.Name)
+	prompt += "Use the variable mappings provided to handle dynamic values between requests."
+
+	return mcp.NewGetPromptResult(prompt,
+		[]mcp.PromptMessage{
+			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent(fmt.Sprintf("Scenario ID: %s", id))),
+		},
+	), nil
 }
 
 func (ms *Server) analyzeTrafficPromptHandler(_ context.Context, _ mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {

@@ -70,3 +70,29 @@ type MockResponse struct {
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
 }
+
+// VariableMapping defines how a value from one response is used in a subsequent request.
+type VariableMapping struct {
+	Name           string `json:"name"`             // e.g., "sessionToken"
+	SourceEntryID  string `json:"source_entry_id"`  // ID of the traffic entry providing the value
+	SourcePath     string `json:"source_path"`      // e.g., "body.token" or "header.Set-Cookie"
+	TargetJSONPath string `json:"target_json_path"` // e.g., "header.Authorization" or "body.user.id"
+}
+
+// ScenarioStep represents a single step in a recorded sequence.
+type ScenarioStep struct {
+	ID             string `json:"id"`
+	TrafficEntryID string `json:"traffic_entry_id"`
+	Order          int    `json:"order"`
+	Notes          string `json:"notes,omitempty"`
+}
+
+// Scenario represents a sequence of related traffic entries for test generation.
+type Scenario struct {
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	Description      string            `json:"description"`
+	Steps            []ScenarioStep    `json:"steps"`
+	VariableMappings []VariableMapping `json:"variable_mappings"`
+	CreatedAt        time.Time         `json:"created_at"`
+}

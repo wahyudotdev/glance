@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3 } from 'lucide-react';
+import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus } from 'lucide-react';
 import type { TrafficEntry } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 
@@ -9,9 +9,10 @@ interface DetailsPanelProps {
   onClose?: () => void;
   onBreak?: (entry: TrafficEntry) => void;
   onMock?: (entry: TrafficEntry) => void;
+  onAddToScenario?: (entry: TrafficEntry) => void;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak, onMock }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClose, onBreak, onMock, onAddToScenario }) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
@@ -171,6 +172,16 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
                   Mock this
                 </button>
               </>
+            )}
+            {onAddToScenario && (
+              <button 
+                onClick={() => onAddToScenario(entry)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
+                title="Add this request to a new or existing scenario"
+              >
+                <ListPlus size={14} />
+                Add to Scenario
+              </button>
             )}
             <button 
               onClick={handleCopyCurl}

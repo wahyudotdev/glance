@@ -58,6 +58,7 @@ func main() {
 	configRepo := repository.NewSQLiteConfigRepository(db.DB)
 	trafficRepo := repository.NewSQLiteTrafficRepository(db.DB)
 	ruleRepo := repository.NewSQLiteRuleRepository(db.DB)
+	scenarioRepo := repository.NewSQLiteScenarioRepository(db.DB)
 
 	config.Init(configRepo)
 	cfg := config.Get()
@@ -97,11 +98,11 @@ func main() {
 	// Initialize MCP Server if requested
 	var mcpServer *mcp.Server
 	if *mcpMode {
-		mcpServer = mcp.NewServer(p.Store, p.Engine, actualProxyAddr)
+		mcpServer = mcp.NewServer(p.Store, p.Engine, actualProxyAddr, scenarioRepo)
 	}
 
 	// Start API Server
-	apiServer := apiserver.NewServer(p.Store, p, actualProxyAddr, mcpServer)
+	apiServer := apiserver.NewServer(p.Store, p, actualProxyAddr, mcpServer, scenarioRepo)
 	apiServer.RegisterRoutes()
 
 	// Connect Proxy to WebSocket Hub
