@@ -31,10 +31,7 @@ jobs:
           cache-dependency-path: web/dashboard/package-lock.json
 
       - name: Install Frontend Dependencies
-        run: cd web/dashboard && npm install
-
-      - name: Build Frontend
-        run: make build-frontend
+        run: cd web/dashboard && npm ci
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

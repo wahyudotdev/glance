@@ -18,7 +18,7 @@ build: build-frontend build-backend
 build-frontend:
 	@echo "Building React frontend..."
 	rm -rf $(FRONTEND_DIR)/dist
-	cd $(FRONTEND_DIR) && npm install && npm run build
+	cd $(FRONTEND_DIR) && npm install --no-save && npm run build
 	@echo "Copying frontend assets to backend..."
 	rm -rf $(BACKEND_STATIC_DIR)
 	mkdir -p $(BACKEND_STATIC_DIR)
