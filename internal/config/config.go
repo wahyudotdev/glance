@@ -21,7 +21,6 @@ func Get() *model.Config {
 		return &model.Config{
 			ProxyAddr:  ":8000",
 			APIAddr:    ":8081",
-			MCPAddr:    ":8082",
 			MCPEnabled: false,
 		}
 	}

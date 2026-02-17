@@ -10,6 +10,7 @@ interface MCPDocsProps {
 export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [copiedCLI, setCopiedCLI] = useState(false);
 
   if (!isOpen) return null;
 
@@ -17,6 +18,13 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
     navigator.clipboard.writeText(mcpUrl);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const handleCopyCLI = () => {
+    const cmd = `claude mcp add --transport http glance ${mcpUrl}`;
+    navigator.clipboard.writeText(cmd);
+    setCopiedCLI(true);
+    setTimeout(() => setCopiedCLI(false), 2000);
   };
 
   const handleCopyConfig = () => {
@@ -69,6 +77,23 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
             </h4>
             
             <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Claude Code (CLI)</p>
+                  <button 
+                    onClick={handleCopyCLI}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-indigo-500 transition-all active:scale-95"
+                  >
+                    {copiedCLI ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedCLI ? 'Copied!' : 'Copy Command'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">Run this in your terminal:</p>
+                <code className="text-[10px] bg-slate-900 text-blue-300 p-3 rounded-xl font-mono block border border-slate-800 select-all">
+                  claude mcp add --transport http glance {mcpUrl}
+                </code>
+              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Claude Desktop</p>

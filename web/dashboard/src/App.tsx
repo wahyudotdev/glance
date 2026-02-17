@@ -48,7 +48,6 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<Config>({
     proxy_addr: ':15500',
     api_addr: ':15501',
-    mcp_addr: ':15502',
     mcp_enabled: false,
     history_limit: 500,
     max_response_size: 1048576,
@@ -490,7 +489,6 @@ const App: React.FC = () => {
       const needsRestart = originalConfig && (
         newConfig.proxy_addr !== originalConfig.proxy_addr ||
         newConfig.api_addr !== originalConfig.api_addr ||
-        newConfig.mcp_addr !== originalConfig.mcp_addr ||
         newConfig.mcp_enabled !== originalConfig.mcp_enabled
       );
 

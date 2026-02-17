@@ -24,7 +24,6 @@ func (r *sqliteConfigRepository) Get() (*model.Config, error) {
 	cfg := &model.Config{
 		ProxyAddr:       ":15500",
 		APIAddr:         ":15501",
-		MCPAddr:         ":15502",
 		MCPEnabled:      false,
 		HistoryLimit:    500,
 		MaxResponseSize: 1024 * 1024, // 1 MB

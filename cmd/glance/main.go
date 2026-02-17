@@ -65,21 +65,18 @@ func main() {
 
 	proxyAddr := flag.String("proxy-addr", cfg.ProxyAddr, "proxy listen address")
 	apiAddr := flag.String("api-addr", cfg.APIAddr, "api/dashboard listen address")
-	mcpAddr := flag.String("mcp-addr", cfg.MCPAddr, "mcp server listen address (SSE)")
 	mcpMode := flag.Bool("mcp", cfg.MCPEnabled, "run as MCP server")
 	flag.Parse()
 
 	// Update config with flags if they were provided (flags override saved config)
-	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpAddr != cfg.MCPAddr || *mcpMode != cfg.MCPEnabled {
+	if *proxyAddr != cfg.ProxyAddr || *apiAddr != cfg.APIAddr || *mcpMode != cfg.MCPEnabled {
 		cfg.ProxyAddr = *proxyAddr
 		cfg.APIAddr = *apiAddr
-		cfg.MCPAddr = *mcpAddr
 		cfg.MCPEnabled = *mcpMode
 		if err := config.Save(cfg); err != nil {
 			log.Printf("Warning: Failed to save updated config: %v", err)
 		}
 	}
-
 	// Check for Java Agent injection mode (used internally)
 	if len(flag.Args()) > 0 && flag.Args()[0] == "inject-agent" {
 		return
