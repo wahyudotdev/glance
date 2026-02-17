@@ -64,7 +64,15 @@ const App: React.FC = () => {
   } = useTraffic(config, toast);
 
   // UI State
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios'>('traffic');
+  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios'>(() => {
+    const saved = localStorage.getItem('glance-current-view');
+    return (saved as any) || 'traffic';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('glance-current-view', currentView);
+  }, [currentView]);
+
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
@@ -857,7 +865,7 @@ const App: React.FC = () => {
 
       <MCPDocs 
         isOpen={isMCPDocsOpen} onClose={() => setIsMCPDocsOpen(false)}
-        mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.mcp_addr}/sse`}
+        mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.api_addr}/mcp`}
       />
 
       <TerminalDocs 

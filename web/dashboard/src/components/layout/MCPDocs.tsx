@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bot, Zap, Code, ShieldAlert, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, Zap, Code, ShieldAlert, X, Copy, Check } from 'lucide-react';
 
 interface MCPDocsProps {
   isOpen: boolean;
@@ -8,7 +8,30 @@ interface MCPDocsProps {
 }
 
 export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => {
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedConfig, setCopiedConfig] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(mcpUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const handleCopyConfig = () => {
+    const config = JSON.stringify({
+      mcpServers: {
+        glance: {
+          type: "http",
+          url: mcpUrl
+        }
+      }
+    }, null, 2);
+    navigator.clipboard.writeText(config);
+    setCopiedConfig(true);
+    setTimeout(() => setCopiedConfig(false), 2000);
+  };
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
@@ -42,10 +65,23 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
           <section className="space-y-4">
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <Code size={16} className="text-blue-500" />
-              Claude Desktop Configuration
+              Connection Guides
             </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Add this to your <code>claude_desktop_config.json</code>:</p>
-            <pre className="bg-slate-900 text-blue-300 p-4 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800">
+            
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Claude Desktop</p>
+                  <button 
+                    onClick={handleCopyConfig}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-indigo-500 transition-all active:scale-95"
+                  >
+                    {copiedConfig ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedConfig ? 'Copied!' : 'Copy Config'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">Add to <code>claude_desktop_config.json</code>:</p>
+                <pre className="bg-slate-900 text-blue-300 p-4 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800">
 {`{
   "mcpServers": {
     "glance": {
@@ -54,7 +90,36 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
     }
   }
 }`}
-            </pre>
+                </pre>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-black uppercase text-slate-400 mb-2 tracking-widest">Cline / Roo Code / VS Code</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">For Gemini, GPT-4o, or Claude via VS Code extensions:</p>
+                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <ol className="text-xs text-slate-600 dark:text-slate-400 list-decimal ml-4 space-y-1">
+                    <li>Open <strong>MCP Settings</strong> in the extension.</li>
+                    <li>Add a new server with type <code>SSE</code>.</li>
+                    <li>Paste the URL: <code className="text-indigo-600 dark:text-indigo-400 font-bold select-all">{mcpUrl}</code></li>
+                  </ol>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Raw SSE Endpoint</p>
+                  <button 
+                    onClick={handleCopyUrl}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-indigo-500 transition-all active:scale-95"
+                  >
+                    {copiedUrl ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedUrl ? 'Copied!' : 'Copy URL'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">For custom implementations or other agents:</p>
+                <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono text-slate-500 select-all">{mcpUrl}</code>
+              </div>
+            </div>
           </section>
 
           <section className="space-y-4">

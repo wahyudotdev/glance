@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -114,8 +115,6 @@ func (s *Server) RegisterRoutes() {
 	s.registerClientRoutes()
 
 	s.registerCARoutes()
-
-	// Register static files (SPA)
 
 	s.registerStaticRoutes()
 }
@@ -372,5 +371,25 @@ func (s *Server) Listen(addr string) (string, error) {
 	fmt.Printf("\033[32m[✓]\033[0m API server running on \033[1m%s\033[0m\n", displayAddr)
 	fmt.Printf("\033[32m[✓]\033[0m Dashboard available at \033[34m\033[1mhttp://%s\033[0m\n", displayAddr)
 
-	return actualAddr, s.app.Listener(ln)
+	// Create a standard http.ServeMux to handle MCP correctly (real SSE flushing)
+	mux := http.NewServeMux()
+
+	if s.mcp != nil {
+		sse := s.mcp.GetSSEServer()
+		// Mount MCP handlers directly to mux for real net/http behavior
+		mux.Handle("/mcp", sse.SSEHandler())
+		mux.Handle("/mcp/messages", sse.MessageHandler())
+		fmt.Printf("\033[32m[✓]\033[0m MCP server (SSE) unified on \033[34m\033[1mhttp://%s/mcp\033[0m\n", displayAddr)
+	}
+
+	// Use adaptor to mount the entire Fiber app on the remaining routes
+	mux.HandleFunc("/", adaptor.FiberApp(s.app))
+
+	// Use a standard http server to host the mux
+	srv := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	return actualAddr, srv.Serve(ln)
 }

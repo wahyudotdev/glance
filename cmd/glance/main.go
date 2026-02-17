@@ -109,30 +109,16 @@ func main() {
 	p.OnEntry = apiServer.Hub.Broadcast
 	p.OnIntercept = apiServer.BroadcastIntercept
 
-	// We need to capture the actual API address in case of fallback
-	// but apiServer.Listen blocks. We can use a channel to get it or just log inside.
-	// Let's refactor to start it in a way that we can log the FINAL address.
 	go func() {
 		actualAPIAddr, err := apiServer.Listen(*apiAddr)
 		if err != nil {
 			log.Fatalf("Failed to start API server: %v", err)
 		}
-		// This won't be reached until server stops, so we log INSIDE Listen or before.
 		_ = actualAPIAddr
 	}()
 
 	// Wait a tiny bit for the goroutine to potentially log its fallback
 	time.Sleep(100 * time.Millisecond)
-
-	// Start MCP Server background worker if enabled
-	if mcpServer != nil {
-		go func() {
-			fmt.Printf("%s[✓]%s MCP server (SSE) running on %s%s%s\n", colorGreen, colorReset, colorBold, formatAddr(*mcpAddr), colorReset)
-			if err := mcpServer.ServeSSE(*mcpAddr); err != nil {
-				log.Fatalf("MCP Server failed: %v", err)
-			}
-		}()
-	}
 
 	select {}
 }

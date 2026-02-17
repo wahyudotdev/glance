@@ -687,6 +687,14 @@ func (ms *Server) StartSTDIO() error {
 // ServeSSE starts the MCP server using Server-Sent Events.
 func (ms *Server) ServeSSE(addr string) error {
 	// SSE server for MCP
-	sse := server.NewSSEServer(ms.server)
+	sse := ms.GetSSEServer()
 	return sse.Start(addr)
+}
+
+// GetSSEServer returns the configured SSE server instance.
+func (ms *Server) GetSSEServer() *server.SSEServer {
+	return server.NewSSEServer(ms.server,
+		server.WithSSEEndpoint("/mcp"),
+		server.WithMessageEndpoint("/mcp/messages"),
+	)
 }
