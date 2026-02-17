@@ -27,7 +27,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
   };
 
   const renderPreview = () => {
-    if (!entry.response_body) return <span className="text-slate-300 italic">No response body captured</span>;
+    if (!entry.response_body) return <span className="text-slate-300 dark:text-slate-600 italic">No response body captured</span>;
     
     const contentType = getContentType().toLowerCase();
 
@@ -35,12 +35,12 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
       try {
         const parsed = JSON.parse(entry.response_body);
         return (
-          <pre className="text-emerald-700 whitespace-pre-wrap leading-relaxed">
+          <pre className="text-emerald-700 dark:text-emerald-400 whitespace-pre-wrap leading-relaxed">
             {JSON.stringify(parsed, null, 2)}
           </pre>
         );
       } catch {
-        return <pre className="text-slate-600 whitespace-pre-wrap">{entry.response_body}</pre>;
+        return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{entry.response_body}</pre>;
       }
     }
 
@@ -49,10 +49,10 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
         <div className="flex flex-col items-center gap-4 py-4">
           <img 
             src={entry.response_body} 
-            className="max-w-full h-auto rounded-lg shadow-md border border-slate-200 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAApSURBVHgB7YwxCgAwDMCK/z96p9S6ZAsG6m6ZAnpZAnpZAnpZAnpZAnoZMgX0MnpsmY8AAAAASUVORK5CYII=')] bg-repeat" 
+            className="max-w-full h-auto rounded-lg shadow-md border border-slate-200 dark:border-slate-700 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAApSURBVHgB7YwxCgAwDMCK/z96p9S6ZAsG6m6ZAnpZAnpZAnpZAnpZAnoZMgX0MnpsmY8AAAAASUVORK5CYII=')] bg-repeat" 
             alt="Response Preview" 
           />
-          <div className="text-[10px] text-slate-400 font-mono bg-white px-2 py-1 rounded border border-slate-100">
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-100 dark:border-slate-700 transition-colors">
             {contentType}
           </div>
         </div>
@@ -61,8 +61,8 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
 
     if (contentType.includes('html')) {
       return (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden h-full flex flex-col">
-          <div className="bg-slate-50 border-b border-slate-100 px-3 py-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">HTML Preview</div>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden h-full flex flex-col">
+          <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-3 py-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">HTML Preview</div>
           <iframe 
             srcDoc={entry.response_body} 
             className="w-full flex-1 border-0 min-h-[300px]"
@@ -73,7 +73,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
       );
     }
 
-    return <pre className="text-slate-600 whitespace-pre-wrap leading-relaxed">{entry.response_body}</pre>;
+    return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{entry.response_body}</pre>;
   };
 
   const renderRequestBody = () => {
@@ -81,12 +81,12 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
     try {
       const parsed = JSON.parse(entry.request_body);
       return (
-        <pre className="text-blue-700 whitespace-pre-wrap leading-relaxed">
+        <pre className="text-blue-700 dark:text-blue-400 whitespace-pre-wrap leading-relaxed">
           {JSON.stringify(parsed, null, 2)}
         </pre>
       );
     } catch {
-      return <pre className="text-slate-600 whitespace-pre-wrap leading-relaxed">{entry.request_body}</pre>;
+      return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{entry.request_body}</pre>;
     }
   };
 
@@ -115,31 +115,31 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
 
   return (
     <div 
-      className="bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20 flex-shrink-0 h-full w-full"
+      className="bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl z-20 flex-shrink-0 h-full w-full transition-colors"
     >
-      <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tight">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 uppercase tracking-tight">
               <FileText size={16} className="text-blue-500" /> Request Details
             </h2>
             {entry.modified_by === 'mock' && (
-              <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 uppercase tracking-tighter">
+              <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800/30 uppercase tracking-tighter">
                 <Eye size={10} /> Mocked
               </span>
             )}
             {entry.modified_by === 'breakpoint' && (
-              <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 uppercase tracking-tighter">
+              <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-100 dark:border-amber-800/30 uppercase tracking-tighter">
                 <ShieldAlert size={10} /> Paused
               </span>
             )}
             {entry.modified_by === 'editor' && (
-              <span className="flex items-center gap-1 text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-tighter">
+              <span className="flex items-center gap-1 text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 uppercase tracking-tighter">
                 <Edit3 size={10} /> Editor
               </span>
             )}
             {entry.duration > 0 && (
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[9px] font-mono border border-slate-200">
+              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full text-[9px] font-mono border border-slate-200 dark:border-slate-700">
                 {(entry.duration / 1000000).toFixed(1)}ms
               </span>
             )}
@@ -147,7 +147,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
           <div className="flex gap-2">
             <button 
               onClick={() => onEdit?.(entry)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
             >
               <Play size={14} fill="currentColor" />
               Edit & Resend
@@ -156,7 +156,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
               <>
                 <button 
                   onClick={() => onBreak?.(entry)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-600 dark:hover:bg-amber-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
                   title="Pause on the next request matching this URL/Method"
                 >
                   <ShieldAlert size={14} />
@@ -164,7 +164,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
                 </button>
                 <button 
                   onClick={() => onMock?.(entry)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 dark:hover:bg-emerald-500 hover:text-white dark:hover:text-white transition-all shadow-sm active:scale-95"
                   title="Return this response automatically for future requests"
                 >
                   <Eye size={14} />
@@ -174,14 +174,14 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             )}
             <button 
               onClick={handleCopyCurl}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
             >
               {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
               {copied ? 'Copied!' : 'Copy cURL'}
             </button>
             <button 
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
               title="Close Details"
             >
               <X size={18} />
@@ -194,15 +194,15 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
         </div>
       </div>
 
-      <div className="flex px-6 pt-2 border-b border-slate-100 bg-white">
+      <div className="flex px-6 pt-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
         {(['headers', 'body', 'curl'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 -mb-[1px] ${
               activeTab === tab 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-slate-400 hover:text-slate-600'
+              ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' 
+              : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
           >
             {tab}
@@ -210,16 +210,16 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 transition-colors">
         {activeTab === 'headers' && (
           <div className="space-y-6">
             <section>
-              <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Request Headers</h3>
+              <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-3 tracking-[0.2em]">Request Headers</h3>
               <div className="space-y-1.5">
                 {Object.entries(entry.request_headers).map(([key, values]) => (
-                  <div key={key} className="text-[12px] flex items-start gap-2 py-1 group border-b border-slate-50 last:border-0">
-                    <span className="font-bold text-slate-600 min-w-[120px] shrink-0">{key}</span>
-                    <span className="text-slate-500 break-all font-mono">{values.join(', ')}</span>
+                  <div key={key} className="text-[12px] flex items-start gap-2 py-1 group border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+                    <span className="font-bold text-slate-600 dark:text-slate-300 min-w-[120px] shrink-0">{key}</span>
+                    <span className="text-slate-500 dark:text-slate-400 break-all font-mono">{values.join(', ')}</span>
                   </div>
                 ))}
               </div>
@@ -227,12 +227,12 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             
             {entry.response_headers && (
               <section>
-                <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Response Headers</h3>
+                <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-3 tracking-[0.2em]">Response Headers</h3>
                 <div className="space-y-1.5">
                   {Object.entries(entry.response_headers).map(([key, values]) => (
-                    <div key={key} className="text-[12px] flex items-start gap-2 py-1 group border-b border-slate-50 last:border-0">
-                      <span className="font-bold text-slate-600 min-w-[120px] shrink-0">{key}</span>
-                      <span className="text-slate-500 break-all font-mono">{values.join(', ')}</span>
+                    <div key={key} className="text-[12px] flex items-start gap-2 py-1 group border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+                      <span className="font-bold text-slate-600 dark:text-slate-300 min-w-[120px] shrink-0">{key}</span>
+                      <span className="text-slate-500 dark:text-slate-400 break-all font-mono">{values.join(', ')}</span>
                     </div>
                   ))}
                 </div>
@@ -246,16 +246,16 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             {entry.request_body && (
               <section className="flex-shrink-0 flex flex-col max-h-[40%]">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Request Body</h3>
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">Request Body</h3>
                   <button 
                     onClick={handleCopyRequestBody}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
                   >
                     {copiedRequest ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                     {copiedRequest ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <div className="flex-1 bg-slate-50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 shadow-inner">
+                <div className="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 dark:border-slate-800 shadow-inner">
                   {renderRequestBody()}
                 </div>
               </section>
@@ -264,34 +264,34 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
             <section className="flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Response Body</h3>
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">Response Body</h3>
                   <button 
                     onClick={handleCopyResponseBody}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
                   >
                     {copiedResponse ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                     {copiedResponse ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
                   <button 
                     onClick={() => setViewMode('preview')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${viewMode === 'preview' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                   >
                     <Eye size={12} /> Preview
                   </button>
                   <button 
                     onClick={() => setViewMode('raw')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${viewMode === 'raw' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${viewMode === 'raw' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                   >
                     <Code size={12} /> Raw
                   </button>
                 </div>
               </div>
-              <div className="flex-1 bg-slate-50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 shadow-inner">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 dark:border-slate-800 shadow-inner">
                 {viewMode === 'preview' ? renderPreview() : (
-                  <pre className="text-slate-600 whitespace-pre-wrap leading-relaxed">
-                    {entry.response_body || <span className="text-slate-300 italic">No response body captured</span>}
+                  <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+                    {entry.response_body || <span className="text-slate-300 dark:text-slate-600 italic">No response body captured</span>}
                   </pre>
                 )}
               </div>
@@ -301,8 +301,8 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, onEdit, onClo
 
         {activeTab === 'curl' && (
           <div className="space-y-4">
-            <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">cURL Command</h3>
-            <pre className="bg-slate-900 text-blue-300 p-5 rounded-xl text-[12px] font-mono whitespace-pre-wrap leading-relaxed shadow-xl">
+            <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">cURL Command</h3>
+            <pre className="bg-slate-900 text-blue-300 p-5 rounded-xl text-[12px] font-mono whitespace-pre-wrap leading-relaxed shadow-xl border border-slate-800">
               {generateCurl(entry)}
             </pre>
           </div>

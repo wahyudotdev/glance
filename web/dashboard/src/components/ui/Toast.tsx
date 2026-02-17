@@ -36,20 +36,20 @@ const ToastItem: React.FC<{ toast: ToastMessage; onClose: () => void }> = ({ toa
   };
 
   const bgs = {
-    success: 'bg-emerald-50 border-emerald-100',
-    error: 'bg-rose-50 border-rose-100',
-    info: 'bg-blue-50 border-blue-100',
+    success: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30',
+    error: 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/30',
+    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30',
   };
 
   return (
-    <div className={`pointer-events-auto min-w-[300px] max-w-md p-4 rounded-2xl border shadow-xl flex gap-3 animate-in slide-in-from-top-4 duration-300 ${bgs[toast.type]}`}>
+    <div className={`pointer-events-auto min-w-[300px] max-w-md p-4 rounded-2xl border shadow-xl flex gap-3 animate-in slide-in-from-top-4 duration-300 transition-colors ${bgs[toast.type]}`}>
       <div className="mt-0.5 shrink-0">{icons[toast.type]}</div>
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-bold text-slate-800 leading-tight">{toast.title}</h4>
-        <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">{toast.message}</p>
+        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight">{toast.title}</h4>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{toast.message}</p>
       </div>
-      <button onClick={onClose} className="shrink-0 p-1 hover:bg-black/5 rounded-lg h-fit transition-all">
-        <X size={14} className="text-slate-400" />
+      <button onClick={onClose} className="shrink-0 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg h-fit transition-all">
+        <X size={14} className="text-slate-400 dark:text-slate-500" />
       </button>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TrafficEntry, Config, JavaProcess, AndroidDevice } from './types/traffic';
 
@@ -23,26 +23,51 @@ import { Modal } from './components/ui/Modal';
 import { Toast } from './components/ui/Toast';
 import type { ToastMessage } from './components/ui/Toast';
 
+// hooks
+import { useDarkMode } from './hooks/useDarkMode';
+import { useTraffic } from './hooks/useTraffic';
+
 const App: React.FC = () => {
-  // Navigation & UI State
+  const { isDark, toggleDarkMode } = useDarkMode();
+  
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const toast = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, type, title, message }]);
+  };
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter(t => t.id !== id));
+  };
+
+  // Settings State
+  const [config, setConfig] = useState<Config>({
+    proxy_addr: ':8000',
+    api_addr: ':8081',
+    mcp_addr: ':8082',
+    mcp_enabled: false,
+    history_limit: 500,
+    max_response_size: 1048576,
+    default_page_size: 50
+  });
+  const [originalConfig, setOriginalConfig] = useState<Config | null>(null);
+
+  // Traffic Hook
+  const {
+    entries, totalEntries, currentPage, proxyAddr, filter, setFilter,
+    filteredEntries, fetchTraffic, fetchStatus, clearTraffic,
+    setEntries, setTotalEntries, currentPageRef, pageSizeRef
+  } = useTraffic(config, toast);
+
+  // UI State
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules'>('traffic');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);
   const [isResponseEditorOpen, setIsResponseEditorOpen] = useState(false);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
   const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
-  
-  // Toast State
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const toast = (type: 'success' | 'error' | 'info', title: string, message: string) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, title, message }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter(t => t.id !== id));
-  };
+  const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
 
   const [detailsWidth, setDetailsWidth] = useState(() => {
     const saved = localStorage.getItem('glance-details-width');
@@ -59,21 +84,15 @@ const App: React.FC = () => {
     setIsResizing(true);
   };
 
-  const stopResizing = () => {
-    setIsResizing(false);
-  };
+  const stopResizing = () => setIsResizing(false);
 
   const resize = (e: MouseEvent) => {
     if (isResizing) {
-      // Sidebar is 256px (w-64)
       const sidebarWidth = 256;
       const availableWidth = window.innerWidth - sidebarWidth;
       const mouseXFromRight = window.innerWidth - e.clientX;
       const percentage = (mouseXFromRight / availableWidth) * 100;
-      
-      if (percentage > 20 && percentage < 80) {
-        setDetailsWidth(percentage);
-      }
+      if (percentage > 20 && percentage < 80) setDetailsWidth(percentage);
     }
   };
 
@@ -86,15 +105,6 @@ const App: React.FC = () => {
     };
   }, [isResizing]);
   
-  // Data State
-  const [entries, setEntries] = useState<TrafficEntry[]>([]);
-  const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
-  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
-  const [filter, setFilter] = useState('');
-  const [proxyAddr, setProxyAddr] = useState(':8000');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalEntries, setTotalEntries] = useState(0);
-  
   // Integration State
   const [javaProcesses, setJavaProcesses] = useState<JavaProcess[]>([]);
   const [androidDevices, setAndroidDevices] = useState<AndroidDevice[]>([]);
@@ -105,35 +115,8 @@ const App: React.FC = () => {
   // Rules State
   const [rules, setRules] = useState<Rule[]>([]);
   const [isLoadingRules, setIsLoadingRules] = useState(false);
-  
-  // Settings State
-  const [config, setConfig] = useState<Config>({
-    proxy_addr: ':8000',
-    api_addr: ':8081',
-    mcp_addr: ':8082',
-    mcp_enabled: false,
-    history_limit: 500,
-    max_response_size: 1048576,
-    default_page_size: 50
-  });
-  const [originalConfig, setOriginalConfig] = useState<Config | null>(null);
 
-  const historyLimitRef = useRef(config.history_limit);
-  useEffect(() => {
-    historyLimitRef.current = config.history_limit;
-  }, [config.history_limit]);
-
-  const currentPageRef = useRef(currentPage);
-  useEffect(() => {
-    currentPageRef.current = currentPage;
-  }, [currentPage]);
-
-  const pageSizeRef = useRef(config.default_page_size);
-  useEffect(() => {
-    pageSizeRef.current = config.default_page_size;
-  }, [config.default_page_size]);
-
-  // --- API Actions (Using Native Fetch) ---
+  // --- API Actions ---
 
   const apiFetch = async (url: string, options?: RequestInit) => {
     const res = await fetch(url, options);
@@ -142,30 +125,11 @@ const App: React.FC = () => {
     return res.json();
   };
 
-  const fetchTraffic = async (page: number = 1, pageSize?: number) => {
-    try {
-      const size = pageSize || config.default_page_size;
-      const data = await apiFetch(`/api/traffic?page=${page}&pageSize=${size}`);
-      
-      if (data && data.entries) {
-        setEntries(data.entries.reverse());
-        setTotalEntries(data.total);
-        setCurrentPage(page);
-      }
-    } catch (error) {
-      console.error('Error fetching traffic:', error);
-    }
-  };
-
   const handleClear = async () => {
-    try {
-      await apiFetch('/api/traffic', { method: 'DELETE' });
-      setEntries([]);
+    const success = await clearTraffic();
+    if (success) {
       setSelectedEntry(null);
       setIsClearModalOpen(false);
-      toast('success', 'Traffic Cleared', 'All intercepted requests have been deleted.');
-    } catch (error) {
-      toast('error', 'Clear Failed', String(error));
     }
   };
 
@@ -286,15 +250,6 @@ const App: React.FC = () => {
       toast('success', 'Rule Deleted', 'The rule has been removed.');
     } catch (error) {
       toast('error', 'Delete Rule Failed', String(error));
-    }
-  };
-
-  const fetchStatus = async () => {
-    try {
-      const data = await apiFetch('/api/status');
-      setProxyAddr(data.proxy_addr);
-    } catch (error) {
-      console.error('Error fetching status:', error);
     }
   };
 
@@ -425,122 +380,46 @@ const App: React.FC = () => {
         await fetchTraffic(1, cfg.default_page_size);
       }
 
-      // WebSocket setup
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws/traffic`;
       ws = new WebSocket(wsUrl);
 
-                  ws.onmessage = (event) => {
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'intercepted') {
+            setSelectedEntry(msg.entry);
+            if (msg.intercept_type === 'response') {
+              setIsResponseEditorOpen(true);
+              toast('info', 'Response Paused', `${msg.entry.url} - Ready for edit.`);
+            } else {
+              setIsRequestEditorOpen(true);
+              toast('info', 'Request Paused', `${msg.entry.url} - Ready for edit.`);
+            }
+            return;
+          }
 
-                    try {
-
-                      const msg = JSON.parse(event.data);
-
-              
-
-                              if (msg.type === 'intercepted') {
-
-              
-
-                                setSelectedEntry(msg.entry);
-
-              
-
-                                if (msg.intercept_type === 'response') {
-
-              
-
-                                  setIsResponseEditorOpen(true);
-
-              
-
-                                  toast('info', 'Response Paused', `${msg.entry.url} - Ready for edit.`);
-
-              
-
-                                } else {
-
-              
-
-                                  setIsRequestEditorOpen(true);
-
-              
-
-                                  toast('info', 'Request Paused', `${msg.entry.url} - Ready for edit.`);
-
-              
-
-                                }
-
-              
-
-                                return;
-
-              
-
-                              }
-
-              
-
-                      
-
-              
-
-                      const entry: TrafficEntry = msg;
-
-              
-
-                  
-
-                  setTotalEntries(prev => prev + 1);
-
-          
-
-                  setEntries((prev) => {
-
-                    // Only add to the visible list if we are on the first page
-
-                    if (currentPageRef.current === 1) {
-
-                      const updated = [...prev, entry];
-
-                      const pageSize = pageSizeRef.current;
-
-                      // Maintain page size: remove the oldest item (first in our ASC entries list)
-
-                      if (updated.length > pageSize) {
-
-                        return updated.slice(1);
-
-                      }
-
-                      return updated;
-
-                    }
-
-                    return prev;
-
-                  });
-
-                } catch (error) {
-
-                  console.error('Error parsing WebSocket message:', error);
-
-                }
-
-              };
-
-          
-            ws.onclose = () => {
-        console.log('WebSocket disconnected.');
+          const entry: TrafficEntry = msg;
+          setTotalEntries(prev => prev + 1);
+          setEntries((prev) => {
+            if (currentPageRef.current === 1) {
+              const updated = [...prev, entry];
+              const pageSize = pageSizeRef.current;
+              if (updated.length > pageSize) return updated.slice(1);
+              return updated;
+            }
+            return prev;
+          });
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
       };
+
+      ws.onclose = () => console.log('WebSocket disconnected.');
     };
 
     init();
-
-    return () => {
-      if (ws) ws.close();
-    };
+    return () => { if (ws) ws.close(); };
   }, []);
 
   useEffect(() => {
@@ -554,17 +433,8 @@ const App: React.FC = () => {
     }
   }, [currentView]);
 
-  // --- Memos ---
-
-  const filteredEntries = useMemo(() => {
-    return entries.filter(e => 
-      e.url.toLowerCase().includes(filter.toLowerCase()) || 
-      e.method.toLowerCase().includes(filter.toLowerCase())
-    ).reverse();
-  }, [entries, filter]);
-
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900 transition-colors">
       <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
 
       <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -573,51 +443,35 @@ const App: React.FC = () => {
           filter={filter} 
           setFilter={setFilter} 
           onClearTraffic={() => setIsClearModalOpen(true)} 
-          onNewRequest={() => {
-            setSelectedEntry(null);
-            setIsRequestEditorOpen(true);
-          }}
+          isDark={isDark}
+          toggleDarkMode={toggleDarkMode}
         />
 
-        <main 
-          className="flex-1 flex overflow-hidden"
-          onClick={() => setSelectedEntry(null)}
-        >
+        <main className="flex-1 flex overflow-hidden" onClick={() => setSelectedEntry(null)}>
           {currentView === 'traffic' && (
             <>
-              <div 
-                className="flex-1 flex flex-col min-w-0 bg-white"
-              >
-                <TrafficList 
-                  entries={filteredEntries} 
-                  selectedEntry={selectedEntry} 
-                  onSelect={setSelectedEntry} 
-                />
+              <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 transition-colors">
+                <TrafficList entries={filteredEntries} selectedEntry={selectedEntry} onSelect={setSelectedEntry} />
                 
                 {/* Pagination Controls */}
-                <div 
-                  className="h-12 border-t border-slate-100 flex items-center justify-between px-6 bg-slate-50/50"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="text-[11px] font-medium text-slate-400">
-                    Showing <span className="text-slate-600 font-bold">{entries.length}</span> of <span className="text-slate-600 font-bold">{totalEntries}</span> requests
+                <div className="h-12 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 bg-slate-50/50 dark:bg-slate-950/50 transition-colors" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                    Showing <span className="text-slate-600 dark:text-slate-300 font-bold">{entries.length}</span> of <span className="text-slate-600 dark:text-slate-300 font-bold">{totalEntries}</span> requests
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => fetchTraffic(currentPage - 1)}
                       disabled={currentPage <= 1}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       <ChevronLeft size={16} />
                     </button>
-                    <span className="text-xs font-bold text-slate-600 min-w-[3rem] text-center">
-                      Page {currentPage}
-                    </span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 min-w-[3rem] text-center">Page {currentPage}</span>
                     <button 
                       onClick={() => fetchTraffic(currentPage + 1)}
                       disabled={currentPage * config.default_page_size >= totalEntries}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -627,25 +481,13 @@ const App: React.FC = () => {
               
               {selectedEntry && (
                 <>
-                  {/* Resize Handle */}
                   <div 
                     className={`w-1.5 h-full cursor-col-resize hover:bg-blue-500/30 transition-colors flex-shrink-0 z-30 ${isResizing ? 'bg-blue-500/50' : 'bg-transparent'}`}
                     onMouseDown={startResizing}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  <div 
-                    className="flex-shrink-0 h-full overflow-hidden flex flex-col"
-                    style={{ width: `${detailsWidth}%` }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                                      <DetailsPanel 
-                                        entry={selectedEntry} 
-                                        onEdit={() => setIsRequestEditorOpen(true)}
-                                        onClose={() => setSelectedEntry(null)}
-                                        onBreak={handleCreateBreakpoint}
-                                        onMock={handleCreateMock}
-                                      />
-                    
+                  <div className="flex-shrink-0 h-full overflow-hidden flex flex-col" style={{ width: `${detailsWidth}%` }} onClick={(e) => e.stopPropagation()}>
+                    <DetailsPanel entry={selectedEntry} onEdit={() => setIsRequestEditorOpen(true)} onClose={() => setSelectedEntry(null)} onBreak={handleCreateBreakpoint} onMock={handleCreateMock} />
                   </div>
                 </>
               )}
@@ -654,89 +496,44 @@ const App: React.FC = () => {
 
           {currentView === 'integrations' && (
             <IntegrationsView 
-              javaProcesses={javaProcesses}
-              androidDevices={androidDevices}
-              isLoadingJava={isLoadingJava}
-              isLoadingAndroid={isLoadingAndroid}
-              terminalScript={terminalScript}
-              onFetchJava={fetchJavaProcesses}
-              onFetchAndroid={fetchAndroidDevices}
-              onInterceptJava={handleInterceptJava}
-              onInterceptAndroid={handleInterceptAndroid}
-              onClearAndroid={handleClearAndroid}
-              onPushAndroidCert={handlePushAndroidCert}
+              javaProcesses={javaProcesses} androidDevices={androidDevices} isLoadingJava={isLoadingJava} isLoadingAndroid={isLoadingAndroid} terminalScript={terminalScript}
+              onFetchJava={fetchJavaProcesses} onFetchAndroid={fetchAndroidDevices} onInterceptJava={handleInterceptJava} onInterceptAndroid={handleInterceptAndroid} onClearAndroid={handleClearAndroid} onPushAndroidCert={handlePushAndroidCert}
             />
           )}
 
           {currentView === 'rules' && (
             <RulesView 
-              rules={rules}
-              isLoading={isLoadingRules}
-              onDelete={handleDeleteRule}
-              onCreate={handleCreateRule}
-              onEdit={(rule) => {
-                setSelectedRule(rule);
-                setIsRuleEditorOpen(true);
-              }}
+              rules={rules} isLoading={isLoadingRules} onDelete={handleDeleteRule} onCreate={handleCreateRule}
+              onEdit={(rule) => { setSelectedRule(rule); setIsRuleEditorOpen(true); }}
             />
           )}
 
           {currentView === 'settings' && (
-            <SettingsView 
-              config={config}
-              setConfig={setConfig}
-              onSave={saveConfig}
-              onReset={fetchConfig}
-              onShowMCP={() => setIsMCPDocsOpen(true)}
-            />
+            <SettingsView config={config} setConfig={setConfig} onSave={saveConfig} onReset={fetchConfig} onShowMCP={() => setIsMCPDocsOpen(true)} />
           )}
         </main>
       </div>
 
-      {/* Confirmation Modal */}
       <Modal 
-        isOpen={isClearModalOpen}
-        onClose={() => setIsClearModalOpen(false)}
-        title="Clear Traffic Logs?"
-        description="This will permanently delete all captured requests from the current session. This action cannot be undone."
-        icon={<Trash2 size={32} />}
-        iconBgColor="bg-rose-50 text-rose-500"
-        confirmLabel="Clear All"
-        confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200"
-        onConfirm={handleClear}
+        isOpen={isClearModalOpen} onClose={() => setIsClearModalOpen(false)} title="Clear Traffic Logs?" description="This will permanently delete all captured requests from the current session. This action cannot be undone."
+        icon={<Trash2 size={32} />} iconBgColor="bg-rose-50 dark:bg-rose-900/20 text-rose-500" confirmLabel="Clear All" confirmColor="bg-rose-500 hover:bg-rose-600 shadow-rose-200" onConfirm={handleClear}
       />
 
       <RequestEditor 
-        isOpen={isRequestEditorOpen}
-        onClose={() => setIsRequestEditorOpen(false)}
-        initialRequest={selectedEntry}
-        onExecute={handleExecuteRequest}
-        isIntercept={!!selectedEntry && !entries.find(e => e.id === selectedEntry.id)}
-        onAbort={handleAbortIntercept}
+        isOpen={isRequestEditorOpen} onClose={() => setIsRequestEditorOpen(false)} initialRequest={selectedEntry} onExecute={handleExecuteRequest}
+        isIntercept={!!selectedEntry && !entries.find(e => e.id === selectedEntry.id)} onAbort={handleAbortIntercept}
       />
 
       {selectedEntry && (
-        <ResponseEditor 
-          isOpen={isResponseEditorOpen}
-          onClose={() => setIsResponseEditorOpen(false)}
-          entry={selectedEntry}
-          onResume={handleContinueResponse}
-          onAbort={handleAbortIntercept}
-        />
+        <ResponseEditor isOpen={isResponseEditorOpen} onClose={() => setIsResponseEditorOpen(false)} entry={selectedEntry} onResume={handleContinueResponse} onAbort={handleAbortIntercept} />
       )}
 
-      <RuleEditor 
-        isOpen={isRuleEditorOpen}
-        onClose={() => setIsRuleEditorOpen(false)}
-        rule={selectedRule}
-        onSave={handleUpdateRule}
-      />
+      <RuleEditor isOpen={isRuleEditorOpen} onClose={() => setIsRuleEditorOpen(false)} rule={selectedRule} onSave={handleUpdateRule} />
 
       <Toast toasts={toasts} onClose={removeToast} />
 
       <MCPDocs 
-        isOpen={isMCPDocsOpen}
-        onClose={() => setIsMCPDocsOpen(false)}
+        isOpen={isMCPDocsOpen} onClose={() => setIsMCPDocsOpen(false)}
         mcpUrl={`${window.location.protocol}//${window.location.hostname}${config.mcp_addr}/sse`}
       />
     </div>

@@ -1,33 +1,41 @@
 import React from 'react';
-import { Search, Trash2, Zap, Plus } from 'lucide-react';
+import { Search, Trash2, Zap, Sun, Moon } from 'lucide-react';
 
 interface HeaderProps {
   proxyAddr: string;
   filter: string;
   setFilter: (filter: string) => void;
   onClearTraffic: () => void;
-  onNewRequest: () => void;
+  isDark: boolean;
+  toggleDarkMode: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, onClearTraffic, onNewRequest }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  proxyAddr, 
+  filter, 
+  setFilter, 
+  onClearTraffic, 
+  isDark,
+  toggleDarkMode
+}) => {
   return (
-    <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 shadow-sm z-10">
+    <header className="h-16 flex items-center justify-between px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-colors">
       <div className="flex items-center gap-4">
-        <h1 className="text-lg font-bold tracking-tight text-slate-800">Glance</h1>
-        <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+        <h1 className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">Glance</h1>
+        <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">
           <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Proxy {proxyAddr}</span>
-          <span className="w-px h-3 bg-slate-300" />
-          <span className="flex items-center gap-1.5 text-blue-600"><Zap size={12} /> MITM Active</span>
+          <span className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
+          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400"><Zap size={12} /> MITM Active</span>
         </div>
       </div>
       
       <div className="flex items-center gap-3">
         <button 
-          onClick={onNewRequest}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 mr-2"
+          onClick={toggleDarkMode}
+          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+          title={isDark ? "Switch to Light Mode" : "Switch to Night Mode"}
         >
-          <Plus size={14} />
-          Compose
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
         <div className="relative">
@@ -35,14 +43,14 @@ export const Header: React.FC<HeaderProps> = ({ proxyAddr, filter, setFilter, on
           <input 
             type="text" 
             placeholder="Filter requests..." 
-            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-64"
+            className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-64"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
         <button 
           onClick={onClearTraffic}
-          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all" 
+          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-all" 
           title="Clear Logs"
         >
           <Trash2 size={18} />

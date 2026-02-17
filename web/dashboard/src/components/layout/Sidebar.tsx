@@ -8,15 +8,15 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
   return (
-    <aside className="w-64 flex flex-col py-6 bg-white border-r border-slate-200">
+    <aside className="w-64 flex flex-col py-6 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-colors">
       <div 
         className="px-6 mb-10 flex items-center gap-3 cursor-pointer" 
         onClick={() => setCurrentView('traffic')}
       >
-        <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
+        <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200 dark:shadow-none">
           <Sparkles className="text-white" size={24} />
         </div>
-        <span className="font-bold text-lg tracking-tight text-slate-800">Glance</span>
+        <span className="font-bold text-lg tracking-tight text-slate-800 dark:text-slate-100">Glance</span>
       </div>
       
       <nav className="flex flex-col gap-1 px-4">
@@ -24,8 +24,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
           onClick={() => setCurrentView('traffic')}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${
             currentView === 'traffic' 
-            ? 'text-blue-600 bg-blue-50' 
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           <Globe size={20} />
@@ -36,8 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
           onClick={() => setCurrentView('integrations')}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${
             currentView === 'integrations' 
-            ? 'text-blue-600 bg-blue-50' 
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           <Code size={20} />
@@ -48,8 +48,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
           onClick={() => setCurrentView('rules')}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${
             currentView === 'rules' 
-            ? 'text-blue-600 bg-blue-50' 
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           <ShieldAlert size={20} />
@@ -60,8 +60,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
           onClick={() => setCurrentView('settings')}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${
             currentView === 'settings' 
-            ? 'text-blue-600 bg-blue-50' 
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           <Settings size={20} />
@@ -69,10 +69,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
         </button>
       </nav>
 
-      <div className="mt-auto px-6 pt-6 border-t border-slate-100">
+      <div className="mt-auto px-6 pt-6 border-t border-slate-100 dark:border-slate-800">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Version</span>
-          <span className="text-xs font-mono text-slate-500">v0.1.0-alpha</span>
+          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Version</span>
+          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">v0.1.0-alpha</span>
         </div>
       </div>
     </aside>
