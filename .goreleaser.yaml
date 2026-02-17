@@ -55,6 +55,7 @@ brews:
     repository:
       owner: wahyudotdev
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: "https://github.com/wahyudotdev/glance"
     description: "Glance is a specialized MITM proxy for AI Agents and developers."
