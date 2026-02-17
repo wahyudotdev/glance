@@ -16,7 +16,7 @@ func LaunchChromium(proxyAddr string) error {
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--user-data-dir=/tmp/glance-chrome", // Isolated session
-		"http://localhost:8081",              // Open dashboard automatically
+		"https://www.google.com",             // Open a light site by default
 	}
 
 	switch runtime.GOOS {

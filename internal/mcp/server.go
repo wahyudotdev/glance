@@ -10,6 +10,7 @@ import (
 	"glance/internal/model"
 	"glance/internal/rules"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -113,6 +114,7 @@ func (ms *Server) registerTools() {
 }
 
 func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_mock_rule\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -147,6 +149,7 @@ func (ms *Server) addMockRuleHandler(_ context.Context, request mcp.CallToolRequ
 }
 
 func (ms *Server) listRulesHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_rules\033[0m")
 	rules := ms.engine.GetRules()
 	var sb strings.Builder
 	for _, r := range rules {
@@ -160,6 +163,7 @@ func (ms *Server) listRulesHandler(_ context.Context, _ mcp.CallToolRequest) (*m
 }
 
 func (ms *Server) addBreakpointRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1madd_breakpoint_rule\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -186,6 +190,7 @@ func (ms *Server) addBreakpointRuleHandler(_ context.Context, request mcp.CallTo
 }
 
 func (ms *Server) deleteRuleHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mdelete_rule\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -196,6 +201,7 @@ func (ms *Server) deleteRuleHandler(_ context.Context, request mcp.CallToolReque
 }
 
 func (ms *Server) executeRequestHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mexecute_request\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -335,6 +341,7 @@ func (ms *Server) generateAPIDocsPromptHandler(_ context.Context, _ mcp.GetPromp
 }
 
 func (ms *Server) listTrafficHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mlist_traffic\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		args = make(map[string]interface{})
@@ -369,6 +376,7 @@ func (ms *Server) listTrafficHandler(_ context.Context, request mcp.CallToolRequ
 }
 
 func (ms *Server) getTrafficDetailsHandler(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_traffic_details\033[0m | Args: %v", request.Params.Arguments)
 	args, ok := request.Params.Arguments.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing arguments")
@@ -392,11 +400,13 @@ func (ms *Server) getTrafficDetailsHandler(_ context.Context, request mcp.CallTo
 }
 
 func (ms *Server) clearTrafficHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mclear_traffic\033[0m")
 	ms.store.ClearEntries()
 	return mcp.NewToolResultText("Traffic logs cleared."), nil
 }
 
 func (ms *Server) getProxyStatusHandler(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	log.Printf("\033[35m[MCP]\033[0m Call: \033[1mget_proxy_status\033[0m")
 	status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
 	return mcp.NewToolResultText(status), nil
 }
