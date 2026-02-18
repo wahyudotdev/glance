@@ -70,16 +70,36 @@ func BuildAndAttachAgent(pid string, proxyAddr string) error {
 
 	caCertBase64 := base64.StdEncoding.EncodeToString([]byte(goproxy.CA_CERT))
 
-	// Write Java code
+	// Write Java code — uses a named static inner class instead of anonymous classes
+	// to avoid ProxyAgent$1.class packaging issues in the JAR
 	javaCode := fmt.Sprintf(`
 import java.lang.instrument.Instrumentation;
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
 
 public class ProxyAgent {
+
+    static class TrustAllManager implements X509TrustManager {
+        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+        public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+        public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+    }
+
+    static class TrustAllHostname implements HostnameVerifier {
+        public boolean verify(String hostname, SSLSession session) { return true; }
+    }
+
     public static void agentmain(String agentArgs, Instrumentation inst) {
         try {
             String[] args = agentArgs.split(":");
@@ -87,43 +107,59 @@ public class ProxyAgent {
             String port = args[1];
             String caCertB64 = "%s";
 
-            // 1. Set System Properties for standard HttpURLConnection
+            // 1. Set proxy system properties
             System.setProperty("http.proxyHost", host);
             System.setProperty("http.proxyPort", port);
             System.setProperty("https.proxyHost", host);
             System.setProperty("https.proxyPort", port);
             System.setProperty("http.nonProxyHosts", "");
 
-            // 2. Aggressively force trust (for HTTPS)
+            // 2. Set trust-all as default SSLContext (covers HttpsURLConnection)
+            TrustManager[] trustAll = new TrustManager[]{ new TrustAllManager() };
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, trustAll, new java.security.SecureRandom());
+            SSLContext.setDefault(sc);
+            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(new TrustAllHostname());
+            System.out.println("[Glance] Trust-all SSLContext set as default");
+
+            // 3. Write CA cert to a JKS truststore file and set system properties
+            //    This ensures libraries that create their own SSLContext (Apache HttpClient,
+            //    OkHttp, Spring RestTemplate) will also trust our proxy CA
             try {
-                TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        public X509Certificate[] getAcceptedIssuers() { return null; }
-                        public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                        public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                    }
-                };
+                byte[] pemBytes = java.util.Base64.getDecoder().decode(caCertB64);
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                Certificate caCert = cf.generateCertificate(new ByteArrayInputStream(pemBytes));
 
-                SSLContext sc = SSLContext.getInstance("SSL");
-                sc.init(null, trustAllCerts, new java.security.SecureRandom());
-                
-                // Set as default for the entire JVM
-                SSLContext.setDefault(sc);
-                
-                // Also set for HttpsURLConnection specifically
-                javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-                javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(new javax.net.ssl.HostnameVerifier() {
-                    public boolean verify(String hostname, javax.net.ssl.SSLSession session) {
-                        return true;
-                    }
-                });
+                // Load default cacerts and add our CA
+                KeyStore ks = KeyStore.getInstance("JKS");
+                String cacertsPath = System.getProperty("java.home")
+                    + java.io.File.separator + "lib"
+                    + java.io.File.separator + "security"
+                    + java.io.File.separator + "cacerts";
+                try {
+                    FileInputStream fis = new FileInputStream(cacertsPath);
+                    try { ks.load(fis, "changeit".toCharArray()); } finally { fis.close(); }
+                } catch (Exception e) {
+                    ks.load(null, null);
+                }
+                ks.setCertificateEntry("glance-proxy-ca", caCert);
 
-                System.out.println("[Glance] Aggressive TLS trust-all injected");
+                // Write modified truststore to temp file
+                String trustStorePath = System.getProperty("java.io.tmpdir")
+                    + java.io.File.separator + "glance-truststore.jks";
+                FileOutputStream fos = new FileOutputStream(trustStorePath);
+                try { ks.store(fos, "changeit".toCharArray()); } finally { fos.close(); }
+
+                // Point JVM to use this truststore for any new SSLContext creation
+                System.setProperty("javax.net.ssl.trustStore", trustStorePath);
+                System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
+                System.out.println("[Glance] Custom truststore written to " + trustStorePath);
             } catch (Exception e) {
-                System.err.println("[Glance] Failed to inject aggressive trust: " + e.getMessage());
+                System.err.println("[Glance] Truststore setup failed (trust-all still active): " + e.getMessage());
             }
 
-            System.out.println("[Glance] Interception enabled for " + host + ":" + port);
+            System.out.println("[Glance] HTTPS interception enabled for " + host + ":" + port);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -152,9 +188,19 @@ public class ProxyAgent {
 		return err
 	}
 
-	// 4. Create JAR
+	// 4. Create JAR (include all ProxyAgent*.class files — anonymous inner classes compile to ProxyAgent$1.class, etc.)
+	jarArgs := []string{"cmf", manifestFile, jarFile}
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		return fmt.Errorf("failed to read temp dir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "ProxyAgent") && strings.HasSuffix(e.Name(), ".class") {
+			jarArgs = append(jarArgs, "-C", tmpDir, e.Name())
+		}
+	}
 	// #nosec G204
-	if out, err := exec.Command("jar", "cmf", manifestFile, jarFile, "-C", tmpDir, "ProxyAgent.class").CombinedOutput(); err != nil {
+	if out, err := exec.Command("jar", jarArgs...).CombinedOutput(); err != nil {
 		return fmt.Errorf("jar creation failed: %s %v", string(out), err)
 	}
 
