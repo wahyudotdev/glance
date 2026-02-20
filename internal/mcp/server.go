@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"glance/internal/config"
 	"glance/internal/interceptor"
 	"glance/internal/model"
 	"glance/internal/repository"
@@ -69,15 +70,26 @@ func NewToolResultText(text string) *mcp.CallToolResult {
 }
 
 func (ms *Server) registerTools() {
-	// 1. list_traffic
+	// 1. inspect_network_traffic
 	type listTrafficArgs struct {
-		Filter string `json:"filter" jsonschema:"Optional keyword to filter URL or Method"`
+		Filter string  `json:"filter" jsonschema:"Optional keyword to filter URL or Method"`
+		Limit  float64 `json:"limit" jsonschema:"Number of recent entries to return (default: 20)"`
 	}
 	mcp.AddTool(ms.server, &mcp.Tool{
-		Name:        "list_traffic",
-		Description: "List captured HTTP traffic summaries. Returns up to 20 recent entries.",
+		Name:        "inspect_network_traffic",
+		Description: fmt.Sprintf("PRIMARY network debugging tool. MUST be called first to verify actual HTTP/HTTPS traffic when encountering errors, 4xx/5xx statuses, or unexpected API behavior. Returns a list of recent traffic summaries. Max limit follows system settings (currently %d).", config.Get().HistoryLimit),
 	}, func(_ context.Context, _ *mcp.CallToolRequest, args listTrafficArgs) (*mcp.CallToolResult, any, error) {
-		entries, _ := ms.store.GetPage(0, 100)
+		limit := int(args.Limit)
+		if limit <= 0 {
+			limit = 20
+		}
+
+		cfg := config.Get()
+		if limit > cfg.HistoryLimit && cfg.HistoryLimit > 0 {
+			limit = cfg.HistoryLimit
+		}
+
+		entries, _ := ms.store.GetPage(0, limit)
 		var results []string
 		count := 0
 		for _, e := range entries {
@@ -90,7 +102,7 @@ func (ms *Server) registerTools() {
 			line := fmt.Sprintf("[%s] %s (Status: %d, ID: %s)", e.Method, e.URL, e.Status, e.ID)
 			results = append(results, line)
 			count++
-			if count >= 20 {
+			if count >= limit {
 				break
 			}
 		}
@@ -100,15 +112,16 @@ func (ms *Server) registerTools() {
 		return NewToolResultText(strings.Join(results, "\n")), nil, nil
 	})
 
-	// 2. get_traffic_details
+	// 2. inspect_request_details
 	type getTrafficDetailsArgs struct {
 		ID string `json:"id" jsonschema:"The ID of the traffic entry"`
 	}
 	mcp.AddTool(ms.server, &mcp.Tool{
-		Name:        "get_traffic_details",
-		Description: "Get full details of a specific traffic entry including headers and body.",
+		Name:        "inspect_request_details",
+		Description: "MANDATORY tool for deep inspection. Get full headers and body of a specific traffic entry to diagnose root causes of network failures.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, args getTrafficDetailsArgs) (*mcp.CallToolResult, any, error) {
-		entries, _ := ms.store.GetPage(0, 100)
+		cfg := config.Get()
+		entries, _ := ms.store.GetPage(0, cfg.HistoryLimit)
 		for _, e := range entries {
 			if e.ID == args.ID {
 				details := fmt.Sprintf("ID: %s\nMethod: %s\nURL: %s\nStatus: %d\nDuration: %v\n\nRequest Headers:\n%v\n\nRequest Body:\n%s\n\nResponse Headers:\n%v\n\nResponse Body:\n%s",
