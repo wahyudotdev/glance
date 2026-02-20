@@ -40,6 +40,21 @@ export interface VariableMapping {
   target_json_path: string;
 }
 
+export interface MockResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
+export interface Rule {
+  id: string;
+  type: 'mock' | 'breakpoint';
+  url_pattern: string;
+  method: string;
+  strategy?: string;
+  response?: MockResponse;
+}
+
 export interface ScenarioStep {
   id: string;
   traffic_entry_id: string;

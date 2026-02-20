@@ -32,7 +32,9 @@ export const RequestEditor: React.FC<RequestEditorProps> = ({
       try {
         const parsed = JSON.parse(finalBody);
         finalBody = JSON.stringify(parsed, null, 2);
-      } catch (e) { /* Not JSON, keep original */ }
+      } catch {
+        // Not JSON, keep original
+      }
       setBody(finalBody);
       
       const h: {key: string, value: string}[] = [];

@@ -71,9 +71,15 @@ load-test:
 	@echo "Running load test (100 reqs, 10 concurrency)..."
 	go run scripts/load-test.go -n 100 -c 10
 
-lint:
-	@echo "Running linter..."
+lint: lint-backend lint-frontend
+
+lint-backend:
+	@echo "Running backend linter..."
 	golangci-lint run
+
+lint-frontend:
+	@echo "Running frontend linter..."
+	cd $(FRONTEND_DIR) && npm run lint
 
 run: build
 	./$(BINARY_NAME)

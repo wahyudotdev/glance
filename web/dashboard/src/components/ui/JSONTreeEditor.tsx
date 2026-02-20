@@ -11,7 +11,7 @@ interface JSONTreeEditorProps {
 
 export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange, className, isFullScreen, readOnly }) => {
   const [mode, setMode] = useState<'code' | 'tree'>('code');
-  const [parsedData, setParsedData] = useState<any>(null);
+  const [parsedData, setParsedData] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
   
   // Search state
@@ -40,12 +40,12 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
       } else {
         setInternalValue(value);
       }
-    } catch (e) {
+    } catch {
       setError('Invalid JSON');
       setInternalValue(value);
       if (mode === 'tree') setMode('code');
     }
-  }, [value, readOnly]);
+  }, [value, readOnly, mode]);
 
   // Search logic for code mode
   useEffect(() => {
@@ -77,9 +77,9 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
       const line = internalValue.substring(0, pos).split('\n').length;
       textareaRef.current.scrollTop = (line - 5) * lineHeight;
     }
-  }, [searchIndex, searchResults, mode, internalValue]);
+  }, [searchIndex, searchResults, mode, internalValue, searchQuery.length]);
 
-  const handleTreeChange = (newData: any) => {
+  const handleTreeChange = (newData: unknown) => {
     setParsedData(newData);
     onChange(JSON.stringify(newData, null, 2));
   };
@@ -88,7 +88,9 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
     try {
       const data = JSON.parse(value);
       onChange(JSON.stringify(data, null, 2));
-    } catch (e) {}
+    } catch {
+      // ignore
+    }
   };
 
   const nextResult = (e: React.MouseEvent) => {
@@ -189,8 +191,8 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
 
 interface TreeNodeProps {
   label: string | number;
-  value: any;
-  onUpdate: (val: any) => void;
+  value: unknown;
+  onUpdate: (val: unknown) => void;
   isLast: boolean;
   depth?: number;
   readOnly?: boolean;
@@ -216,7 +218,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
       const parsed = JSON.parse(editValue);
       onUpdate(parsed);
       setIsEditing(false);
-    } catch (e) {
+    } catch {
       // If parsing fails, treat as raw string (unquoted)
       onUpdate(editValue);
       setIsEditing(false);
@@ -224,7 +226,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
   };
 
   if (isObject) {
-    const keys = Object.keys(value);
+    const objValue = value as Record<string, unknown>;
+    const keys = Object.keys(objValue);
     const isEmpty = keys.length === 0;
 
     return (
@@ -239,7 +242,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
           
           <span className="text-blue-400 font-bold">{label}:</span>
           <span className="text-slate-500 ml-1">{isArray ? '[' : '{'}</span>
-          {!isExpanded && <span className="text-slate-600 mx-1 italic text-[10px]">... {isArray ? value.length : keys.length} items ...</span>}
+          {!isExpanded && <span className="text-slate-600 mx-1 italic text-[10px]">... {isArray ? (value as unknown[]).length : keys.length} items ...</span>}
           {!isExpanded && <span className="text-slate-500">{isArray ? ']' : '}'}{!isLast && ','}</span>}
         </div>
 
@@ -249,14 +252,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
               <TreeNode 
                 key={key}
                 label={isArray ? i : key}
-                value={value[key]}
+                value={objValue[key]}
                 onUpdate={(newVal) => {
                   if (isArray) {
-                    const next = [...value];
+                    const next = [...(value as unknown[])];
                     next[i] = newVal;
                     onUpdate(next);
                   } else {
-                    onUpdate({ ...value, [key]: newVal });
+                    onUpdate({ ...objValue, [key]: newVal });
                   }
                 }}
                 isLast={i === keys.length - 1}

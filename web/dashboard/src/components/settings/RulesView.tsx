@@ -1,20 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, Plus, Activity, Edit2, Eye, ShieldAlert, AlignLeft } from 'lucide-react';
-
-export interface MockResponse {
-  status: number;
-  headers: Record<string, string>;
-  body: string;
-}
-
-export interface Rule {
-  id: string;
-  type: 'mock' | 'breakpoint';
-  url_pattern: string;
-  method: string;
-  strategy?: string;
-  response?: MockResponse;
-}
+import type { Rule } from '../../types/traffic';
 
 interface RulesViewProps {
   rules: Rule[];
@@ -36,7 +22,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
     try {
       const parsed = JSON.parse(newMockBody);
       setNewMockBody(JSON.stringify(parsed, null, 2));
-    } catch (e) {}
+    } catch {
+      // Not valid JSON
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,7 +69,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
             <div className="flex gap-3">
               <select 
                 value={newType}
-                onChange={(e) => setNewType(e.target.value as any)}
+                onChange={(e) => setNewType(e.target.value as 'breakpoint' | 'mock')}
                 className={`w-40 px-4 py-2 border rounded-xl text-sm font-bold ${newType === 'mock' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/30'}`}
               >
                 <option value="breakpoint">Action: Pause</option>

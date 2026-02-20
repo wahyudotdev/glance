@@ -7,8 +7,8 @@ export const useDarkMode = () => {
       if (saved !== null) {
         return saved === 'true';
       }
-    } catch (e) {
-      console.warn('LocalStorage not accessible', e);
+    } catch {
+      // ignore
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
@@ -30,7 +30,7 @@ export const useDarkMode = () => {
     }
     
     // Force a reflow to ensure the classes are applied without transition
-    window.getComputedStyle(root).opacity;
+    void window.getComputedStyle(root).opacity;
     
     // Remove the class after a short delay
     const timer = setTimeout(() => {
@@ -39,7 +39,7 @@ export const useDarkMode = () => {
     
     try {
       localStorage.setItem('glance-dark-mode', isDark.toString());
-    } catch (e) {
+    } catch {
       // Ignore
     }
 

@@ -29,7 +29,9 @@ export const ResponseEditor: React.FC<ResponseEditorProps> = ({
       try {
         const parsed = JSON.parse(finalBody);
         finalBody = JSON.stringify(parsed, null, 2);
-      } catch (e) { /* Not JSON */ }
+      } catch {
+        // Not JSON
+      }
       setBody(finalBody);
       
       const h: {key: string, value: string}[] = [];

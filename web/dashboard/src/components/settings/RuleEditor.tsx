@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, ShieldAlert, Eye, Edit2, Maximize2, Minimize2 } from 'lucide-react';
-import type { Rule } from './RulesView';
+import type { Rule } from '../../types/traffic';
 import { JSONTreeEditor } from '../ui/JSONTreeEditor';
 
 interface RuleEditorProps {
@@ -33,7 +33,9 @@ export const RuleEditor: React.FC<RuleEditorProps> = ({
       try {
         const parsed = JSON.parse(body);
         body = JSON.stringify(parsed, null, 2);
-      } catch (e) {}
+      } catch {
+        // Fallback to raw body if not valid JSON
+      }
       setMockBody(body);
     }
   }, [rule, isOpen]);

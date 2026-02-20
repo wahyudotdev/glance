@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { TrafficEntry, Config } from '../types/traffic';
 
 export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | 'info', title: string, message: string) => void) => {
@@ -18,14 +18,14 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
   const pageSizeRef = useRef(config.default_page_size);
   useEffect(() => { pageSizeRef.current = config.default_page_size; }, [config.default_page_size]);
 
-  const apiFetch = async (url: string, options?: RequestInit) => {
+  const apiFetch = useCallback(async (url: string, options?: RequestInit) => {
     const res = await fetch(url, options);
     if (!res.ok) throw new Error(await res.text());
     if (res.status === 204) return null;
     return res.json();
-  };
+  }, []);
 
-  const fetchTraffic = async (page: number = 1, pageSize?: number) => {
+  const fetchTraffic = useCallback(async (page: number = 1, pageSize?: number) => {
     try {
       const size = pageSize || config.default_page_size;
       const data = await apiFetch(`/api/traffic?page=${page}&pageSize=${size}`);
@@ -37,9 +37,9 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     } catch (error) {
       console.error('Error fetching traffic:', error);
     }
-  };
+  }, [config.default_page_size, apiFetch]);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const data = await apiFetch('/api/status');
       setProxyAddr(data.proxy_addr);
@@ -49,15 +49,15 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     } catch (error) {
       console.error('Error fetching status:', error);
     }
-  };
+  }, [apiFetch]);
 
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 10000); // Poll every 10s
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchStatus]);
 
-  const clearTraffic = async () => {
+  const clearTraffic = useCallback(async () => {
     try {
       await apiFetch('/api/traffic', { method: 'DELETE' });
       setEntries([]);
@@ -67,7 +67,7 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
       toast('error', 'Clear Failed', String(error));
       return false;
     }
-  };
+  }, [apiFetch, toast]);
 
   const filteredEntries = useMemo(() => {
     return entries.filter(e => {

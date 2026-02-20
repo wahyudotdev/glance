@@ -25,7 +25,7 @@ const parseUrl = (urlString: string) => {
       path: url.pathname + url.search,
       host: url.host
     };
-  } catch (e) {
+  } catch {
     return {
       path: urlString,
       host: 'unknown'

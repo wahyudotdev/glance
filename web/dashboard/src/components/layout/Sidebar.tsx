@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ].map((item) => (
           <button 
             key={item.id}
-            onClick={() => setCurrentView(item.id as any)}
+            onClick={() => setCurrentView(item.id as 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm whitespace-nowrap ${
               currentView === item.id 
               ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 

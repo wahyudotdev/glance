@@ -1,7 +1,7 @@
 import type { TrafficEntry } from '../types/traffic';
 
 export function generateCurl(entry: TrafficEntry): string {
-  let parts = [`curl -X ${entry.method} '${entry.url}'` ];
+  const parts = [`curl -X ${entry.method} '${entry.url}'` ];
 
   // Add headers
   Object.entries(entry.request_headers).forEach(([key, values]) => {
