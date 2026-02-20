@@ -17,7 +17,8 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         { icon: <Settings className="text-blue-500" size={14} />, title: 'Configurable Limits', description: 'Added a limit parameter to traffic inspection that follows your system settings.' },
         { icon: <Filter className="text-indigo-500" size={14} />, title: 'Traffic Filtering', description: 'Enhanced search bar with a professional toggleable filter menu for request methods.' },
         { icon: <Braces className="text-emerald-500" size={14} />, title: 'JSON Tree Viewer', description: 'New interactive viewer/editor with tree view and collapse/expand for all JSON traffic bodies.' },
-        { icon: <Maximize2 className="text-rose-500" size={14} />, title: 'Enhanced Editor', description: 'Added search and full-screen mode for easier mock body editing.' }
+        { icon: <Maximize2 className="text-rose-500" size={14} />, title: 'Enhanced Editor', description: 'Added search and full-screen mode for easier mock body editing.' },
+        { icon: <Bug className="text-amber-500" size={14} />, title: 'Scenario Fix', description: 'Resolved "Unknown URL" issue in scenarios by correctly loading historical traffic data.' }
       ]
     },
     {

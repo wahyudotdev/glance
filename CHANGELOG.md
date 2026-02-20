@@ -8,6 +8,7 @@ All notable changes to the Glance project will be documented in this file.
 - **Traffic Filtering**: Enhanced search bar with a professional toggleable filter menu for request methods (GET, POST, etc.).
 - **JSON Tree Editor**: Introduced a new interactive JSON editor with tree view, collapse/expand support, and direct value editing. Integrated this into both Rule/Response editors and the Traffic Details panel.
 - **Enhanced Editor**: Added search and full-screen editing capabilities for mock response bodies.
+- **Scenario Fix**: Fixed a bug where scenario steps would show "Unknown URL" if the original traffic entry was not in the current view history. Steps now join with historical traffic data from the database.
 
 ## [v0.1.3] - 2026-02-20
 - **UI/UX**: Fixed cURL command overflow in the details panel by adding proper text wrapping.

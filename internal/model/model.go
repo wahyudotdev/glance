@@ -81,10 +81,11 @@ type VariableMapping struct {
 
 // ScenarioStep represents a single step in a recorded sequence.
 type ScenarioStep struct {
-	ID             string `json:"id"`
-	TrafficEntryID string `json:"traffic_entry_id"`
-	Order          int    `json:"order"`
-	Notes          string `json:"notes,omitempty"`
+	ID             string        `json:"id"`
+	TrafficEntryID string        `json:"traffic_entry_id"`
+	Order          int           `json:"order"`
+	Notes          string        `json:"notes,omitempty"`
+	TrafficEntry   *TrafficEntry `json:"traffic_entry,omitempty"`
 }
 
 // Scenario represents a sequence of related traffic entries for test generation.

@@ -45,6 +45,7 @@ export interface ScenarioStep {
   traffic_entry_id: string;
   order: number;
   notes?: string;
+  traffic_entry?: TrafficEntry;
 }
 
 export interface Scenario {

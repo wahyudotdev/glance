@@ -196,7 +196,7 @@ export const ScenarioEditor: React.FC<ScenarioEditorProps> = ({
             {activeTab === 'steps' ? (
               <div className="max-w-4xl mx-auto flex flex-col gap-4">
                 {steps.map((step, index) => {
-                  const entry = getEntry(step.traffic_entry_id);
+                  const entry = getEntry(step.traffic_entry_id) || step.traffic_entry;
                   return (
                     <div 
                       key={step.id || index}

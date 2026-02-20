@@ -3,8 +3,10 @@ package repository
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"glance/internal/model"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -154,6 +156,49 @@ func (r *sqliteTrafficRepository) GetPage(offset, limit int) ([]*model.TrafficEn
 	return entries, total, nil
 }
 
+func (r *sqliteTrafficRepository) GetByIDs(ids []string) ([]*model.TrafficEntry, error) {
+	if len(ids) == 0 {
+		return []*model.TrafficEntry{}, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT 
+			id, method, url, request_headers, request_body,
+			status, response_headers, response_body, start_time, duration, modified_by
+		FROM traffic WHERE id IN (%s)`, strings.Join(placeholders, ","))
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var entries []*model.TrafficEntry
+	for rows.Next() {
+		var e model.TrafficEntry
+		var reqH, resH string
+		var duration int64
+		err := rows.Scan(
+			&e.ID, &e.Method, &e.URL, &reqH, &e.RequestBody,
+			&e.Status, &resH, &e.ResponseBody, &e.StartTime, &duration, &e.ModifiedBy)
+		if err != nil {
+			continue
+		}
+		_ = json.Unmarshal([]byte(reqH), &e.RequestHeaders)
+		_ = json.Unmarshal([]byte(resH), &e.ResponseHeaders)
+		e.Duration = time.Duration(duration)
+		entries = append(entries, &e)
+	}
+	return entries, nil
+}
+
 func (r *sqliteTrafficRepository) Clear() error {
 	_, err := r.db.Exec("DELETE FROM traffic")
 	return err
@@ -274,13 +319,31 @@ func (r *sqliteScenarioRepository) GetByID(id string) (*model.Scenario, error) {
 		return nil, err
 	}
 
-	// Load steps
-	stepRows, err := r.db.Query("SELECT id, traffic_entry_id, step_order, notes FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC", id)
+	// Load steps with joined traffic data
+	stepRows, err := r.db.Query(`
+		SELECT 
+			s.id, s.traffic_entry_id, s.step_order, s.notes,
+			t.method, t.url, t.status
+		FROM scenario_steps s
+		LEFT JOIN traffic t ON s.traffic_entry_id = t.id
+		WHERE s.scenario_id = ? 
+		ORDER BY s.step_order ASC`, id)
 	if err == nil {
 		defer func() { _ = stepRows.Close() }()
 		for stepRows.Next() {
 			var step model.ScenarioStep
-			if err := stepRows.Scan(&step.ID, &step.TrafficEntryID, &step.Order, &step.Notes); err == nil {
+			var method, url sql.NullString
+			var status sql.NullInt32
+			err := stepRows.Scan(&step.ID, &step.TrafficEntryID, &step.Order, &step.Notes, &method, &url, &status)
+			if err == nil {
+				if method.Valid {
+					step.TrafficEntry = &model.TrafficEntry{
+						ID:     step.TrafficEntryID,
+						Method: method.String,
+						URL:    url.String,
+						Status: int(status.Int32),
+					}
+				}
 				s.Steps = append(s.Steps, step)
 			}
 		}
