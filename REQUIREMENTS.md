@@ -47,8 +47,8 @@ An application inspired by HTTP Toolkit for intercepting, inspecting, and mockin
     - `proxy://status`: Current proxy address, dashboard URL, and count of active rules.
     - `traffic://latest`: The most recent 10 HTTP requests captured in JSON format.
 - **Tools:**
-    - `list_traffic`: List captured HTTP traffic summaries (up to 20 entries), with optional keyword filtering.
-    - `get_traffic_details`: Retrieve full headers and body for a specific traffic entry by ID.
+    - `inspect_network_traffic`: PRIMARY tool to list captured HTTP traffic summaries, with optional keyword filtering and configurable limit.
+    - `inspect_request_details`: MANDATORY tool to retrieve full headers and body for a specific traffic entry by ID.
     - `add_mock_rule`: Programmatically create mocking rules to intercept and return static responses.
     - `clear_traffic`: Reset/clear the captured traffic logs.
     - `get_proxy_status`: Get real-time proxy address and status.

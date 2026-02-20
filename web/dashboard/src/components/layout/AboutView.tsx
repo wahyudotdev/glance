@@ -53,24 +53,29 @@ export const AboutView: React.FC = () => {
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Built With Open Source</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
             {[
-              { name: 'GoProxy', desc: 'MITM Engine', url: 'https://github.com/elazarl/goproxy' },
-              { name: 'GoFiber', desc: 'API Framework', url: 'https://gofiber.io' },
-              { name: 'React', desc: 'Dashboard UI', url: 'https://react.dev' },
-              { name: 'Tailwind', desc: 'Styling', url: 'https://tailwindcss.com' },
-              { name: 'Lucide', desc: 'Iconography', url: 'https://lucide.dev' },
-              { name: 'SQLite', desc: 'Persistence', url: 'https://sqlite.org' },
+              { name: 'GoProxy', desc: 'The core MITM proxy engine.', url: 'https://github.com/elazarl/goproxy' },
+              { name: 'GoFiber', desc: 'High-performance web framework for the API.', url: 'https://gofiber.io' },
+              { name: 'React', desc: 'Modern library for the dashboard UI.', url: 'https://react.dev' },
+              { name: 'Tailwind CSS', desc: 'Utility-first CSS framework for styling.', url: 'https://tailwindcss.com' },
+              { name: 'Lucide Icons', desc: 'Beautiful & consistent iconography.', url: 'https://lucide.dev' },
+              { name: 'SQLite', desc: 'Lightweight & high-performance persistence.', url: 'https://sqlite.org' },
             ].map((lib) => (
               <a 
                 key={lib.name}
                 href={lib.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:border-blue-500 dark:hover:border-blue-400 transition-all group"
+                className="flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
               >
-                <div className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">{lib.name}</div>
-                <div className="text-[10px] text-slate-400 dark:text-slate-500">{lib.desc}</div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{lib.name}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{lib.desc}</span>
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors underline decoration-slate-200 dark:decoration-slate-800 underline-offset-4">
+                  Visit Project
+                </div>
               </a>
             ))}
           </div>

@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={onShowChangelog}
                 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800/30 uppercase tracking-tighter hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-all"
               >
-                What's New
+                Changelogs
               </button>
             )}
           </div>
@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button 
             onClick={onShowChangelog}
             className="mt-2 p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
-            title="What's New"
+            title="Changelogs"
           >
             <Sparkles size={14} />
           </button>

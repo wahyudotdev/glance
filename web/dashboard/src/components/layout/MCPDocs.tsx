@@ -154,8 +154,8 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
-                { name: 'list_traffic', desc: 'Read intercepted logs' },
-                { name: 'get_traffic_details', desc: 'Read headers & bodies' },
+                { name: 'inspect_network_traffic', desc: 'PRIMARY: Read logs (configurable limit)' },
+                { name: 'inspect_request_details', desc: 'MANDATORY: Read headers & bodies' },
                 { name: 'execute_request', desc: 'Run custom HTTP requests' },
                 { name: 'list_rules', desc: 'See all active mocks/pauses' },
                 { name: 'add_mock_rule', desc: 'Create static responses' },

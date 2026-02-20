@@ -231,13 +231,6 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
               </div>
             )}
             <button 
-              onClick={handleCopyCurl}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
-            >
-              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-              {copied ? 'Copied!' : 'Copy cURL'}
-            </button>
-            <button 
               onClick={onClose}
               className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
               title="Close Details"
@@ -359,7 +352,16 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
 
         {activeTab === 'curl' && (
           <div className="space-y-4">
-            <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">cURL Command</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">cURL Command</h3>
+              <button 
+                onClick={handleCopyCurl}
+                className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
+              >
+                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
             <pre className="bg-slate-900 text-blue-300 p-5 rounded-xl text-[12px] font-mono whitespace-pre-wrap break-all leading-relaxed shadow-xl border border-slate-800">
               {generateCurl(entry)}
             </pre>

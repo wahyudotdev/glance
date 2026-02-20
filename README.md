@@ -32,8 +32,8 @@ Glance implements the Model Context Protocol, allowing AI agents to interact wit
 - `traffic://latest`: Returns the most recent 10 HTTP requests in JSON format.
 
 ### Tools
-- `list_traffic`: List captured HTTP traffic summaries (up to 20 entries) with optional keyword filtering.
-- `get_traffic_details`: Retrieve full headers and body for a specific traffic entry by ID.
+- `inspect_network_traffic`: PRIMARY tool to list captured HTTP traffic summaries with optional keyword filtering and configurable limit (max limit follows system settings). MUST be used first for any network debugging.
+- `inspect_request_details`: MANDATORY tool to retrieve full headers and body for a specific traffic entry by ID to diagnose root causes.
 - `execute_request`: Execute or replay custom HTTP requests through the proxy.
 - `add_mock_rule`: Create a mocking rule to return static responses.
 - `add_breakpoint_rule`: Create a breakpoint rule to pause traffic for manual inspection.

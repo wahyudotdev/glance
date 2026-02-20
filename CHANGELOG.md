@@ -2,6 +2,12 @@
 
 All notable changes to the Glance project will be documented in this file.
 
+## [v0.1.4] - 2026-02-20
+- **MCP Enhancements**: Renamed tools to `inspect_network_traffic` and `inspect_request_details` with authoritative descriptions to guide AI agents.
+- **MCP Config**: Added a configurable `limit` parameter to `inspect_network_traffic` (default 20, max 100).
+- **JSON Tree Editor**: Introduced a new interactive JSON editor with tree view, collapse/expand support, and direct value editing.
+- **Enhanced Editor**: Added search and full-screen editing capabilities for mock response bodies in both the Rule Editor and Intercepted Response view.
+
 ## [v0.1.3] - 2026-02-20
 - **UI/UX**: Fixed cURL command overflow in the details panel by adding proper text wrapping.
 - **About Page**: Introduced a dedicated About page with project overview and open-source attributions.
@@ -18,7 +24,6 @@ All notable changes to the Glance project will be documented in this file.
 - **Release Pipeline**: Established automated multi-platform releases via GoReleaser and Homebrew.
 - **Scenarios**: Implemented **Scenario Recording** with variable mapping and AI test generation prompts.
 - **MCP**: Optimized server performance and moved to a dedicated port for better compatibility.
-- **Documentation**: Launched official documentation site using VitePress with comprehensive guides.
 - **Real-time Stability**: Fixed critical WebSocket issues and race conditions in traffic streaming.
 - **Project Hygiene**: Added MIT License, updated gitignore, and implemented safe URL parsing.
 - **Build & Stability**: Resolved database deadlocks and fixed mcp-go library integration issues.
