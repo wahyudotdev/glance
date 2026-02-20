@@ -61,6 +61,7 @@ const App: React.FC = () => {
   // Traffic Hook
   const {
     entries, totalEntries, currentPage, proxyAddr, version, mcpSessions, mcpEnabled, filter, setFilter,
+    methodFilter, setMethodFilter,
     filteredEntries, fetchTraffic, fetchStatus, clearTraffic,
     setEntries, setTotalEntries, currentPageRef, pageSizeRef
   } = useTraffic(config, toast);
@@ -98,17 +99,21 @@ const App: React.FC = () => {
   // Recording State
   const [isRecording, setIsRecording] = useState(false);
   const [recordedEntries, setRecordedEntries] = useState<TrafficEntry[]>([]);
-  const [recordingFilter, setRecordingFilter] = useState('');
   const isRecordingRef = React.useRef(isRecording);
-  const recordingFilterRef = React.useRef(recordingFilter);
+  const filterRef = React.useRef(filter);
+  const methodFilterRef = React.useRef(methodFilter);
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
   useEffect(() => {
-    recordingFilterRef.current = recordingFilter;
-  }, [recordingFilter]);
+    filterRef.current = filter;
+  }, [filter]);
+
+  useEffect(() => {
+    methodFilterRef.current = methodFilter;
+  }, [methodFilter]);
 
   const handleToggleRecording = () => {
     if (isRecording) {
@@ -134,7 +139,12 @@ const App: React.FC = () => {
       // START recording
       setRecordedEntries([]);
       setIsRecording(true);
-      toast('info', 'Recording Started', 'All incoming requests will be added to the new scenario sequence.');
+      
+      let msg = 'All incoming requests will be added to the scenario.';
+      if (filter || methodFilter !== 'ALL') {
+        msg = `Recording active with filters: ${methodFilter !== 'ALL' ? '['+methodFilter+'] ' : ''}${filter}`;
+      }
+      toast('info', 'Recording Started', msg);
     }
   };
 
@@ -654,8 +664,13 @@ const App: React.FC = () => {
           });
 
           if (isRecordingRef.current) {
-            const filter = recordingFilterRef.current.toLowerCase();
-            if (!filter || entry.url.toLowerCase().includes(filter)) {
+            const f = filterRef.current.toLowerCase();
+            const mf = methodFilterRef.current;
+            
+            const matchesText = !f || entry.url.toLowerCase().includes(f) || entry.method.toLowerCase().includes(f);
+            const matchesMethod = mf === 'ALL' || entry.method.toUpperCase() === mf;
+
+            if (matchesText && matchesMethod) {
               setRecordedEntries(prev => [...prev, entry]);
             }
           }
@@ -703,14 +718,14 @@ const App: React.FC = () => {
           mcpEnabled={mcpEnabled}
           filter={filter} 
           setFilter={setFilter} 
+          methodFilter={methodFilter}
+          setMethodFilter={setMethodFilter}
           onClearTraffic={() => setIsClearModalOpen(true)} 
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
           isRecording={isRecording}
           onToggleRecording={handleToggleRecording}
           recordedCount={recordedEntries.length}
-          recordingFilter={recordingFilter}
-          setRecordingFilter={setRecordingFilter}
           onShowMCP={() => setIsMCPDocsOpen(true)}
         />
 

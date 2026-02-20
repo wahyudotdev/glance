@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollText, X, ShieldCheck, Layout, Info, Sparkles, Zap, Rocket, Bug, Globe, Smartphone, Settings, Maximize2, Braces } from 'lucide-react';
+import { ScrollText, X, ShieldCheck, Layout, Info, Sparkles, Zap, Rocket, Bug, Globe, Smartphone, Settings, Maximize2, Braces, Filter } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -11,12 +11,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const changes = [
     {
-      date: 'v0.1.4 - 2026-02-20',
+      date: 'v0.1.4 - 2026-02-21',
       items: [
         { icon: <Zap className="text-amber-500" size={14} />, title: 'MCP Authoritative Tools', description: 'Renamed tools to inspect_network_traffic and inspect_request_details with mandatory descriptions.' },
         { icon: <Settings className="text-blue-500" size={14} />, title: 'Configurable Limits', description: 'Added a limit parameter to traffic inspection that follows your system settings.' },
+        { icon: <Filter className="text-indigo-500" size={14} />, title: 'Traffic Filtering', description: 'Enhanced search bar with a professional toggleable filter menu for request methods.' },
         { icon: <Braces className="text-emerald-500" size={14} />, title: 'JSON Tree Viewer', description: 'New interactive viewer/editor with tree view and collapse/expand for all JSON traffic bodies.' },
-        { icon: <Maximize2 className="text-indigo-500" size={14} />, title: 'Enhanced Editor', description: 'Added search and full-screen mode for easier mock body editing.' }
+        { icon: <Maximize2 className="text-rose-500" size={14} />, title: 'Enhanced Editor', description: 'Added search and full-screen mode for easier mock body editing.' }
       ]
     },
     {

@@ -10,6 +10,7 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
   const [mcpSessions, setMcpSessions] = useState(0);
   const [mcpEnabled, setMcpEnabled] = useState(false);
   const [filter, setFilter] = useState('');
+  const [methodFilter, setMethodFilter] = useState('ALL');
 
   const currentPageRef = useRef(currentPage);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
@@ -69,11 +70,13 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
   };
 
   const filteredEntries = useMemo(() => {
-    return entries.filter(e => 
-      e.url.toLowerCase().includes(filter.toLowerCase()) || 
-      e.method.toLowerCase().includes(filter.toLowerCase())
-    ).reverse();
-  }, [entries, filter]);
+    return entries.filter(e => {
+      const matchesText = e.url.toLowerCase().includes(filter.toLowerCase()) || 
+                         e.method.toLowerCase().includes(filter.toLowerCase());
+      const matchesMethod = methodFilter === 'ALL' || e.method.toUpperCase() === methodFilter;
+      return matchesText && matchesMethod;
+    }).reverse();
+  }, [entries, filter, methodFilter]);
 
   return {
     entries,
@@ -85,6 +88,8 @@ export const useTraffic = (config: Config, toast: (type: 'success' | 'error' | '
     mcpEnabled,
     filter,
     setFilter,
+    methodFilter,
+    setMethodFilter,
     filteredEntries,
     fetchTraffic,
     fetchStatus,
