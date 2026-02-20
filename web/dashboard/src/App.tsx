@@ -201,10 +201,23 @@ const App: React.FC = () => {
     return localStorage.getItem('glance-sidebar-collapsed') === 'true';
   });
   const [isResizing, setIsResizing] = useState(false);
+  const [isDetailsFullScreen, setIsDetailsFullScreen] = useState(false);
+  const [preFullScreenWidth, setPreFullScreenWidth] = useState(70);
 
   useEffect(() => {
     localStorage.setItem('glance-details-width', detailsWidth.toString());
   }, [detailsWidth]);
+
+  const handleToggleDetailsFullScreen = () => {
+    if (isDetailsFullScreen) {
+      setDetailsWidth(preFullScreenWidth);
+      setIsDetailsFullScreen(false);
+    } else {
+      setPreFullScreenWidth(detailsWidth);
+      setDetailsWidth(100);
+      setIsDetailsFullScreen(true);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('glance-sidebar-collapsed', isSidebarCollapsed.toString());
@@ -749,6 +762,8 @@ const App: React.FC = () => {
                       onBreak={handleCreateBreakpoint} 
                       onMock={handleCreateMock} 
                       onAddToScenario={handleAddToScenario} 
+                      onToggleFullScreen={handleToggleDetailsFullScreen}
+                      isPanelFullScreen={isDetailsFullScreen}
                     />
                   </div>
                 </>

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, ChevronDown, Type, Braces, Edit3, Check, X, Search, ChevronUp } from 'lucide-react';
+import { ChevronRight, ChevronDown, Type, Braces, Edit3, Check, X, Search, ChevronUp, AlignLeft } from 'lucide-react';
 
 interface JSONTreeEditorProps {
   value: string;
   onChange: (newValue: string) => void;
   className?: string;
   isFullScreen?: boolean;
+  readOnly?: boolean;
 }
 
-export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange, className, isFullScreen }) => {
+export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange, className, isFullScreen, readOnly }) => {
   const [mode, setMode] = useState<'code' | 'tree'>('code');
   const [parsedData, setParsedData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,16 +20,32 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-format logic
+  const [internalValue, setInternalValue] = useState(value);
+
   useEffect(() => {
     try {
       const data = JSON.parse(value);
       setParsedData(data);
       setError(null);
+
+      // If it's valid JSON and we are in readOnly mode, ensure it's formatted
+      if (readOnly) {
+        const formatted = JSON.stringify(data, null, 2);
+        if (formatted !== value) {
+          setInternalValue(formatted);
+        } else {
+          setInternalValue(value);
+        }
+      } else {
+        setInternalValue(value);
+      }
     } catch (e) {
       setError('Invalid JSON');
+      setInternalValue(value);
       if (mode === 'tree') setMode('code');
     }
-  }, [value, mode]);
+  }, [value, readOnly]);
 
   // Search logic for code mode
   useEffect(() => {
@@ -39,14 +56,16 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
     }
 
     const results: number[] = [];
-    let pos = value.toLowerCase().indexOf(searchQuery.toLowerCase());
+    const lowerValue = internalValue.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase();
+    let pos = lowerValue.indexOf(lowerQuery);
     while (pos !== -1) {
       results.push(pos);
-      pos = value.toLowerCase().indexOf(searchQuery.toLowerCase(), pos + 1);
+      pos = lowerValue.indexOf(lowerQuery, pos + 1);
     }
     setSearchResults(results);
     setSearchIndex(results.length > 0 ? 0 : -1);
-  }, [searchQuery, value, mode]);
+  }, [searchQuery, internalValue, mode]);
 
   useEffect(() => {
     if (searchIndex !== -1 && searchResults[searchIndex] !== undefined && textareaRef.current && mode === 'code') {
@@ -55,14 +74,21 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
       textareaRef.current.setSelectionRange(pos, pos + searchQuery.length);
       
       const lineHeight = 16;
-      const line = value.substring(0, pos).split('\n').length;
+      const line = internalValue.substring(0, pos).split('\n').length;
       textareaRef.current.scrollTop = (line - 5) * lineHeight;
     }
-  }, [searchIndex, searchResults, mode]);
+  }, [searchIndex, searchResults, mode, internalValue]);
 
   const handleTreeChange = (newData: any) => {
     setParsedData(newData);
     onChange(JSON.stringify(newData, null, 2));
+  };
+
+  const prettifyJson = () => {
+    try {
+      const data = JSON.parse(value);
+      onChange(JSON.stringify(data, null, 2));
+    } catch (e) {}
   };
 
   const nextResult = (e: React.MouseEvent) => {
@@ -118,10 +144,19 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
               )}
             </div>
           )}
+
+          {!readOnly && mode === 'code' && !error && (
+            <button 
+              onClick={prettifyJson}
+              className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all"
+            >
+              <AlignLeft size={12} /> Prettify
+            </button>
+          )}
         </div>
         {error ? (
           <span className="text-[10px] font-bold text-rose-500 uppercase tracking-tight">{error}</span>
-        ) : mode === 'tree' && (
+        ) : mode === 'tree' && !readOnly && (
           <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tight">Tree Editor Active</span>
         )}
       </div>
@@ -130,18 +165,20 @@ export const JSONTreeEditor: React.FC<JSONTreeEditorProps> = ({ value, onChange,
         {mode === 'code' ? (
           <textarea 
             ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={internalValue}
+            onChange={(e) => !readOnly && onChange(e.target.value)}
+            readOnly={readOnly}
             className="w-full h-full p-6 bg-transparent text-emerald-400 focus:outline-none resize-none leading-relaxed"
             spellCheck={false}
           />
         ) : (
-          <div className="p-6">
+          <div className="p-4">
             <TreeNode 
               label="root" 
               value={parsedData} 
-              onUpdate={(val) => handleTreeChange(val)}
+              onUpdate={(val) => !readOnly && handleTreeChange(val)}
               isLast={true}
+              readOnly={readOnly}
             />
           </div>
         )}
@@ -156,9 +193,10 @@ interface TreeNodeProps {
   onUpdate: (val: any) => void;
   isLast: boolean;
   depth?: number;
+  readOnly?: boolean;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, depth = 0 }) => {
+const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, depth = 0, readOnly }) => {
   const [isExpanded, setIsExpanded] = useState(depth < 2);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -167,6 +205,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
   const isArray = Array.isArray(value);
 
   const startEdit = () => {
+    if (readOnly) return;
     setEditValue(typeof value === 'string' ? value : JSON.stringify(value));
     setIsEditing(true);
   };
@@ -222,6 +261,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
                 }}
                 isLast={i === keys.length - 1}
                 depth={depth + 1}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -243,7 +283,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
       <span className="p-0.5 invisible"><ChevronRight size={14} /></span>
       <span className="text-blue-400 font-bold">{label}:</span>
       
-      {isEditing ? (
+      {isEditing && !readOnly ? (
         <div className="flex items-center gap-1 flex-1 max-w-md">
           <input 
             autoFocus
@@ -260,7 +300,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
           <button onClick={() => setIsEditing(false)} className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"><X size={14} /></button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 cursor-pointer" onClick={startEdit}>
+        <div className={`flex items-center gap-2 ${!readOnly ? 'cursor-pointer' : ''}`} onClick={startEdit}>
           <span className={`
             ${typeof value === 'string' ? 'text-emerald-400' : ''}
             ${typeof value === 'number' ? 'text-amber-400' : ''}
@@ -270,11 +310,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ label, value, onUpdate, isLast, dep
             {typeof value === 'string' ? `"${value}"` : String(value)}
             {!isLast && <span className="text-slate-500">,</span>}
           </span>
-          <button 
-            className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-blue-400 transition-all"
-          >
-            <Edit3 size={12} />
-          </button>
+          {!readOnly && (
+            <button 
+              className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-blue-400 transition-all"
+            >
+              <Edit3 size={12} />
+            </button>
+          )}
         </div>
       )}
     </div>

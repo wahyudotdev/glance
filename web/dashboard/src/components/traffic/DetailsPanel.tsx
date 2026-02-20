@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus, Plus } from 'lucide-react';
+import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus, Plus, Maximize2, Minimize2 } from 'lucide-react';
 import type { TrafficEntry, Scenario } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
+import { JSONTreeEditor } from '../ui/JSONTreeEditor';
 
 interface DetailsPanelProps {
   entry: TrafficEntry;
@@ -11,15 +12,21 @@ interface DetailsPanelProps {
   onBreak?: (entry: TrafficEntry) => void;
   onMock?: (entry: TrafficEntry) => void;
   onAddToScenario?: (entry: TrafficEntry, scenarioId: string | 'new') => void;
+  onToggleFullScreen?: () => void;
+  isPanelFullScreen?: boolean;
 }
 
-export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, onEdit, onClose, onBreak, onMock, onAddToScenario }) => {
+export const DetailsPanel: React.FC<DetailsPanelProps> = ({ 
+  entry, scenarios, onEdit, onClose, onBreak, onMock, onAddToScenario, 
+  onToggleFullScreen, isPanelFullScreen 
+}) => {
   const [activeTab, setActiveTab] = useState<'headers' | 'body' | 'curl'>('headers');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
   const [copiedRequest, setCopiedRequest] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [showScenarioDropdown, setShowScenarioDropdown] = useState(false);
+  const [fullScreenTarget, setFullScreenTarget] = useState<'request' | 'response' | null>(null);
 
   const isModified = entry.modified_by === 'mock' || entry.modified_by === 'breakpoint';
 
@@ -29,27 +36,26 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
     return ct[0] || '';
   };
 
-  const renderPreview = () => {
+  const renderPreview = (isFullScreen = false) => {
     if (!entry.response_body) return <span className="text-slate-300 dark:text-slate-600 italic">No response body captured</span>;
     
     const contentType = getContentType().toLowerCase();
 
     if (contentType.includes('json')) {
-      try {
-        const parsed = JSON.parse(entry.response_body);
-        return (
-          <pre className="text-emerald-700 dark:text-emerald-400 whitespace-pre-wrap leading-relaxed">
-            {JSON.stringify(parsed, null, 2)}
-          </pre>
-        );
-      } catch {
-        return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{entry.response_body}</pre>;
-      }
+      return (
+        <JSONTreeEditor 
+          value={entry.response_body}
+          onChange={() => {}}
+          readOnly={true}
+          isFullScreen={isFullScreen}
+          className="h-full border-none"
+        />
+      );
     }
 
     if (contentType.includes('image/')) {
       return (
-        <div className="flex flex-col items-center gap-4 py-4">
+        <div className="flex flex-col items-center gap-4 py-4 overflow-auto h-full bg-slate-900/50">
           <img 
             src={entry.response_body} 
             className="max-w-full h-auto rounded-lg shadow-md border border-slate-200 dark:border-slate-700 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAApSURBVHgB7YwxCgAwDMCK/z96p9S6ZAsG6m6ZAnpZAnpZAnpZAnpZAnoZMgX0MnpsmY8AAAAASUVORK5CYII=')] bg-repeat" 
@@ -76,20 +82,36 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
       );
     }
 
-    return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{entry.response_body}</pre>;
+    return (
+      <div className="h-full bg-slate-900 p-6 overflow-auto">
+        <pre className="text-slate-300 dark:text-slate-400 whitespace-pre-wrap leading-relaxed font-mono text-xs">
+          {entry.response_body}
+        </pre>
+      </div>
+    );
   };
 
-  const renderRequestBody = () => {
+  const renderRequestBody = (isFullScreen = false) => {
     if (!entry.request_body) return null;
     try {
-      const parsed = JSON.parse(entry.request_body);
+      JSON.parse(entry.request_body);
       return (
-        <pre className="text-blue-700 dark:text-blue-400 whitespace-pre-wrap leading-relaxed">
-          {JSON.stringify(parsed, null, 2)}
-        </pre>
+        <JSONTreeEditor 
+          value={entry.request_body}
+          onChange={() => {}}
+          readOnly={true}
+          isFullScreen={isFullScreen}
+          className="h-full border-none"
+        />
       );
     } catch {
-      return <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{entry.request_body}</pre>;
+      return (
+        <div className="h-full bg-slate-900 p-6 overflow-auto">
+          <pre className="text-slate-300 dark:text-slate-400 whitespace-pre-wrap leading-relaxed font-mono text-xs">
+            {entry.request_body}
+          </pre>
+        </div>
+      );
     }
   };
 
@@ -118,8 +140,29 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
 
   return (
     <div 
-      className="bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl z-20 flex-shrink-0 h-full w-full transition-colors"
+      className="bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl z-20 flex-shrink-0 h-full w-full transition-colors relative"
     >
+      {/* Full Screen Overlay */}
+      {fullScreenTarget && (
+        <div className="absolute inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
+          <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 bg-slate-50 dark:bg-slate-950 transition-colors">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
+              <Maximize2 size={14} className="text-blue-500" />
+              Full Screen: {fullScreenTarget === 'request' ? 'Request Body' : 'Response Body'}
+            </h3>
+            <button 
+              onClick={() => setFullScreenTarget(null)}
+              className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 transition-all flex items-center gap-2 text-xs font-bold"
+            >
+              <Minimize2 size={18} /> Close
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden bg-slate-900">
+            {fullScreenTarget === 'request' ? renderRequestBody(true) : renderPreview(true)}
+          </div>
+        </div>
+      )}
+
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -231,6 +274,13 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
               </div>
             )}
             <button 
+              onClick={onToggleFullScreen}
+              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+              title={isPanelFullScreen ? "Exit Full Screen" : "Full Screen"}
+            >
+              {isPanelFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+            <button 
               onClick={onClose}
               className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
               title="Close Details"
@@ -295,18 +345,27 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
         {activeTab === 'body' && (
           <div className="h-full flex flex-col gap-6">
             {entry.request_body && (
-              <section className="flex-shrink-0 flex flex-col max-h-[40%]">
+              <section className="flex-shrink-0 flex flex-col max-h-[45%]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">Request Body</h3>
-                  <button 
-                    onClick={handleCopyRequestBody}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
-                  >
-                    {copiedRequest ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                    {copiedRequest ? 'Copied!' : 'Copy'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setFullScreenTarget('request')}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                      title="View in Full Screen"
+                    >
+                      <Maximize2 size={14} />
+                    </button>
+                    <button 
+                      onClick={handleCopyRequestBody}
+                      className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
+                    >
+                      {copiedRequest ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      {copiedRequest ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 dark:border-slate-800 shadow-inner">
+                <div className="flex-1 overflow-hidden">
                   {renderRequestBody()}
                 </div>
               </section>
@@ -316,13 +375,22 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">Response Body</h3>
-                  <button 
-                    onClick={handleCopyResponseBody}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
-                  >
-                    {copiedResponse ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                    {copiedResponse ? 'Copied!' : 'Copy'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setFullScreenTarget('response')}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                      title="View in Full Screen"
+                    >
+                      <Maximize2 size={14} />
+                    </button>
+                    <button 
+                      onClick={handleCopyResponseBody}
+                      className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
+                    >
+                      {copiedResponse ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      {copiedResponse ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
                   <button 
@@ -339,11 +407,13 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
                   </button>
                 </div>
               </div>
-              <div className="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 font-mono text-[12px] overflow-auto border border-slate-100 dark:border-slate-800 shadow-inner">
+              <div className="flex-1 overflow-hidden">
                 {viewMode === 'preview' ? renderPreview() : (
-                  <pre className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
-                    {entry.response_body || <span className="text-slate-300 dark:text-slate-600 italic">No response body captured</span>}
-                  </pre>
+                  <div className="h-full bg-slate-900 rounded-2xl p-4 overflow-auto border border-slate-800">
+                    <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed font-mono text-[12px]">
+                      {entry.response_body || <span className="text-slate-600 italic">No response body captured</span>}
+                    </pre>
+                  </div>
                 )}
               </div>
             </section>

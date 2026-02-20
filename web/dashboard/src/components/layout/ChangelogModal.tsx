@@ -15,7 +15,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
       items: [
         { icon: <Zap className="text-amber-500" size={14} />, title: 'MCP Authoritative Tools', description: 'Renamed tools to inspect_network_traffic and inspect_request_details with mandatory descriptions.' },
         { icon: <Settings className="text-blue-500" size={14} />, title: 'Configurable Limits', description: 'Added a limit parameter to traffic inspection that follows your system settings.' },
-        { icon: <Braces className="text-emerald-500" size={14} />, title: 'JSON Tree Editor', description: 'New interactive editor with tree view, collapse/expand, and inline editing.' },
+        { icon: <Braces className="text-emerald-500" size={14} />, title: 'JSON Tree Viewer', description: 'New interactive viewer/editor with tree view and collapse/expand for all JSON traffic bodies.' },
         { icon: <Maximize2 className="text-indigo-500" size={14} />, title: 'Enhanced Editor', description: 'Added search and full-screen mode for easier mock body editing.' }
       ]
     },

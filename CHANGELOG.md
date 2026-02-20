@@ -5,8 +5,8 @@ All notable changes to the Glance project will be documented in this file.
 ## [v0.1.4] - 2026-02-20
 - **MCP Enhancements**: Renamed tools to `inspect_network_traffic` and `inspect_request_details` with authoritative descriptions to guide AI agents.
 - **MCP Config**: Added a configurable `limit` parameter to `inspect_network_traffic` (default 20, max 100).
-- **JSON Tree Editor**: Introduced a new interactive JSON editor with tree view, collapse/expand support, and direct value editing.
-- **Enhanced Editor**: Added search and full-screen editing capabilities for mock response bodies in both the Rule Editor and Intercepted Response view.
+- **JSON Tree Editor**: Introduced a new interactive JSON editor with tree view, collapse/expand support, and direct value editing. Integrated this into both Rule/Response editors and the Traffic Details panel.
+- **Enhanced Editor**: Added search and full-screen editing capabilities for mock response bodies.
 
 ## [v0.1.3] - 2026-02-20
 - **UI/UX**: Fixed cURL command overflow in the details panel by adding proper text wrapping.
