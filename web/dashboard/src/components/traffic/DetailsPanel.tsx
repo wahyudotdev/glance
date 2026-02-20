@@ -360,7 +360,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({ entry, scenarios, on
         {activeTab === 'curl' && (
           <div className="space-y-4">
             <h3 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.2em]">cURL Command</h3>
-            <pre className="bg-slate-900 text-blue-300 p-5 rounded-xl text-[12px] font-mono whitespace-pre-wrap leading-relaxed shadow-xl border border-slate-800">
+            <pre className="bg-slate-900 text-blue-300 p-5 rounded-xl text-[12px] font-mono whitespace-pre-wrap break-all leading-relaxed shadow-xl border border-slate-800">
               {generateCurl(entry)}
             </pre>
           </div>
