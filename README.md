@@ -58,6 +58,32 @@ Glance implements the Model Context Protocol, allowing AI agents to interact wit
 - **Chromium**: Auto-launch browser instances with pre-configured proxy and certificate flags.
 - **One-liner Setup**: `eval "$(curl -s http://localhost:15501/setup)"` for quick terminal proxy configuration.
 
+## 📦 Installation
+
+### Homebrew (macOS & Linux)
+You can install Glance via our official tap:
+
+```bash
+brew tap wahyudotdev/tap
+brew install glance
+```
+
+### Direct Download
+Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases) page.
+
+## ⚖️ Compatibility Matrix
+
+| Environment | Support Level | Requirements | Features |
+| :--- | :--- | :--- | :--- |
+| **Java / JVM** | Native (Auto) | Java 8+ (v52.0+) | `HttpsURLConnection` overrides, Auto-trust CA |
+| **Android** | ADB-based | Android 7+ (API 24+) | `adb reverse`, Auto-cert push, System/User trust guides |
+| **Chromium** | Native (Launch) | Chrome / Edge / Brave | Auto-launch with proxy flags, Ignore cert errors |
+| **Terminal** | One-liner | Bash / Zsh / Fish | `HTTP_PROXY`, `HTTPS_PROXY` injection |
+| **MCP** | Built-in | Claude Desktop / MCP Host | Resource inspection, Tool execution, AI analysis |
+
+## 📜 Changelog
+See [CHANGELOG.md](CHANGELOG.md) for details on recent updates and milestones.
+
 ## 🏗️ Architecture
 
 - **Backend**: Go (using Fiber and goproxy).
@@ -95,3 +121,18 @@ Once built, you can run the `glance` binary:
 ./glance
 ```
 By default, the dashboard is available at `http://localhost:15501`, the proxy at `http://localhost:15500`, and the MCP server at `http://localhost:15502`.
+
+## 📜 Attributions
+
+Glance is built on top of amazing open-source projects:
+
+- **[elazarl/goproxy](https://github.com/elazarl/goproxy)**: The core MITM proxy engine.
+- **[gofiber/fiber](https://github.com/gofiber/fiber)**: High-performance web framework.
+- **[Model Context Protocol](https://modelcontextprotocol.io)**: AI agent integration standard.
+- **[Lucide Icons](https://lucide.dev)**: Beautiful & consistent iconography.
+- **[Tailwind CSS](https://tailwindcss.com)**: Modern utility-first styling.
+- **[SQLite](https://sqlite.org)**: Lightweight & high-performance persistence.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

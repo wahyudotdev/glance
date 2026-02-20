@@ -87,7 +87,9 @@ func TestRepositories(t *testing.T) {
 
 	t.Run("Scenarios", func(t *testing.T) {
 		scenario := &model.Scenario{ID: "s1", Name: "Flow 1"}
-		ms.scenarioRepo.Add(scenario)
+		if err := ms.scenarioRepo.Add(scenario); err != nil {
+			t.Fatalf("Failed to add scenario: %v", err)
+		}
 		list, _ := ms.scenarioRepo.GetAll()
 		if len(list) != 1 || list[0].Name != "Flow 1" {
 			t.Errorf("Scenario not persisted")

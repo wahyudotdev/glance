@@ -52,7 +52,7 @@ func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr 
 // ActiveSessions returns the number of currently active MCP sessions.
 func (ms *Server) ActiveSessions() int {
 	count := 0
-	ms.server.Sessions()(func(ss *mcp.ServerSession) bool {
+	ms.server.Sessions()(func(_ *mcp.ServerSession) bool {
 		count++
 		return true
 	})
@@ -76,7 +76,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "list_traffic",
 		Description: "List captured HTTP traffic summaries. Returns up to 20 recent entries.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTrafficArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args listTrafficArgs) (*mcp.CallToolResult, any, error) {
 		entries, _ := ms.store.GetPage(0, 100)
 		var results []string
 		count := 0
@@ -107,7 +107,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "get_traffic_details",
 		Description: "Get full details of a specific traffic entry including headers and body.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTrafficDetailsArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args getTrafficDetailsArgs) (*mcp.CallToolResult, any, error) {
 		entries, _ := ms.store.GetPage(0, 100)
 		for _, e := range entries {
 			if e.ID == args.ID {
@@ -123,7 +123,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "clear_traffic",
 		Description: "Clear all captured traffic logs.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
 		ms.store.ClearEntries()
 		return NewToolResultText("Traffic logs cleared."), nil, nil
 	})
@@ -132,7 +132,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "get_proxy_status",
 		Description: "Get the current proxy address and status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
 		status := fmt.Sprintf("Proxy is running on: %s\nDashboard available on the API port", ms.proxyAddr)
 		return NewToolResultText(status), nil, nil
 	})
@@ -147,7 +147,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "add_mock_rule",
 		Description: "Add a mocking rule to intercept and return a static response for a specific URL.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addMockRuleArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args addMockRuleArgs) (*mcp.CallToolResult, any, error) {
 		rule := &model.Rule{
 			ID:         uuid.New().String(),
 			Type:       model.RuleMock,
@@ -170,7 +170,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "list_rules",
 		Description: "List all active interception rules (mocks and breakpoints).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
 		rules := ms.engine.GetRules()
 		var sb strings.Builder
 		for _, r := range rules {
@@ -192,7 +192,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "add_breakpoint_rule",
 		Description: "Add a breakpoint rule to pause traffic for manual inspection.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addBreakpointRuleArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args addBreakpointRuleArgs) (*mcp.CallToolResult, any, error) {
 		rule := &model.Rule{
 			ID:         uuid.New().String(),
 			Type:       model.RuleBreakpoint,
@@ -211,7 +211,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "delete_rule",
 		Description: "Delete an interception rule by ID.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args deleteRuleArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args deleteRuleArgs) (*mcp.CallToolResult, any, error) {
 		ms.engine.DeleteRule(args.ID)
 		return NewToolResultText(fmt.Sprintf("Rule %s deleted", args.ID)), nil, nil
 	})
@@ -227,7 +227,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "execute_request",
 		Description: "Execute a custom HTTP request through the proxy. Can be used to replay an existing request by providing base_id.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args executeRequestArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args executeRequestArgs) (*mcp.CallToolResult, any, error) {
 		var finalMethod, finalURL, finalBody string
 		finalHeaders := http.Header{}
 
@@ -281,7 +281,9 @@ func (ms *Server) registerTools() {
 		if err != nil {
 			return nil, nil, fmt.Errorf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		entry.Duration = time.Since(start)
@@ -303,7 +305,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "list_scenarios",
 		Description: "List all recorded traffic scenarios (sequences of requests for test generation).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
 		scenarios, err := ms.scenarioRepo.GetAll()
 		if err != nil {
 			return nil, nil, err
@@ -325,7 +327,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "get_scenario",
 		Description: "Get full details of a scenario, including the sequence of requests, responses, and variable mappings.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getScenarioArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args getScenarioArgs) (*mcp.CallToolResult, any, error) {
 		scenario, err := ms.scenarioRepo.GetByID(args.ID)
 		if err != nil {
 			return nil, nil, err
@@ -380,7 +382,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "add_scenario",
 		Description: "Create a new traffic scenario.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args addScenarioArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args addScenarioArgs) (*mcp.CallToolResult, any, error) {
 		if args.Name == "" {
 			return nil, nil, fmt.Errorf("name is required")
 		}
@@ -407,7 +409,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "update_scenario",
 		Description: "Update an existing scenario's metadata or steps.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args updateScenarioArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args updateScenarioArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("id is required")
 		}
@@ -448,7 +450,7 @@ func (ms *Server) registerTools() {
 	mcp.AddTool(ms.server, &mcp.Tool{
 		Name:        "delete_scenario",
 		Description: "Delete a scenario by ID.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args deleteScenarioArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args deleteScenarioArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("id is required")
 		}
@@ -464,7 +466,7 @@ func (ms *Server) registerResources() {
 		URI:      "proxy://status",
 		Name:     "Current Proxy Status",
 		MIMEType: "application/json",
-	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	}, func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		rules := ms.engine.GetRules()
 		status := fmt.Sprintf(`{"proxy_addr": "%s", "status": "running", "active_rules": %d}`, ms.proxyAddr, len(rules))
 		return &mcp.ReadResourceResult{
@@ -482,7 +484,7 @@ func (ms *Server) registerResources() {
 		URI:      "traffic://latest",
 		Name:     "Latest Traffic",
 		MIMEType: "application/json",
-	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	}, func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		entries, _ := ms.store.GetPage(0, 10)
 		var sb strings.Builder
 		sb.WriteString("[\n")
@@ -509,7 +511,7 @@ func (ms *Server) registerPrompts() {
 	ms.server.AddPrompt(&mcp.Prompt{
 		Name:        "analyze-traffic",
 		Description: "Analyze recent traffic for errors or anomalies",
-	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	}, func(_ context.Context, _ *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		entries, _ := ms.store.GetPage(0, 5)
 		var trafficData strings.Builder
 		for _, e := range entries {
@@ -531,7 +533,7 @@ func (ms *Server) registerPrompts() {
 	ms.server.AddPrompt(&mcp.Prompt{
 		Name:        "generate-api-docs",
 		Description: "Generate API documentation from captured traffic",
-	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	}, func(_ context.Context, _ *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		return &mcp.GetPromptResult{
 			Description: "Generate OpenAPI documentation based on the captured traffic logs.",
 			Messages: []*mcp.PromptMessage{
@@ -552,7 +554,7 @@ func (ms *Server) registerPrompts() {
 			{Name: "id", Description: "The ID of the scenario", Required: true},
 			{Name: "framework", Description: "Test framework (playwright, cypress, go)"},
 		},
-	}, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	}, func(_ context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		id := req.Params.Arguments["id"]
 		framework := req.Params.Arguments["framework"]
 		if framework == "" {
@@ -586,12 +588,17 @@ func (ms *Server) StartSTDIO() error {
 // ServeSSE starts the MCP server using Server-Sent Events.
 func (ms *Server) ServeSSE(addr string) error {
 	handler := ms.GetStreamableHandler()
-	return http.ListenAndServe(addr, handler)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	return server.ListenAndServe()
 }
 
 // GetStreamableHandler returns an HTTP handler that supports Streamable HTTP (and SSE).
 func (ms *Server) GetStreamableHandler() http.Handler {
-	return mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+	return mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return ms.server
 	}, nil)
 }

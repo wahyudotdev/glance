@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Terminal, Code, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle } from 'lucide-react';
+import { Globe, Terminal, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle, Code } from 'lucide-react';
 import type { JavaProcess, AndroidDevice } from '../../types/traffic';
 
 interface IntegrationsViewProps {

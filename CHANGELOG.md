@@ -1,0 +1,34 @@
+# Changelog
+
+All notable changes to the Glance project will be documented in this file.
+
+## [v0.1.3] - 2026-02-20
+- **UI/UX**: Fixed cURL command overflow in the details panel by adding proper text wrapping.
+- **About Page**: Introduced a dedicated About page with project overview and open-source attributions.
+- **UI Cleanup**: Streamlined the Integrations view by moving secondary documentation to the About page.
+- **Documentation**: Added official Homebrew installation guide and compatibility matrix to the README and Dashboard.
+- **Project Hygiene**: Established a dedicated `CHANGELOG.md` and integrated a "What's New" modal into the dashboard.
+
+## [v0.1.2] - 2026-02-18
+- **UI/UX**: Added full **Dark Mode** support and theme persistence.
+- **Refactoring**: Extracted core logic into modular React hooks and standardized API patterns.
+- **Stability**: Resolved database deadlocks and improved thread-safety in the WebSocket hub.
+
+## [v0.1.1] - 2026-02-18
+- **Release Pipeline**: Established automated multi-platform releases via GoReleaser and Homebrew.
+- **Scenarios**: Implemented **Scenario Recording** with variable mapping and AI test generation prompts.
+- **MCP**: Optimized server performance and moved to a dedicated port for better compatibility.
+- **Documentation**: Launched official documentation site using VitePress with comprehensive guides.
+- **Real-time Stability**: Fixed critical WebSocket issues and race conditions in traffic streaming.
+- **Project Hygiene**: Added MIT License, updated gitignore, and implemented safe URL parsing.
+- **Build & Stability**: Resolved database deadlocks and fixed mcp-go library integration issues.
+
+## [v0.1.0] - 2026-02-17
+- **Initial Release**: Launched Glance as a specialized MITM proxy for AI Agents.
+- **Traffic Inspection**: Real-time traffic inspection with request/response detail views and cURL export.
+- **Rule Engine**: Unified management of Mocks and Breakpoints for traffic modification.
+- **Java Integration**: Native JVM agent for auto-intercepting HttpsURLConnection in Java 8+ apps.
+- **Android Support**: ADB-based device discovery, CA certificate installation, and proxy configuration.
+- **Chromium Support**: Auto-launching Chromium instances with pre-configured proxy and certificate flags.
+- **MCP Server**: Native implementation of the Model Context Protocol for AI Agent tools and resources.
+- **Dashboard**: Modern React-based dashboard for real-time traffic monitoring and configuration.

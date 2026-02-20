@@ -7,6 +7,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { MCPDocs } from './components/layout/MCPDocs';
 import { TerminalDocs } from './components/layout/TerminalDocs';
+import { ChangelogModal } from './components/layout/ChangelogModal';
+import { AboutView } from './components/layout/AboutView';
 
 // Feature Components
 import { TrafficList } from './components/traffic/TrafficList';
@@ -64,7 +66,7 @@ const App: React.FC = () => {
   } = useTraffic(config, toast);
 
   // UI State
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios'>(() => {
+  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about'>(() => {
     const saved = localStorage.getItem('glance-current-view');
     return (saved as any) || 'traffic';
   });
@@ -81,6 +83,7 @@ const App: React.FC = () => {
   const [isDeleteScenarioModalOpen, setIsDeleteScenarioModalOpen] = useState(false);
   const [isMCPDocsOpen, setIsMCPDocsOpen] = useState(false);
   const [isTerminalDocsOpen, setIsTerminalDocsOpen] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TrafficEntry | null>(null);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
@@ -677,6 +680,7 @@ const App: React.FC = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         version={version}
+        onShowChangelog={() => setIsChangelogOpen(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -779,6 +783,10 @@ const App: React.FC = () => {
               onDelete={handleDeleteScenario}
               onCreateNew={() => { setSelectedScenario(null); setIsScenarioEditorOpen(true); }}
             />
+          )}
+
+          {currentView === 'about' && (
+            <AboutView />
           )}
         </main>
       </div>
@@ -883,6 +891,11 @@ const App: React.FC = () => {
         isOpen={isTerminalDocsOpen}
         onClose={() => setIsTerminalDocsOpen(false)}
         terminalScript={terminalScript}
+      />
+
+      <ChangelogModal 
+        isOpen={isChangelogOpen}
+        onClose={() => setIsChangelogOpen(false)}
       />
     </div>
   );

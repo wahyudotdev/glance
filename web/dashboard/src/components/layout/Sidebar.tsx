@@ -1,12 +1,13 @@
 import React from 'react';
-import { Globe, Sparkles, Settings, Code, ShieldAlert, ChevronLeft, ChevronRight, ListPlus } from 'lucide-react';
+import { Globe, Sparkles, Settings, Code, ShieldAlert, ChevronLeft, ChevronRight, ListPlus, Info } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios';
-  setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios') => void;
+  currentView: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about';
+  setCurrentView: (view: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about') => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   version: string;
+  onShowChangelog: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -14,7 +15,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentView, 
   isCollapsed, 
   onToggleCollapse,
-  version
+  version,
+  onShowChangelog
 }) => {
   return (
     <aside className={`flex flex-col py-6 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 relative ${isCollapsed ? 'w-20' : 'w-64'}`}>
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'scenarios', label: 'Traffic Scenarios', icon: <ListPlus size={20} /> },
           { id: 'rules', label: 'Breakpoint Rules', icon: <ShieldAlert size={20} /> },
           { id: 'settings', label: 'System Settings', icon: <Settings size={20} /> },
+          { id: 'about', label: 'About Glance', icon: <Info size={20} /> },
         ].map((item) => (
           <button 
             key={item.id}
@@ -65,12 +68,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </nav>
 
-      <div className={`mt-auto px-6 pt-6 border-t border-slate-100 dark:border-slate-800 overflow-hidden ${isCollapsed ? 'px-0 flex justify-center' : ''}`}>
+      <div className={`mt-auto px-6 pt-6 border-t border-slate-100 dark:border-slate-800 overflow-hidden ${isCollapsed ? 'px-0 flex flex-col items-center' : ''}`}>
         <div className="flex flex-col gap-1">
           <span className={`text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest ${isCollapsed ? 'hidden' : ''}`}>Version</span>
-          <span className={`text-xs font-mono text-slate-500 dark:text-slate-400 ${isCollapsed ? 'scale-75' : ''}`}>{version.startsWith('v') ? version : `v${version}`}</span>
+          <div className={`flex items-center justify-between ${isCollapsed ? 'justify-center' : ''}`}>
+            <span className={`text-xs font-mono text-slate-500 dark:text-slate-400 ${isCollapsed ? 'scale-75' : ''}`}>{version.startsWith('v') ? version : `v${version}`}</span>
+            {!isCollapsed && (
+              <button 
+                onClick={onShowChangelog}
+                className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800/30 uppercase tracking-tighter hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-all"
+              >
+                What's New
+              </button>
+            )}
+          </div>
         </div>
+        {isCollapsed && (
+          <button 
+            onClick={onShowChangelog}
+            className="mt-2 p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+            title="What's New"
+          >
+            <Sparkles size={14} />
+          </button>
+        )}
       </div>
     </aside>
   );
 };
+
