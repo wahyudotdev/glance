@@ -2,27 +2,32 @@
 package apiserver
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"glance/internal/config"
 	"glance/internal/interceptor"
 	"glance/internal/mcp"
-	"glance/internal/model"
 	"glance/internal/proxy"
 	"glance/internal/repository"
-	"io"
+	"glance/internal/service"
 	"log"
 	"net"
-	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
-	"github.com/google/uuid"
 )
+
+// Services holds the business logic services used by the API server.
+type Services struct {
+	Config    service.ConfigService
+	Traffic   service.TrafficService
+	Rule      service.RuleService
+	Intercept service.InterceptService
+	Request   service.RequestService
+	Scenario  service.ScenarioService
+	Client    service.ClientService
+	CA        service.CAService
+}
 
 // Server manages the HTTP and WebSocket endpoints for the application.
 type Server struct {
@@ -30,6 +35,7 @@ type Server struct {
 	proxy        *proxy.Proxy
 	mcp          *mcp.Server
 	scenarioRepo repository.ScenarioRepository
+	services     Services
 	app          *fiber.App
 	proxyAddr    string
 	restartChan  chan bool
@@ -44,6 +50,18 @@ func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string
 
 	hub := NewHub()
 	go hub.Run()
+
+	// Initialize Services
+	services := Services{
+		Config:    service.NewConfigService(),
+		Traffic:   service.NewTrafficService(store),
+		Rule:      service.NewRuleService(p.Engine),
+		Intercept: service.NewInterceptService(p),
+		Request:   service.NewRequestService(store),
+		Scenario:  service.NewScenarioService(scenarioRepo),
+		Client:    service.NewClientService(),
+		CA:        service.NewCAService(),
+	}
 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
@@ -65,6 +83,7 @@ func NewServer(store *interceptor.TrafficStore, p *proxy.Proxy, proxyAddr string
 		proxy:        p,
 		mcp:          mcpServer,
 		scenarioRepo: scenarioRepo,
+		services:     services,
 		app:          app,
 		proxyAddr:    proxyAddr,
 		restartChan:  make(chan bool, 1),
@@ -116,234 +135,6 @@ func (s *Server) RegisterRoutes() {
 	s.registerCARoutes()
 
 	s.registerStaticRoutes()
-}
-
-func (s *Server) handleStatus(c *fiber.Ctx) error {
-	mcpSessions := 0
-	if s.mcp != nil {
-		mcpSessions = s.mcp.ActiveSessions()
-	}
-	return c.JSON(fiber.Map{
-		"version":      config.Version,
-		"proxy_addr":   s.proxyAddr,
-		"mcp_sessions": mcpSessions,
-		"mcp_enabled":  s.mcp != nil,
-	})
-}
-func (s *Server) handleTraffic(c *fiber.Ctx) error {
-	cfg := config.Get()
-	page := c.QueryInt("page", 1)
-	pageSize := c.QueryInt("pageSize", cfg.DefaultPageSize)
-
-	offset := (page - 1) * pageSize
-	entries, total := s.store.GetPage(offset, pageSize)
-
-	return c.JSON(fiber.Map{
-		"entries":  entries,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	})
-}
-
-func (s *Server) handleClearTraffic(c *fiber.Ctx) error {
-	s.store.ClearEntries()
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (s *Server) handleGetConfig(c *fiber.Ctx) error {
-	return c.JSON(config.Get())
-}
-
-func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
-	cfg := new(model.Config)
-	if err := c.BodyParser(cfg); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-	if err := config.Save(cfg); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-	return c.JSON(cfg)
-}
-
-func (s *Server) handleExecuteRequest(c *fiber.Ctx) error {
-	type ExecuteRequest struct {
-		Method  string              `json:"method"`
-		URL     string              `json:"url"`
-		Headers map[string][]string `json:"headers"`
-		Body    string              `json:"body"`
-	}
-
-	reqData := new(ExecuteRequest)
-	if err := c.BodyParser(reqData); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	// Prepare the HTTP request
-	req, err := http.NewRequest(reqData.Method, reqData.URL, strings.NewReader(reqData.Body))
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	// Copy headers
-	for k, vs := range reqData.Headers {
-		for _, v := range vs {
-			req.Header.Add(k, v)
-		}
-	}
-
-	// Capture the request start
-	entry, _ := interceptor.NewEntry(req)
-	entry.ModifiedBy = "editor"
-
-	// Execute
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	start := time.Now()
-	resp, err := client.Do(req)
-
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	// Capture the response
-	entry.Duration = time.Since(start)
-	entry.Status = resp.StatusCode
-	entry.ResponseHeaders = resp.Header.Clone()
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	entry.ResponseBody = string(bodyBytes)
-
-	// Detect and encode image if necessary (reuse logic from interceptor)
-	contentType := resp.Header.Get("Content-Type")
-	if strings.HasPrefix(contentType, "image/") {
-		encoded := base64.StdEncoding.EncodeToString(bodyBytes)
-		entry.ResponseBody = fmt.Sprintf("data:%s;base64,%s", contentType, encoded)
-	}
-
-	// Save to store
-	s.store.AddEntry(entry)
-
-	// Also broadcast via WebSocket
-	s.Hub.Broadcast(entry)
-
-	return c.JSON(entry)
-}
-
-func (s *Server) handleContinueRequest(c *fiber.Ctx) error {
-	id := c.Params("id")
-	type ContinueRequest struct {
-		Method  string              `json:"method"`
-		URL     string              `json:"url"`
-		Headers map[string][]string `json:"headers"`
-		Body    string              `json:"body"`
-	}
-
-	reqData := new(ContinueRequest)
-	if err := c.BodyParser(reqData); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	h := http.Header{}
-	for k, vs := range reqData.Headers {
-		for _, v := range vs {
-			h.Add(k, v)
-		}
-	}
-
-	success := s.proxy.ContinueRequest(id, reqData.Method, reqData.URL, h, reqData.Body)
-	if !success {
-		return c.Status(404).JSON(fiber.Map{"error": "Intercepted request not found or already released"})
-	}
-
-	return c.JSON(fiber.Map{"status": "resumed"})
-}
-
-func (s *Server) handleContinueResponse(c *fiber.Ctx) error {
-	id := c.Params("id")
-	type ContinueResponse struct {
-		Status  int                 `json:"status"`
-		Headers map[string][]string `json:"headers"`
-		Body    string              `json:"body"`
-	}
-
-	resData := new(ContinueResponse)
-	if err := c.BodyParser(resData); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	h := http.Header{}
-	for k, vs := range resData.Headers {
-		for _, v := range vs {
-			h.Add(k, v)
-		}
-	}
-
-	success := s.proxy.ContinueResponse(id, resData.Status, h, resData.Body)
-	if !success {
-		return c.Status(404).JSON(fiber.Map{"error": "Intercepted response not found or already released"})
-	}
-
-	return c.JSON(fiber.Map{"status": "resumed"})
-}
-
-func (s *Server) handleAbortRequest(c *fiber.Ctx) error {
-	id := c.Params("id")
-	success := s.proxy.AbortRequest(id)
-	if !success {
-		return c.Status(404).JSON(fiber.Map{"error": "Intercepted request not found or already released"})
-	}
-	return c.JSON(fiber.Map{"status": "aborted"})
-}
-
-func (s *Server) handleCreateRule(c *fiber.Ctx) error {
-	rule := new(model.Rule)
-	if err := c.BodyParser(rule); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	if rule.ID == "" {
-		rule.ID = uuid.New().String()
-	}
-
-	s.proxy.Engine.AddRule(rule)
-	return c.JSON(rule)
-}
-
-func (s *Server) handleListRules(c *fiber.Ctx) error {
-	return c.JSON(s.proxy.Engine.GetRules())
-}
-
-func (s *Server) handleUpdateRule(c *fiber.Ctx) error {
-	id := c.Params("id")
-	rule := new(model.Rule)
-	if err := c.BodyParser(rule); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	rule.ID = id
-	s.proxy.Engine.UpdateRule(rule)
-	return c.JSON(rule)
-}
-
-func (s *Server) handleDeleteRule(c *fiber.Ctx) error {
-	id := c.Params("id")
-	s.proxy.Engine.DeleteRule(id)
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
-// BroadcastIntercept sends an interception event to all connected WebSocket clients.
-func (s *Server) BroadcastIntercept(bp *proxy.Breakpoint) {
-	msg := fiber.Map{
-		"type":           "intercepted",
-		"intercept_type": bp.Type,
-		"id":             bp.ID,
-		"entry":          bp.Entry,
-	}
-
-	data, _ := json.Marshal(msg)
-	s.Hub.BroadcastData(data)
 }
 
 // Listen starts the API server on the provided address and returns the actual address it bound to.

@@ -1,15 +1,11 @@
 package apiserver
 
 import (
-	"glance/internal/client"
-	"net"
-
-	"github.com/elazarl/goproxy"
 	"github.com/gofiber/fiber/v2"
 )
 
 func (s *Server) handleLaunchChromium(c *fiber.Ctx) error {
-	err := client.LaunchChromium(s.proxyAddr)
+	err := s.services.Client.LaunchChromium(s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -17,7 +13,7 @@ func (s *Server) handleLaunchChromium(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleListJavaProcesses(c *fiber.Ctx) error {
-	procs, err := client.ListJavaProcesses()
+	procs, err := s.services.Client.ListJavaProcesses()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -26,7 +22,7 @@ func (s *Server) handleListJavaProcesses(c *fiber.Ctx) error {
 
 func (s *Server) handleInterceptJava(c *fiber.Ctx) error {
 	pid := c.Params("pid")
-	err := client.BuildAndAttachAgent(pid, s.proxyAddr)
+	err := s.services.Client.InterceptJava(pid, s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -34,12 +30,12 @@ func (s *Server) handleInterceptJava(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleTerminalSetup(c *fiber.Ctx) error {
-	script := client.GetTerminalSetupScript(s.proxyAddr)
+	script := s.services.Client.GetTerminalSetupScript(s.proxyAddr)
 	return c.SendString(script)
 }
 
 func (s *Server) handleListAndroidDevices(c *fiber.Ctx) error {
-	devices, err := client.ListAndroidDevices()
+	devices, err := s.services.Client.ListAndroidDevices()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -48,12 +44,7 @@ func (s *Server) handleListAndroidDevices(c *fiber.Ctx) error {
 
 func (s *Server) handleInterceptAndroid(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
-	_, port, _ := net.SplitHostPort(s.proxyAddr)
-	if port == "" {
-		port = "8000" // Fallback
-	}
-
-	err := client.ConfigureAndroidProxy(deviceID, port)
+	err := s.services.Client.InterceptAndroid(deviceID, s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -62,12 +53,7 @@ func (s *Server) handleInterceptAndroid(c *fiber.Ctx) error {
 
 func (s *Server) handleClearAndroid(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
-	_, port, _ := net.SplitHostPort(s.proxyAddr)
-	if port == "" {
-		port = "8000"
-	}
-
-	err := client.ClearAndroidProxy(deviceID, port)
+	err := s.services.Client.ClearAndroid(deviceID, s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -76,7 +62,7 @@ func (s *Server) handleClearAndroid(c *fiber.Ctx) error {
 
 func (s *Server) handlePushAndroidCert(c *fiber.Ctx) error {
 	deviceID := c.Params("id")
-	err := client.PushCertToDevice(deviceID, []byte(goproxy.CA_CERT))
+	err := s.services.Client.PushAndroidCert(deviceID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

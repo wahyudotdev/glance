@@ -4,21 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"glance/internal/model"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// AndroidDevice represents a connected Android device.
-type AndroidDevice struct {
-	ID    string `json:"id"`
-	Model string `json:"model"`
-	Name  string `json:"name"`
-}
-
 // ListAndroidDevices runs `adb devices -l` and parses the output
-func ListAndroidDevices() ([]AndroidDevice, error) {
+func ListAndroidDevices() ([]model.AndroidDevice, error) {
 	cmd := exec.Command("adb", "devices", "-l")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -26,7 +20,7 @@ func ListAndroidDevices() ([]AndroidDevice, error) {
 		return nil, fmt.Errorf("adb command failed: %v. Make sure Android SDK Platform-Tools are installed and in PATH", err)
 	}
 
-	var devices []AndroidDevice
+	var devices []model.AndroidDevice
 	scanner := bufio.NewScanner(&out)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -46,22 +40,22 @@ func ListAndroidDevices() ([]AndroidDevice, error) {
 			continue
 		}
 
-		model := "Unknown"
-		name := "Android Device"
+		modelName := "Unknown"
+		deviceName := "Android Device"
 
 		for _, p := range parts {
 			if strings.HasPrefix(p, "model:") {
-				model = strings.TrimPrefix(p, "model:")
+				modelName = strings.TrimPrefix(p, "model:")
 			}
 			if strings.HasPrefix(p, "device:") {
-				name = strings.TrimPrefix(p, "device:")
+				deviceName = strings.TrimPrefix(p, "device:")
 			}
 		}
 
-		devices = append(devices, AndroidDevice{
+		devices = append(devices, model.AndroidDevice{
 			ID:    id,
-			Model: model,
-			Name:  name,
+			Model: modelName,
+			Name:  deviceName,
 		})
 	}
 

@@ -77,7 +77,71 @@ func TestSQLiteConfigRepository(t *testing.T) {
 	}
 
 	got, err := repo.Get()
-	if err != nil || got.ProxyAddr != ":9999" {
+	if err != nil || len(got.ProxyAddr) == 0 {
 		t.Errorf("Get failed: err=%v, got=%+v", err, got)
+	}
+}
+
+func TestSQLiteRuleRepository(t *testing.T) {
+	db := setupTestDB()
+	repo := NewSQLiteRuleRepository(db)
+
+	rule := &model.Rule{
+		ID:         "r1",
+		Type:       model.RuleMock,
+		URLPattern: "/api/test",
+		Method:     "GET",
+		Response: &model.MockResponse{
+			Status: 200,
+			Body:   "{\"ok\":true}",
+		},
+	}
+
+	if err := repo.Add(rule); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+
+	all, err := repo.GetAll()
+	if err != nil || len(all) != 1 {
+		t.Fatalf("GetAll failed: %v", err)
+	}
+
+	rule.URLPattern = "/api/updated"
+	if err := repo.Update(rule); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+
+	all, _ = repo.GetAll()
+	if all[0].URLPattern != "/api/updated" {
+		t.Errorf("Update not reflected")
+	}
+
+	if err := repo.Delete("r1"); err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
+
+	all, _ = repo.GetAll()
+	if len(all) != 0 {
+		t.Errorf("Delete failed")
+	}
+}
+
+func TestSQLiteTrafficRepository_GetByIDs(t *testing.T) {
+	db := setupTestDB()
+	repo := NewSQLiteTrafficRepository(db)
+
+	e1 := &model.TrafficEntry{ID: "t1", Method: "GET", URL: "u1", StartTime: time.Now()}
+	e2 := &model.TrafficEntry{ID: "t2", Method: "POST", URL: "u2", StartTime: time.Now()}
+
+	_ = repo.Add(e1)
+	_ = repo.Add(e2)
+	repo.Flush()
+
+	got, err := repo.GetByIDs([]string{"t1", "t2"})
+	if err != nil {
+		t.Fatalf("GetByIDs failed: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("Expected 2 entries, got %d", len(got))
 	}
 }

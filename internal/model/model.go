@@ -32,6 +32,19 @@ type Config struct {
 	DefaultPageSize int    `json:"default_page_size"`
 }
 
+// JavaProcess represents a running Java application.
+type JavaProcess struct {
+	PID  string `json:"pid"`
+	Name string `json:"name"`
+}
+
+// AndroidDevice represents a connected Android device or emulator.
+type AndroidDevice struct {
+	ID    string `json:"id"`
+	Model string `json:"model"`
+	Name  string `json:"name"`
+}
+
 // RuleType defines the kind of interception rule.
 type RuleType string
 

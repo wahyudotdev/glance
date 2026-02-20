@@ -18,6 +18,7 @@ func setupScenarioTestDB() *sql.DB {
 
 	queries := []string{
 		`CREATE TABLE scenarios (id TEXT PRIMARY KEY, name TEXT, description TEXT, created_at DATETIME)`,
+		`CREATE TABLE traffic (id TEXT PRIMARY KEY, method TEXT, url TEXT, request_headers TEXT, request_body TEXT, response_headers TEXT, response_body TEXT, status INTEGER, start_time DATETIME, duration INTEGER, modified_by TEXT)`,
 		`CREATE TABLE scenario_steps (id TEXT PRIMARY KEY, scenario_id TEXT, traffic_entry_id TEXT, step_order INTEGER, notes TEXT)`,
 		`CREATE TABLE variable_mappings (id TEXT PRIMARY KEY, scenario_id TEXT, name TEXT, source_entry_id TEXT, source_path TEXT, target_json_path TEXT)`,
 	}

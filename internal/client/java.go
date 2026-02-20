@@ -3,21 +3,16 @@ package client
 import (
 	"bufio"
 	"bytes"
+	"glance/internal/model"
 	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// JavaProcess represents a running Java application.
-type JavaProcess struct {
-	PID  string `json:"pid"`
-	Name string `json:"name"`
-}
-
 // ListJavaProcesses returns a list of active Java processes.
-func ListJavaProcesses() ([]JavaProcess, error) {
-	processes := make(map[string]JavaProcess)
+func ListJavaProcesses() ([]model.JavaProcess, error) {
+	processes := make(map[string]model.JavaProcess)
 
 	// 1. Try jps first (best for accurate names)
 	cmd := exec.Command("jps", "-l")
@@ -43,7 +38,7 @@ func ListJavaProcesses() ([]JavaProcess, error) {
 				name = filepath.Base(name)
 			}
 
-			processes[pid] = JavaProcess{PID: pid, Name: name}
+			processes[pid] = model.JavaProcess{PID: pid, Name: name}
 		}
 		log.Printf("Found %d processes using jps", len(processes))
 	} else {
@@ -95,7 +90,7 @@ func ListJavaProcesses() ([]JavaProcess, error) {
 				name = filepath.Base(fields[10])
 			}
 
-			processes[pid] = JavaProcess{PID: pid, Name: name}
+			processes[pid] = model.JavaProcess{PID: pid, Name: name}
 			foundViaPs++
 		}
 		log.Printf("Found %d additional processes using ps", foundViaPs)
@@ -103,7 +98,7 @@ func ListJavaProcesses() ([]JavaProcess, error) {
 		log.Printf("ps aux failed: %v", err)
 	}
 
-	result := make([]JavaProcess, 0, len(processes))
+	result := make([]model.JavaProcess, 0, len(processes))
 	for _, p := range processes {
 		result = append(result, p)
 	}

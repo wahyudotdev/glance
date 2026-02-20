@@ -1,14 +1,13 @@
 package apiserver
 
 import (
-	"github.com/elazarl/goproxy"
 	"github.com/gofiber/fiber/v2"
 )
 
 func (s *Server) handleDownloadCA(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/x-x509-ca-cert")
 	c.Set("Content-Disposition", `attachment; filename="glance-ca.crt"`)
-	return c.Send(goproxy.CA_CERT)
+	return c.Send(s.services.CA.GetCACert())
 }
 
 func (s *Server) registerCARoutes() {
