@@ -318,8 +318,8 @@ func (ms *Server) handleListRules() (*mcp.CallToolResult, any, error) {
 	rules := ms.engine.GetRules()
 	var sb strings.Builder
 	for _, r := range rules {
-		sb.WriteString(fmt.Sprintf("ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
-			r.ID, r.Type, r.Method, r.URLPattern, r.Strategy))
+		fmt.Fprintf(&sb, "ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
+			r.ID, r.Type, r.Method, r.URLPattern, r.Strategy)
 	}
 	if sb.Len() == 0 {
 		return NewToolResultText("No active rules."), nil, nil
@@ -395,6 +395,7 @@ func (ms *Server) handleExecuteRequest(args executeRequestArgs) (*mcp.CallToolRe
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	start := time.Now()
+	// #nosec G704 - This tool is intentionally designed to execute arbitrary requests as part of the MCP integration
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("request failed: %v", err)
@@ -426,7 +427,7 @@ func (ms *Server) handleListScenarios() (*mcp.CallToolResult, any, error) {
 	}
 	var sb strings.Builder
 	for _, s := range scenarios {
-		sb.WriteString(fmt.Sprintf("ID: %s | Name: %s | Description: %s\n", s.ID, s.Name, s.Description))
+		fmt.Fprintf(&sb, "ID: %s | Name: %s | Description: %s\n", s.ID, s.Name, s.Description)
 	}
 	if sb.Len() == 0 {
 		return NewToolResultText("No scenarios found."), nil, nil
@@ -441,11 +442,11 @@ func (ms *Server) handleGetScenario(args getScenarioArgs) (*mcp.CallToolResult, 
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Scenario: %s\nDescription: %s\n\n", scenario.Name, scenario.Description))
+	fmt.Fprintf(&sb, "Scenario: %s\nDescription: %s\n\n", scenario.Name, scenario.Description)
 	sb.WriteString("Variable Mappings:\n")
 	for _, m := range scenario.VariableMappings {
-		sb.WriteString(fmt.Sprintf("- Variable '%s' is extracted from %s (%s) and used in %s\n",
-			m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath))
+		fmt.Fprintf(&sb, "- Variable '%s' is extracted from %s (%s) and used in %s\n",
+			m.Name, m.SourceEntryID, m.SourcePath, m.TargetJSONPath)
 	}
 	sb.WriteString("\nSteps (Sequence):\n")
 
@@ -458,23 +459,23 @@ func (ms *Server) handleGetScenario(args getScenarioArgs) (*mcp.CallToolResult, 
 	for _, step := range scenario.Steps {
 		e, found := entryMap[step.TrafficEntryID]
 		if !found {
-			sb.WriteString(fmt.Sprintf("%d. [MISSING ENTRY %s]\n", step.Order, step.TrafficEntryID))
+			fmt.Fprintf(&sb, "%d. [MISSING ENTRY %s]\n", step.Order, step.TrafficEntryID)
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("%d. [%s] %s (Status: %d)\n", step.Order, e.Method, e.URL, e.Status))
+		fmt.Fprintf(&sb, "%d. [%s] %s (Status: %d)\n", step.Order, e.Method, e.URL, e.Status)
 		if step.Notes != "" {
-			sb.WriteString(fmt.Sprintf("   Note: %s\n", step.Notes))
+			fmt.Fprintf(&sb, "   Note: %s\n", step.Notes)
 		}
-		sb.WriteString(fmt.Sprintf("   Request Headers: %v\n", e.RequestHeaders))
+		fmt.Fprintf(&sb, "   Request Headers: %v\n", e.RequestHeaders)
 		if e.RequestBody != "" {
-			sb.WriteString(fmt.Sprintf("   Request Body: %s\n", e.RequestBody))
+			fmt.Fprintf(&sb, "   Request Body: %s\n", e.RequestBody)
 		}
 		if e.ResponseBody != "" {
 			body := e.ResponseBody
 			if len(body) > 1000 {
 				body = body[:1000] + "... [truncated]"
 			}
-			sb.WriteString(fmt.Sprintf("   Response Body: %s\n", body))
+			fmt.Fprintf(&sb, "   Response Body: %s\n", body)
 		}
 		sb.WriteString("\n")
 	}
@@ -578,7 +579,7 @@ func (ms *Server) handleReadLatestTraffic(_ *mcp.ReadResourceRequest) (*mcp.Read
 	var sb strings.Builder
 	sb.WriteString("[\n")
 	for i, e := range entries {
-		sb.WriteString(fmt.Sprintf(`  {"id": "%s", "method": "%s", "url": "%s", "status": %d}`, e.ID, e.Method, e.URL, e.Status))
+		fmt.Fprintf(&sb, `  {"id": "%s", "method": "%s", "url": "%s", "status": %d}`, e.ID, e.Method, e.URL, e.Status)
 		if i < len(entries)-1 {
 			sb.WriteString(",\n")
 		}
@@ -626,7 +627,7 @@ func (ms *Server) handlePromptAnalyzeTraffic(_ *mcp.GetPromptRequest) (*mcp.GetP
 	entries, _ := ms.store.GetPage(0, 5)
 	var trafficData strings.Builder
 	for _, e := range entries {
-		trafficData.WriteString(fmt.Sprintf("[%s] %s (Status: %d)\n", e.Method, e.URL, e.Status))
+		fmt.Fprintf(&trafficData, "[%s] %s (Status: %d)\n", e.Method, e.URL, e.Status)
 	}
 	return &mcp.GetPromptResult{
 		Description: "Analyze this traffic for errors:",

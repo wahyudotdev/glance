@@ -47,7 +47,7 @@ func TestBuildAndAttachAgent_Mock(t *testing.T) {
 		cs := []string{"-test.run=TestJavaAgentHelperProcess", "--", command}
 		cs = append(cs, args...)
 		cmd :=
-			exec.Command(os.Args[0], cs...) // #nosec G204
+			exec.Command(os.Args[0], cs...) // #nosec G204 G702
 		cmd.Env = []string{"GO_WANT_JAVA_AGENT_HELPER_PROCESS=1"}
 		return cmd
 	}
@@ -96,7 +96,7 @@ func TestBuildAndAttachAgent_Fallbacks(_ *testing.T) {
 		cs := []string{"-test.run=TestJavaAgentHelperProcess", "--", command}
 		cs = append(cs, args...)
 		cmd :=
-			exec.Command(os.Args[0], cs...) // #nosec G204
+			exec.Command(os.Args[0], cs...) // #nosec G204 G702
 		cmd.Env = []string{"GO_WANT_JAVA_AGENT_HELPER_PROCESS=1"}
 		return cmd
 	}

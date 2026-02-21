@@ -12,16 +12,16 @@ func GetTerminalSetupScript(proxyAddr string) string {
 
 	// Standard proxy environment variables
 	proxyURL := fmt.Sprintf("http://%s", proxyAddr)
-	sb.WriteString(fmt.Sprintf("export HTTP_PROXY=%s\n", proxyURL))
-	sb.WriteString(fmt.Sprintf("export HTTPS_PROXY=%s\n", proxyURL))
-	sb.WriteString(fmt.Sprintf("export ALL_PROXY=%s\n", proxyURL))
+	fmt.Fprintf(&sb, "export HTTP_PROXY=%s\n", proxyURL)
+	fmt.Fprintf(&sb, "export HTTPS_PROXY=%s\n", proxyURL)
+	fmt.Fprintf(&sb, "export ALL_PROXY=%s\n", proxyURL)
 	sb.WriteString("export NO_PROXY=localhost,127.0.0.1,::1\n")
 
 	// CA Certificate environment variables
 	if ca.CAPath != "" {
-		sb.WriteString(fmt.Sprintf("export SSL_CERT_FILE=%s\n", ca.CAPath))
-		sb.WriteString(fmt.Sprintf("export REQUESTS_CA_BUNDLE=%s\n", ca.CAPath))
-		sb.WriteString(fmt.Sprintf("export NODE_EXTRA_CA_CERTS=%s\n", ca.CAPath))
+		fmt.Fprintf(&sb, "export SSL_CERT_FILE=%s\n", ca.CAPath)
+		fmt.Fprintf(&sb, "export REQUESTS_CA_BUNDLE=%s\n", ca.CAPath)
+		fmt.Fprintf(&sb, "export NODE_EXTRA_CA_CERTS=%s\n", ca.CAPath)
 	}
 
 	// Helper alias to unset proxy

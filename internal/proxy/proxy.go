@@ -134,12 +134,14 @@ func (p *Proxy) HandleRequest(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Req
 			resp.Header.Set("Access-Control-Allow-Headers", "*")
 			resp.Header.Set("Access-Control-Allow-Credentials", "true")
 
+			// #nosec G706
 			log.Printf("[MOCK] %s %s -> %d", r.Method, r.URL.String(), rule.Response.Status)
 			return r, resp
 		}
 
 		if rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyRequest || rule.Strategy == model.StrategyBoth || rule.Strategy == "") {
 			entry.ModifiedBy = "breakpoint"
+			// #nosec G706
 			log.Printf("[PAUSE REQ] Intercepting %s %s", r.Method, r.URL.String())
 			bp := &Breakpoint{
 				ID:      entry.ID,
@@ -201,6 +203,7 @@ func (p *Proxy) HandleResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *http
 		rule := p.Engine.Match(resp.Request)
 		if rule != nil && rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyResponse || rule.Strategy == model.StrategyBoth) {
 			entry.ModifiedBy = "breakpoint"
+			// #nosec G706
 			log.Printf("[PAUSE RES] Intercepting response for %s", resp.Request.URL.String())
 			bp := &Breakpoint{
 				ID:       entry.ID,

@@ -15,7 +15,7 @@ func TestListJavaProcesses_Mock(t *testing.T) {
 		cs := []string{"-test.run=TestJavaHelperProcess", "--", command}
 		cs = append(cs, args...)
 		cmd :=
-			exec.Command(os.Args[0], cs...) // #nosec G204
+			exec.Command(os.Args[0], cs...) // #nosec G204 G702
 		cmd.Env = []string{"GO_WANT_JAVA_HELPER_PROCESS=1"}
 		return cmd
 	}
@@ -45,7 +45,7 @@ func TestListJavaProcesses_Error(_ *testing.T) {
 		cs := []string{"-test.run=TestJavaHelperProcess", "--", command}
 		cs = append(cs, args...)
 		cmd :=
-			exec.Command(os.Args[0], cs...) // #nosec G204
+			exec.Command(os.Args[0], cs...) // #nosec G204 G702
 		cmd.Env = []string{"GO_WANT_JAVA_HELPER_PROCESS=1", "FAIL_JAVA=1"}
 		return cmd
 	}

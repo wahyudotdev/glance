@@ -17,6 +17,7 @@ func findToolsJar(pid string) string {
 	// 1. Check JAVA_HOME if set
 	if jh := os.Getenv("JAVA_HOME"); jh != "" {
 		tj := filepath.Join(jh, "lib", "tools.jar")
+		// #nosec G703
 		if _, err := os.Stat(tj); err == nil {
 			return tj
 		}

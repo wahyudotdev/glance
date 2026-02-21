@@ -16,7 +16,7 @@ func TestLaunchChromium_Mock(t *testing.T) {
 		cs := []string{"-test.run=TestChromiumHelperProcess", "--", command}
 		cs = append(cs, args...)
 		cmd :=
-			exec.Command(os.Args[0], cs...) // #nosec G204
+			exec.Command(os.Args[0], cs...) // #nosec G204 G702
 		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 		return cmd
 	}

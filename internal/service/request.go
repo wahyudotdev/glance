@@ -57,6 +57,7 @@ func (s *requestService) Execute(params ExecuteRequestParams) (*model.TrafficEnt
 		Timeout: 30 * time.Second,
 	}
 	start := time.Now()
+	// #nosec G704 - This service is intentionally designed to execute arbitrary requests as part of the dashboard's replay functionality
 	resp, err := client.Do(req)
 
 	if err != nil {
