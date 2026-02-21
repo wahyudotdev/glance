@@ -164,7 +164,8 @@ public class ProxyAgent {
         }
     }
 }`, caCertBase64)
-	if err := os.WriteFile(javaFile, []byte(javaCode), 0600); err != nil {
+	err = os.WriteFile(javaFile, []byte(javaCode), 0600)
+	if err != nil {
 		return err
 	}
 
@@ -172,7 +173,7 @@ public class ProxyAgent {
 	// Use --release 8 (modern JDKs) or -source/-target (older JDKs) to ensure compatibility with Java 8 (version 52.0)
 	// #nosec G204
 	cmdCompile := execCommand("javac", "--release", "8", javaFile)
-	if _, err := cmdCompile.CombinedOutput(); err != nil {
+	if _, err = cmdCompile.CombinedOutput(); err != nil {
 		// Fallback for older javac that doesn't support --release
 		// #nosec G204
 		cmdFallback := execCommand("javac", "-source", "1.8", "-target", "1.8", javaFile)
@@ -183,7 +184,8 @@ public class ProxyAgent {
 
 	// 3. Create Manifest
 	manifest := "Agent-Class: ProxyAgent\nCan-Retransform-Classes: true\n"
-	if err := os.WriteFile(manifestFile, []byte(manifest), 0600); err != nil {
+	err = os.WriteFile(manifestFile, []byte(manifest), 0600)
+	if err != nil {
 		return err
 	}
 

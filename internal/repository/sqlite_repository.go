@@ -44,7 +44,8 @@ func (r *sqliteConfigRepository) Get() (*model.Config, error) {
 	var val string
 	err := r.getStmt.QueryRow().Scan(&val)
 	if err == nil {
-		if err := json.Unmarshal([]byte(val), cfg); err != nil {
+		err = json.Unmarshal([]byte(val), cfg)
+		if err != nil {
 			return nil, err
 		}
 	} else if err != sql.ErrNoRows {
@@ -412,7 +413,7 @@ func (r *sqliteScenarioRepository) GetByID(id string) (*model.Scenario, error) {
 			var step model.ScenarioStep
 			var method, url sql.NullString
 			var status sql.NullInt32
-			err := stepRows.Scan(&step.ID, &step.TrafficEntryID, &step.Order, &step.Notes, &method, &url, &status)
+			err = stepRows.Scan(&step.ID, &step.TrafficEntryID, &step.Order, &step.Notes, &method, &url, &status)
 			if err == nil {
 				if method.Valid {
 					step.TrafficEntry = &model.TrafficEntry{
