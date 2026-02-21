@@ -1,5 +1,8 @@
 # Glance
 
+![CI](https://github.com/wahyudotdev/glance/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://raw.githubusercontent.com/wahyudotdev/glance/main/coverage.svg)
+
 Glance is a specialized MITM (Man-in-the-Middle) proxy designed for **AI Agents** and developers to intercept, inspect, and mock HTTP/HTTPS traffic. It provides a real-time view of your application's network activity through a modern web dashboard and integrates deeply with AI workflows via the **Model Context Protocol (MCP)**.
 
 ## 🚀 Key Features
