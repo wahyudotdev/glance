@@ -19,7 +19,7 @@ func TestHandleContinueRequest(t *testing.T) {
 	}
 	app.Post("/api/intercept/continue/:id", s.handleContinueRequest)
 
-	body := `{"method":"GET", "url":"http://test.com"}`
+	body := `{"method":"GET", "url":"http://test.com", "headers": {"X-Test": ["value"]}}`
 	req := httptest.NewRequest("POST", "/api/intercept/continue/123", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
@@ -27,6 +27,26 @@ func TestHandleContinueRequest(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Invalid body
+	req = httptest.NewRequest("POST", "/api/intercept/continue/123", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400 for invalid body, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = fiber.ErrNotFound
+	req = httptest.NewRequest("POST", "/api/intercept/continue/123", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 404 {
+		t.Errorf("Expected status 404 on service error, got %d", resp.StatusCode)
 	}
 }
 
@@ -46,6 +66,15 @@ func TestHandleAbortRequest(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
+
+	// Service error
+	svc.err = fiber.ErrNotFound
+	req = httptest.NewRequest("POST", "/api/intercept/abort/123", nil)
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 404 {
+		t.Errorf("Expected status 404 on service error, got %d", resp.StatusCode)
+	}
 }
 
 func TestHandleContinueResponse(t *testing.T) {
@@ -57,7 +86,7 @@ func TestHandleContinueResponse(t *testing.T) {
 	}
 	app.Post("/api/intercept/response/continue/:id", s.handleContinueResponse)
 
-	body := `{"status":200, "body":"ok"}`
+	body := `{"status":200, "body":"ok", "headers": {"X-Test": ["value"]}}`
 	req := httptest.NewRequest("POST", "/api/intercept/response/continue/123", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
@@ -65,6 +94,26 @@ func TestHandleContinueResponse(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Invalid body
+	req = httptest.NewRequest("POST", "/api/intercept/response/continue/123", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400 for invalid body, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = fiber.ErrNotFound
+	req = httptest.NewRequest("POST", "/api/intercept/response/continue/123", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 404 {
+		t.Errorf("Expected status 404 on service error, got %d", resp.StatusCode)
 	}
 }
 

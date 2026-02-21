@@ -31,6 +31,16 @@ func TestProxy_Start(t *testing.T) {
 	if addr == "" {
 		t.Error("Expected non-empty address")
 	}
+
+	// Test port fallback by binding to the same address
+	p2 := NewProxy(addr)
+	addr2, err2 := p2.Start()
+	if err2 != nil {
+		t.Fatalf("Start fallback failed: %v", err2)
+	}
+	if addr2 == addr {
+		t.Error("Expected different address for fallback")
+	}
 }
 
 func TestProxy_Constructors(t *testing.T) {
@@ -125,6 +135,31 @@ func TestProxy_HandleRequest(t *testing.T) {
 		<-done
 	})
 
+	t.Run("Breakpoint Both Request", func(t *testing.T) {
+		repo.rules = []*model.Rule{{
+			ID:         "b-both",
+			Type:       model.RuleBreakpoint,
+			URLPattern: "both.me",
+			Strategy:   "both",
+		}}
+		req, _ := http.NewRequest("GET", "http://both.me", nil)
+		ctx := &goproxy.ProxyCtx{}
+
+		done := make(chan bool)
+		go func() {
+			p.HandleRequest(req, ctx)
+			done <- true
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+		bp := p.GetBreakpoint(ctx.UserData.(*model.TrafficEntry).ID)
+		if bp == nil {
+			t.Fatal("Expected breakpoint")
+		}
+		p.ContinueRequest(bp.ID, "", "", nil, "")
+		<-done
+	})
+
 	t.Run("Abort Request", func(_ *testing.T) {
 		repo.rules = []*model.Rule{{
 			ID:         "b3",
@@ -150,6 +185,28 @@ func TestProxy_HandleRequest(t *testing.T) {
 		p.AbortRequest(ctx.UserData.(*model.TrafficEntry).ID)
 		<-done
 	})
+
+	t.Run("Breakpoint Timeout", func(t *testing.T) {
+		oldTimeout := BreakpointTimeout
+		BreakpointTimeout = 10 * time.Millisecond
+		defer func() { BreakpointTimeout = oldTimeout }()
+
+		repo.rules = []*model.Rule{{
+			ID:         "b-timeout",
+			Type:       model.RuleBreakpoint,
+			URLPattern: "timeout.me",
+			Strategy:   "request",
+		}}
+		req, _ := http.NewRequest("GET", "http://timeout.me", nil)
+		ctx := &goproxy.ProxyCtx{}
+
+		// This should return after BreakpointTimeout
+		start := time.Now()
+		p.HandleRequest(req, ctx)
+		if time.Since(start) < BreakpointTimeout {
+			t.Errorf("Expected timeout wait, but returned too fast")
+		}
+	})
 }
 
 func TestProxy_ContinueSuccess(t *testing.T) {
@@ -159,7 +216,7 @@ func TestProxy_ContinueSuccess(t *testing.T) {
 		entry := &model.TrafficEntry{ID: "c1"}
 		req, _ := http.NewRequest("GET", "http://old.com", nil)
 		p.bpMu.Lock()
-		p.breakpoints["c1"] = &Breakpoint{ID: "c1", Request: req, Entry: entry, Resume: make(chan bool, 1)}
+		p.breakpoints["c1"] = &Breakpoint{ID: "c1", Request: req, Entry: entry, Resume: make(chan bool, 10)}
 		p.bpMu.Unlock()
 
 		success := p.ContinueRequest("c1", "POST", "http://new.com", nil, "body")
@@ -168,6 +225,12 @@ func TestProxy_ContinueSuccess(t *testing.T) {
 		}
 		if req.Method != "POST" || req.URL.String() != "http://new.com" {
 			t.Errorf("Request not updated: %s %s", req.Method, req.URL)
+		}
+
+		// Test invalid URL (should not update URL)
+		p.ContinueRequest("c1", "", "http://invalid path", nil, "")
+		if req.URL.String() != "http://new.com" {
+			t.Errorf("URL should not have updated on invalid parse")
 		}
 	})
 
@@ -255,6 +318,36 @@ func TestProxy_HandleResponse(t *testing.T) {
 
 		p.ContinueResponse("t2", 202, nil, "")
 		<-done
+	})
+
+	t.Run("Breakpoint Response Timeout", func(t *testing.T) {
+		oldTimeout := BreakpointTimeout
+		BreakpointTimeout = 10 * time.Millisecond
+		defer func() { BreakpointTimeout = oldTimeout }()
+
+		repo := &mockRuleRepo{rules: []*model.Rule{{
+			ID:         "br-timeout",
+			Type:       model.RuleBreakpoint,
+			URLPattern: "timeout.res",
+			Strategy:   "response",
+		}}}
+		store := interceptor.NewTrafficStore(nil)
+		p := NewProxyWithRepositories(":0", store, rules.NewEngine(repo))
+
+		req, _ := http.NewRequest("GET", "http://timeout.res", nil)
+		res := &http.Response{
+			StatusCode: 200,
+			Request:    req,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}
+		ctx := &goproxy.ProxyCtx{UserData: &model.TrafficEntry{ID: "tr-timeout"}}
+
+		start := time.Now()
+		p.HandleResponse(res, ctx)
+		if time.Since(start) < BreakpointTimeout {
+			t.Errorf("Expected timeout wait in response, but returned too fast")
+		}
 	})
 }
 

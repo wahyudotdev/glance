@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"bytes"
+	"errors"
 	"glance/internal/model"
 	"net/http/httptest"
 	"testing"
@@ -25,6 +26,15 @@ func TestHandleListScenarios(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
+
+	// Error case
+	svc.err = errors.New("test error")
+	req = httptest.NewRequest("GET", "/api/scenarios", nil)
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
+	}
 }
 
 func TestHandleGetScenario(t *testing.T) {
@@ -34,15 +44,15 @@ func TestHandleGetScenario(t *testing.T) {
 		services: Services{Scenario: svc},
 		app:      app,
 	}
-	app.Get("/api/scenarios/:id", s.handleGetScenario)
+	app.Get("/test-get-scenario/:id", s.handleGetScenario)
 
-	req := httptest.NewRequest("GET", "/api/scenarios/123", nil)
+	// Case 1: Success
+	req := httptest.NewRequest("GET", "/test-get-scenario/123", nil)
 	resp, _ := app.Test(req)
-	defer func() { _ = resp.Body.Close() }()
-
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
+	_ = resp.Body.Close()
 }
 
 func TestHandleDeleteScenario(t *testing.T) {
@@ -60,6 +70,15 @@ func TestHandleDeleteScenario(t *testing.T) {
 
 	if resp.StatusCode != 204 {
 		t.Errorf("Expected status 204, got %d", resp.StatusCode)
+	}
+
+	// Error case
+	svc.err = errors.New("test error")
+	req = httptest.NewRequest("DELETE", "/api/scenarios/123", nil)
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
 	}
 }
 
@@ -81,6 +100,25 @@ func TestHandleCreateScenario(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
+
+	// Invalid body
+	req = httptest.NewRequest("POST", "/api/scenarios", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = errors.New("test error")
+	req = httptest.NewRequest("POST", "/api/scenarios", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
+	}
 }
 
 func TestHandleUpdateScenario(t *testing.T) {
@@ -100,5 +138,24 @@ func TestHandleUpdateScenario(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Invalid body
+	req = httptest.NewRequest("PUT", "/api/scenarios/123", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = errors.New("test error")
+	req = httptest.NewRequest("PUT", "/api/scenarios/123", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
 	}
 }

@@ -40,9 +40,18 @@ func (e *Engine) GetRules() []*model.Rule {
 	return rules
 }
 
-// ClearRules is a placeholder for clearing all active rules.
+// ClearRules removes all active rules from the repository.
 func (e *Engine) ClearRules() {
-	// Not implemented in repo yet
+	rules, err := e.repo.GetAll()
+	if err != nil {
+		log.Printf("Error loading rules for clearing: %v", err)
+		return
+	}
+	for _, r := range rules {
+		if err := e.repo.Delete(r.ID); err != nil {
+			log.Printf("Error deleting rule %s: %v", r.ID, err)
+		}
+	}
 }
 
 // DeleteRule removes a rule by its ID and updates the repository.

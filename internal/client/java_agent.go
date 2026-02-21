@@ -13,29 +13,32 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+var readlink = os.Readlink
+var stat = os.Stat
+
 func findToolsJar(pid string) string {
 	// 1. Check JAVA_HOME if set
 	if jh := os.Getenv("JAVA_HOME"); jh != "" {
 		tj := filepath.Join(jh, "lib", "tools.jar")
 		// #nosec G703
-		if _, err := os.Stat(tj); err == nil {
+		if _, err := stat(tj); err == nil {
 			return tj
 		}
 	}
 
 	// 2. Try to find from the target process itself (Linux only)
-	if exe, err := os.Readlink(fmt.Sprintf("/proc/%s/exe", pid)); err == nil {
+	if exe, err := readlink(fmt.Sprintf("/proc/%s/exe", pid)); err == nil {
 		// exe is usually .../jre/bin/java or .../bin/java
 		// tools.jar is usually in ../lib/tools.jar (relative to bin) or ../../lib/tools.jar
 		base := filepath.Dir(filepath.Dir(exe))
 		tj := filepath.Join(base, "lib", "tools.jar")
-		if _, err := os.Stat(tj); err == nil {
+		if _, err := stat(tj); err == nil {
 			return tj
 		}
 		// Try one level up (if it was in jre/bin)
 		base2 := filepath.Dir(base)
 		tj2 := filepath.Join(base2, "lib", "tools.jar")
-		if _, err := os.Stat(tj2); err == nil {
+		if _, err := stat(tj2); err == nil {
 			return tj2
 		}
 	}
@@ -47,7 +50,7 @@ func findToolsJar(pid string) string {
 		"/usr/lib/jvm/default-java/lib/tools.jar",
 	}
 	for _, p := range paths {
-		if _, err := os.Stat(p); err == nil {
+		if _, err := stat(p); err == nil {
 			return p
 		}
 	}

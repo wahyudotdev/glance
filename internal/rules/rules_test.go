@@ -1,18 +1,37 @@
 package rules
 
 import (
+	"errors"
 	"glance/internal/model"
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"testing"
 )
 
 type mockRuleRepo struct {
 	rules []*model.Rule
+	err   error
 }
 
-func (m *mockRuleRepo) GetAll() ([]*model.Rule, error) { return m.rules, nil }
-func (m *mockRuleRepo) Add(r *model.Rule) error        { m.rules = append(m.rules, r); return nil }
+func (m *mockRuleRepo) GetAll() ([]*model.Rule, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.rules, nil
+}
+func (m *mockRuleRepo) Add(r *model.Rule) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.rules = append(m.rules, r)
+	return nil
+}
 func (m *mockRuleRepo) Update(r *model.Rule) error {
+	if m.err != nil {
+		return m.err
+	}
 	for i, existing := range m.rules {
 		if existing.ID == r.ID {
 			m.rules[i] = r
@@ -22,6 +41,9 @@ func (m *mockRuleRepo) Update(r *model.Rule) error {
 	return nil
 }
 func (m *mockRuleRepo) Delete(id string) error {
+	if m.err != nil {
+		return m.err
+	}
 	for i, r := range m.rules {
 		if r.ID == id {
 			m.rules = append(m.rules[:i], m.rules[i+1:]...)
@@ -53,6 +75,7 @@ func TestEngine_Match(t *testing.T) {
 		{"Method mismatch", "POST", "http://example.com/api/test", nil},
 		{"URL mismatch", "GET", "http://example.com/api/other", nil},
 		{"Partial pattern match", "GET", "http://example.com/v1/api/test/details", rule1},
+		{"Any method", "PUT", "http://test.com/api/test", nil}, // method is set to GET in rule1
 	}
 
 	for _, tt := range tests {
@@ -64,6 +87,20 @@ func TestEngine_Match(t *testing.T) {
 				}
 			}
 		})
+	}
+
+	// Test case where method is empty
+	rule2 := &model.Rule{ID: "2", URLPattern: "test"}
+	repo.rules = []*model.Rule{rule2}
+	req, _ := http.NewRequest("PATCH", "http://example.com/test", nil)
+	if got := engine.Match(req); got == nil || got.ID != "2" {
+		t.Errorf("Expected match for empty method")
+	}
+
+	// Test repo error
+	repo.err = errors.New("repo error")
+	if got := engine.Match(req); got != nil {
+		t.Errorf("Expected nil on repo error")
 	}
 }
 
@@ -86,8 +123,38 @@ func TestEngine_UpdateAndDelete(t *testing.T) {
 	}
 }
 
-func TestEngine_ClearRules(_ *testing.T) {
-	engine := NewEngine(&mockRuleRepo{})
+func TestEngine_ErrorCases(t *testing.T) {
+	repo := &mockRuleRepo{err: errors.New("db error")}
+	engine := NewEngine(repo)
+
+	// Suppress log output during test
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	engine.AddRule(&model.Rule{ID: "1"})
+	engine.UpdateRule(&model.Rule{ID: "1"})
+	engine.DeleteRule("1")
+
+	if rules := engine.GetRules(); len(rules) != 0 {
+		t.Errorf("Expected empty rules on error")
+	}
+}
+
+func TestEngine_ClearRules(t *testing.T) {
+	repo := &mockRuleRepo{}
+	engine := NewEngine(repo)
+
+	engine.AddRule(&model.Rule{ID: "1"})
+	engine.AddRule(&model.Rule{ID: "2"})
+
+	engine.ClearRules()
+	if len(engine.GetRules()) != 0 {
+		t.Errorf("Rules not cleared")
+	}
+
+	// Error case
+	repo.err = errors.New("clear error")
+	log.SetOutput(io.Discard)
 	engine.ClearRules()
 }
 
@@ -101,6 +168,15 @@ func TestEngine_MatchEdgeCases(t *testing.T) {
 		req, _ := http.NewRequest("POST", "http://test.com", nil)
 		if got := engine.Match(req); got == nil || got.ID != "any" {
 			t.Error("Expected match for any method")
+		}
+	})
+
+	t.Run("Empty Pattern Match", func(t *testing.T) {
+		rule := &model.Rule{ID: "empty", URLPattern: ""}
+		repo.rules = []*model.Rule{rule}
+		req, _ := http.NewRequest("GET", "http://any.com", nil)
+		if got := engine.Match(req); got == nil || got.ID != "empty" {
+			t.Error("Expected match for empty pattern")
 		}
 	})
 

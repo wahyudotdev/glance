@@ -682,18 +682,24 @@ func (ms *Server) handlePromptGenerateScenarioTest(req *mcp.GetPromptRequest) (*
 }
 
 // StartSTDIO starts the MCP server using standard I/O.
-func (ms *Server) StartSTDIO() error {
-	return ms.server.Run(context.Background(), &mcp.StdioTransport{})
+func (ms *Server) StartSTDIO(ctx context.Context) error {
+	return ms.server.Run(ctx, &mcp.StdioTransport{})
 }
 
 // ServeSSE starts the MCP server using Server-Sent Events.
-func (ms *Server) ServeSSE(addr string) error {
+func (ms *Server) ServeSSE(ctx context.Context, addr string) error {
 	handler := ms.GetStreamableHandler()
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+
+	go func() {
+		<-ctx.Done()
+		_ = server.Shutdown(context.Background())
+	}()
+
 	return server.ListenAndServe()
 }
 

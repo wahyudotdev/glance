@@ -88,6 +88,14 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 		t.Errorf("Update not applied correctly: %+v", got)
 	}
 
+	// Test Update with no ID steps
+	scenario.Steps = []model.ScenarioStep{
+		{TrafficEntryID: "t4", Order: 1},
+	}
+	if err := repo.Update(scenario); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+
 	// Test Delete
 	if err := repo.Delete("s1"); err != nil {
 		t.Fatalf("Delete failed: %v", err)
@@ -95,5 +103,26 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 	all, _ = repo.GetAll()
 	if len(all) != 0 {
 		t.Errorf("Delete failed, still have %d scenarios", len(all))
+	}
+
+	// Test Add with error (duplicate ID)
+	s2 := &model.Scenario{ID: "dup", Name: "S2"}
+	_ = repo.Add(s2)
+	err = repo.Add(s2)
+	if err == nil {
+		t.Error("Expected error for duplicate ID in Add")
+	}
+
+	// Test GetByID not found
+	got, err = repo.GetByID("nonexistent")
+	if err == nil {
+		t.Error("Expected error (sql.ErrNoRows) for nonexistent ID")
+	}
+
+	// Test GetAll with error (closed DB)
+	_ = db.Close()
+	_, err = repo.GetAll()
+	if err == nil {
+		t.Error("Expected error on closed DB in GetAll")
 	}
 }

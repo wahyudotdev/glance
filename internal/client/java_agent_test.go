@@ -61,9 +61,111 @@ func TestBuildAndAttachAgent_Mock(t *testing.T) {
 	}
 }
 
+func TestBuildAndAttachAgent_Failures(t *testing.T) {
+	oldExec := execCommand
+	defer func() { execCommand = oldExec }()
+
+	t.Run("Javac Failure", func(t *testing.T) {
+		execCommand = func(command string, args ...string) *exec.Cmd {
+			cs := []string{"-test.run=TestJavaAgentHelperProcess", "--", command}
+			cs = append(cs, args...)
+			cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+			cmd.Env = []string{"GO_WANT_JAVA_AGENT_HELPER_PROCESS=1", "FAIL_JAVAC=1"}
+			return cmd
+		}
+		ca.SetupCA()
+		err := BuildAndAttachAgent("1234", ":8000")
+		if err == nil {
+			t.Error("Expected error on javac failure")
+		}
+	})
+
+	t.Run("Jar Failure", func(t *testing.T) {
+		execCommand = func(command string, args ...string) *exec.Cmd {
+			cs := []string{"-test.run=TestJavaAgentHelperProcess", "--", command}
+			cs = append(cs, args...)
+			cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+			cmd.Env = []string{"GO_WANT_JAVA_AGENT_HELPER_PROCESS=1", "FAIL_JAR=1"}
+			return cmd
+		}
+		ca.SetupCA()
+		err := BuildAndAttachAgent("1234", ":8000")
+		if err == nil {
+			t.Error("Expected error on jar failure")
+		}
+	})
+}
+
+func TestFindToolsJar_Proc(t *testing.T) {
+	oldRL := readlink
+	oldST := stat
+	defer func() {
+		readlink = oldRL
+		stat = oldST
+	}()
+
+	t.Run("Immediate lib", func(t *testing.T) {
+		readlink = func(_ string) (string, error) { return "/jvm/bin/java", nil }
+		stat = func(path string) (os.FileInfo, error) {
+			if path == "/jvm/lib/tools.jar" {
+				return nil, nil
+			}
+			return nil, os.ErrNotExist
+		}
+		if p := findToolsJar("1"); p != "/jvm/lib/tools.jar" {
+			t.Errorf("Got %s", p)
+		}
+	})
+
+	t.Run("One level up", func(t *testing.T) {
+		readlink = func(_ string) (string, error) { return "/jvm/jre/bin/java", nil }
+		stat = func(path string) (os.FileInfo, error) {
+			if path == "/jvm/lib/tools.jar" {
+				return nil, nil
+			}
+			return nil, os.ErrNotExist
+		}
+		if p := findToolsJar("1"); p != "/jvm/lib/tools.jar" {
+			t.Errorf("Got %s", p)
+		}
+	})
+
+	t.Run("Common paths", func(t *testing.T) {
+		readlink = func(_ string) (string, error) { return "", os.ErrNotExist }
+		stat = func(path string) (os.FileInfo, error) {
+			if path == "/usr/lib/jvm/default-java/lib/tools.jar" {
+				return nil, nil
+			}
+			return nil, os.ErrNotExist
+		}
+		if p := findToolsJar("1"); p != "/usr/lib/jvm/default-java/lib/tools.jar" {
+			t.Errorf("Got %s", p)
+		}
+	})
+}
+
 func TestJavaAgentHelperProcess(_ *testing.T) {
 	if os.Getenv("GO_WANT_JAVA_AGENT_HELPER_PROCESS") != "1" {
 		return
+	}
+
+	if os.Getenv("FAIL_JAVAC") == "1" && os.Args[len(os.Args)-1] != "jps" {
+		// Only fail if it's javac (we don't want to fail everything)
+		for _, arg := range os.Args {
+			if arg == "javac" {
+				_, _ = fmt.Fprintln(os.Stderr, "Javac failed")
+				os.Exit(1)
+			}
+		}
+	}
+
+	if os.Getenv("FAIL_JAR") == "1" {
+		for _, arg := range os.Args {
+			if arg == "jar" {
+				_, _ = fmt.Fprintln(os.Stderr, "Jar failed")
+				os.Exit(1)
+			}
+		}
 	}
 
 	args := os.Args

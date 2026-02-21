@@ -19,6 +19,11 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+var (
+	// BreakpointTimeout is the time to wait for user action before auto-resuming.
+	BreakpointTimeout = 5 * time.Minute
+)
+
 // Breakpoint represents a paused request or response waiting for user action.
 type Breakpoint struct {
 	ID       string
@@ -173,7 +178,7 @@ func (p *Proxy) HandleRequest(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Req
 			case <-bp.Abort:
 				log.Printf("[ABORT] Aborting %s", bp.ID)
 				return r, goproxy.NewResponse(r, goproxy.ContentTypeText, 502, "Request aborted by user")
-			case <-time.After(5 * time.Minute):
+			case <-time.After(BreakpointTimeout):
 				log.Printf("[TIMEOUT] Auto-resuming %s after timeout", bp.ID)
 			}
 
@@ -230,7 +235,7 @@ func (p *Proxy) HandleResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *http
 			case <-bp.Abort:
 				log.Printf("[ABORT RES] Aborting response for %s", bp.ID)
 				return goproxy.NewResponse(resp.Request, goproxy.ContentTypeText, 502, "Response aborted by user")
-			case <-time.After(5 * time.Minute):
+			case <-time.After(BreakpointTimeout):
 				log.Printf("[TIMEOUT RES] Auto-resuming response %s after timeout", bp.ID)
 			}
 

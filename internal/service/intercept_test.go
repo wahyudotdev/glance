@@ -100,6 +100,13 @@ func TestInterceptService(t *testing.T) {
 		<-done
 	})
 
+	t.Run("ContinueRequest - Missing ID", func(t *testing.T) {
+		err := svc.ContinueRequest("non-existent", ContinueRequestParams{})
+		if err == nil {
+			t.Error("Expected error")
+		}
+	})
+
 	t.Run("ContinueResponse - Missing ID", func(t *testing.T) {
 		err := svc.ContinueResponse("non-existent", ContinueResponseParams{})
 		if err == nil {

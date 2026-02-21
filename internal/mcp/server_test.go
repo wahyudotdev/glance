@@ -1,7 +1,9 @@
 package mcp
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	glance_config "glance/internal/config"
 	"glance/internal/interceptor"
 	"glance/internal/model"
@@ -61,12 +63,37 @@ func setupTestServer() (*Server, *sql.DB, repository.TrafficRepository) {
 	return ms, db, trafficRepo
 }
 
-func TestServer_StreamableHandler(t *testing.T) {
+func TestServer_StartMethods(t *testing.T) {
 	ms, _, _ := setupTestServer()
-	h := ms.GetStreamableHandler()
-	if h == nil {
-		t.Error("Expected non-nil handler")
-	}
+
+	t.Run("GetStreamableHandler", func(t *testing.T) {
+		h := ms.GetStreamableHandler()
+		if h == nil {
+			t.Error("Expected non-nil handler")
+		}
+	})
+
+	t.Run("ActiveSessions", func(t *testing.T) {
+		if count := ms.ActiveSessions(); count != 0 {
+			t.Errorf("Expected 0 sessions, got %d", count)
+		}
+	})
+
+	t.Run("StartSTDIO", func(_ *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_ = ms.StartSTDIO(ctx)
+	})
+
+	t.Run("ServeSSE", func(_ *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		// Use a unique random port
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+		_ = ms.ServeSSE(ctx, "127.0.0.1:0")
+	})
 }
 
 func TestToolHandlers(t *testing.T) {
@@ -91,9 +118,15 @@ func TestToolHandlers(t *testing.T) {
 
 		// With filter (no match)
 		resNM, _, _ := ms.handleInspectNetworkTraffic(listTrafficArgs{Filter: "nomatch", Limit: 10})
-		if resNM == nil {
-			t.Fatal("Expected no match result")
+		if resNM == nil || !strings.Contains(resNM.Content[0].(*mcp.TextContent).Text, "No traffic found") {
+			t.Error("Expected no match result message")
 		}
+
+		// Edge case: limit <= 0
+		_, _, _ = ms.handleInspectNetworkTraffic(listTrafficArgs{Limit: -1})
+
+		// Edge case: limit > history limit
+		_, _, _ = ms.handleInspectNetworkTraffic(listTrafficArgs{Limit: 10000})
 	})
 
 	t.Run("InspectRequestDetails", func(t *testing.T) {
@@ -104,6 +137,12 @@ func TestToolHandlers(t *testing.T) {
 		}
 		if res == nil {
 			t.Fatal("Expected result")
+		}
+
+		// Not found
+		resNF, _, _ := ms.handleInspectRequestDetails(getTrafficDetailsArgs{ID: "notfound"})
+		if resNF == nil || !strings.Contains(resNF.Content[0].(*mcp.TextContent).Text, "not found") {
+			t.Error("Expected not found message")
 		}
 	})
 
@@ -143,6 +182,13 @@ func TestToolHandlers(t *testing.T) {
 		if res == nil {
 			t.Error("Expected result")
 		}
+
+		// Use a fresh server for empty check to avoid clearing rules for other tests
+		msEmpty, _, _ := setupTestServer()
+		resE, _, _ := msEmpty.handleListRules()
+		if resE == nil || !strings.Contains(resE.Content[0].(*mcp.TextContent).Text, "No active rules") {
+			t.Error("Expected No active rules message")
+		}
 	})
 
 	t.Run("BreakpointRule", func(t *testing.T) {
@@ -164,6 +210,12 @@ func TestToolHandlers(t *testing.T) {
 	})
 
 	t.Run("ScenarioTools", func(t *testing.T) {
+		// Add error
+		_, _, errAE := ms.handleAddScenario(addScenarioArgs{})
+		if errAE == nil {
+			t.Error("Expected error for missing name in Add")
+		}
+
 		// Add
 		resA, _, errA := ms.handleAddScenario(addScenarioArgs{Name: "NewS", Description: "Desc"})
 		if errA != nil {
@@ -192,6 +244,19 @@ func TestToolHandlers(t *testing.T) {
 		// List
 		_, _, _ = ms.handleListScenarios()
 
+		// List empty
+		all, _ := ms.scenarioRepo.GetAll()
+		for _, s := range all {
+			_ = ms.scenarioRepo.Delete(s.ID)
+		}
+		resL, _, _ := ms.handleListScenarios()
+		if resL == nil || !strings.Contains(resL.Content[0].(*mcp.TextContent).Text, "No scenarios found") {
+			t.Error("Expected No scenarios found message")
+		}
+
+		// Re-add for subsequent tests
+		_ = ms.scenarioRepo.Add(scenario)
+
 		// Get
 		res, _, err := ms.handleGetScenario(getScenarioArgs{ID: "s1"})
 		if err != nil {
@@ -209,6 +274,24 @@ func TestToolHandlers(t *testing.T) {
 			MappingsJSON: `[{"name":"v2", "source_entry_id":"t_s1", "source_path":"body.id", "target_json_path":"header.X"}]`,
 		})
 
+		// Update missing ID
+		_, _, errU := ms.handleUpdateScenario(updateScenarioArgs{})
+		if errU == nil {
+			t.Error("Expected error for missing ID in Update")
+		}
+
+		// Update nonexistent
+		_, _, errU2 := ms.handleUpdateScenario(updateScenarioArgs{ID: "none"})
+		if errU2 == nil {
+			t.Error("Expected error for nonexistent ID in Update")
+		}
+
+		// Delete missing ID
+		_, _, errD := ms.handleDeleteScenario(deleteScenarioArgs{})
+		if errD == nil {
+			t.Error("Expected error for missing ID in Delete")
+		}
+
 		// Delete
 		_, _, _ = ms.handleDeleteScenario(deleteScenarioArgs{ID: "s1"})
 	})
@@ -219,10 +302,12 @@ func TestToolHandlers(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		// Basic execute
+		// Basic execute with headers and body
 		_, _, err := ms.handleExecuteRequest(executeRequestArgs{
-			Method: "GET",
-			URL:    ts.URL,
+			Method:  "POST",
+			URL:     ts.URL,
+			Headers: `{"Content-Type": ["application/json"]}`,
+			Body:    `{"test":true}`,
 		})
 		if err != nil {
 			t.Fatalf("Handle failed: %v", err)
@@ -238,6 +323,13 @@ func TestToolHandlers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Handle failed: %v", err)
 		}
+
+		// Execute with nonexistent base_id
+		_, _, _ = ms.handleExecuteRequest(executeRequestArgs{
+			BaseID: "nonexistent",
+			Method: "GET",
+			URL:    ts.URL,
+		})
 
 		// Missing required
 		_, _, err = ms.handleExecuteRequest(executeRequestArgs{})
@@ -263,8 +355,75 @@ func TestToolHandlers(t *testing.T) {
 				Arguments: map[string]string{"id": "s2"},
 			},
 		})
+
+		// Error case (not found)
+		_, err := ms.handlePromptGenerateScenarioTest(&mcp.GetPromptRequest{
+			Params: &mcp.GetPromptParams{
+				Arguments: map[string]string{"id": "nonexistent"},
+			},
+		})
+		if err == nil {
+			t.Error("Expected error for nonexistent scenario in Prompt")
+		}
+	})
+
+	t.Run("ScenarioTools_Failures", func(t *testing.T) {
+		failRepo := &mockScenarioRepo{err: errors.New("db error")}
+		ms.scenarioRepo = failRepo
+
+		// List failure
+		_, _, errL := ms.handleListScenarios()
+		if errL == nil {
+			t.Error("Expected error on List failure")
+		}
+
+		// Get failure
+		_, _, errG := ms.handleGetScenario(getScenarioArgs{ID: "any"})
+		if errG == nil {
+			t.Error("Expected error on Get failure")
+		}
+
+		// Add failure
+		_, _, errA := ms.handleAddScenario(addScenarioArgs{Name: "fail"})
+		if errA == nil {
+			t.Error("Expected error on Add failure")
+		}
+
+		// Update failure
+		_, _, errU := ms.handleUpdateScenario(updateScenarioArgs{ID: "any"})
+		if errU == nil {
+			t.Error("Expected error on Update failure")
+		}
+
+		// Update with invalid JSON
+		_, _, errUJ := ms.handleUpdateScenario(updateScenarioArgs{ID: "s1", StepsJSON: "invalid"})
+		if errUJ == nil {
+			t.Error("Expected error on invalid StepsJSON")
+		}
+		_, _, errUJ2 := ms.handleUpdateScenario(updateScenarioArgs{ID: "s1", MappingsJSON: "invalid"})
+		if errUJ2 == nil {
+			t.Error("Expected error on invalid MappingsJSON")
+		}
+
+		// Delete failure
+		_, _, errD := ms.handleDeleteScenario(deleteScenarioArgs{ID: "any"})
+		if errD == nil {
+			t.Error("Expected error on Delete failure")
+		}
 	})
 }
+
+type mockScenarioRepo struct {
+	err error
+}
+
+func (m *mockScenarioRepo) GetAll() ([]*model.Scenario, error) { return nil, m.err }
+func (m *mockScenarioRepo) GetByID(_ string) (*model.Scenario, error) {
+	return nil, m.err
+}
+func (m *mockScenarioRepo) Add(_ *model.Scenario) error    { return m.err }
+func (m *mockScenarioRepo) Update(_ *model.Scenario) error { return m.err }
+func (m *mockScenarioRepo) Delete(_ string) error          { return m.err }
 
 func TestRepositories(t *testing.T) {
 	ms, _, _ := setupTestServer()

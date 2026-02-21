@@ -45,6 +45,25 @@ func TestHandleCreateRule(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
+
+	// Invalid body
+	req = httptest.NewRequest("POST", "/api/rules", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = fiber.ErrInternalServerError
+	req = httptest.NewRequest("POST", "/api/rules", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
+	}
 }
 
 func TestHandleUpdateRule(t *testing.T) {
@@ -64,6 +83,25 @@ func TestHandleUpdateRule(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Invalid body
+	req = httptest.NewRequest("PUT", "/api/rules/123", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400, got %d", resp.StatusCode)
+	}
+
+	// Service error
+	svc.err = fiber.ErrInternalServerError
+	req = httptest.NewRequest("PUT", "/api/rules/123", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", resp.StatusCode)
 	}
 }
 

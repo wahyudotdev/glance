@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"bytes"
+	"errors"
 	"glance/internal/model"
 	"glance/internal/service"
 	"net/http/httptest"
@@ -10,9 +11,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type mockRequestService struct{}
+type mockRequestService struct {
+	err error
+}
 
 func (m *mockRequestService) Execute(_ service.ExecuteRequestParams) (*model.TrafficEntry, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	return &model.TrafficEntry{ID: "123", Status: 200}, nil
 }
 
@@ -38,5 +44,24 @@ func TestHandleExecuteRequest(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Case 1: Invalid Body
+	req = httptest.NewRequest("POST", "/api/request/execute", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 400 {
+		t.Errorf("Expected status 400 for invalid body, got %d", resp.StatusCode)
+	}
+
+	// Case 2: Service Error
+	svc.err = errors.New("exec failed")
+	req = httptest.NewRequest("POST", "/api/request/execute", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 500 {
+		t.Errorf("Expected status 500 on service error, got %d", resp.StatusCode)
 	}
 }

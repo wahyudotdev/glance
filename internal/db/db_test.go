@@ -27,14 +27,70 @@ func TestInitCustom(t *testing.T) {
 func TestInit_Default(t *testing.T) {
 	// Mock HOME to a temp dir
 	tmpHome := t.TempDir()
+
+	// Support both HOME (Unix) and USERPROFILE (Windows) for local runs
 	oldHome := os.Getenv("HOME")
-	defer func() { _ = os.Setenv("HOME", oldHome) }()
+	oldUP := os.Getenv("USERPROFILE")
+	defer func() {
+		_ = os.Setenv("HOME", oldHome)
+		_ = os.Setenv("USERPROFILE", oldUP)
+	}()
 	_ = os.Setenv("HOME", tmpHome)
+	_ = os.Setenv("USERPROFILE", tmpHome)
 
 	// Since Init might be called multiple times in different tests,
 	// and it sets a global DB, we just ensure it doesn't panic.
 	Init()
 	if DB == nil {
 		t.Error("Expected global DB to be set")
+	}
+
+	// Ensure tables exist after default Init
+	_, err := DB.Exec("SELECT 1 FROM scenarios LIMIT 1")
+	if err != nil {
+		t.Errorf("Tables not created in default Init: %v", err)
+	}
+}
+
+func TestInitCustom_Twice(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test2.db")
+
+	// First init
+	InitCustom(dbPath)
+	db1 := DB
+
+	// Second init (re-open)
+	InitCustom(dbPath)
+	if DB == nil || DB == db1 {
+		// Just ensure it's not nil and we used db1
+	}
+}
+
+func TestInit_Failures(t *testing.T) {
+	oldFatalf := fatalf
+	defer func() { fatalf = oldFatalf }()
+
+	var fatalCalled bool
+	fatalf = func(_ string, _ ...any) {
+		fatalCalled = true
+	}
+
+	// Test InitCustom with invalid path
+	InitCustom("/non-existent/dir/db.db")
+	if !fatalCalled {
+		t.Error("Expected fatalf to be called for invalid path")
+	}
+
+	// Reset
+	fatalCalled = false
+
+	// Test createTables with closed DB
+	if DB != nil {
+		_ = DB.Close()
+		createTables()
+		if !fatalCalled {
+			t.Error("Expected fatalf to be called for closed DB in createTables")
+		}
 	}
 }

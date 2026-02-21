@@ -2,10 +2,13 @@ package interceptor
 
 import (
 	"bytes"
+	"errors"
 	"glance/internal/config"
 	"glance/internal/model"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
@@ -76,6 +79,15 @@ func TestReadAndReplaceResponseBody(t *testing.T) {
 	if body2 == string(imgContent) {
 		t.Errorf("Expected base64 encoded body for image")
 	}
+
+	// Test ReadAll error in response
+	res3 := &http.Response{
+		Body: &errReader{},
+	}
+	_, err = ReadAndReplaceResponseBody(res3)
+	if err == nil {
+		t.Error("Expected error from errReader in response")
+	}
 }
 
 type mockRepo struct {
@@ -136,6 +148,10 @@ func TestTrafficStore_AddEntry_Truncation(t *testing.T) {
 	if !strings.Contains(entry.ResponseBody, "truncated") {
 		t.Errorf("Expected truncated message, got %s", entry.ResponseBody)
 	}
+
+	// Case: HistoryLimit <= 0 (disabled)
+	cfg.HistoryLimit = 0
+	store.AddEntry(&model.TrafficEntry{ID: "test-no-limit"})
 }
 
 type mockConfigRepoForTrunc struct {
@@ -145,9 +161,56 @@ type mockConfigRepoForTrunc struct {
 func (m *mockConfigRepoForTrunc) Get() (*model.Config, error) { return m.cfg, nil }
 func (m *mockConfigRepoForTrunc) Save(_ *model.Config) error  { return nil }
 
-func TestTrafficStore_NoRepo(_ *testing.T) {
-	store := NewTrafficStore(nil)
-	store.AddEntry(&model.TrafficEntry{ID: "1"})
-	store.GetPage(0, 10)
+func TestTrafficStore_RepoErrors(t *testing.T) {
+	config.Init(&mockConfigRepo{})
+	repo := &mockRepoWithError{err: errors.New("db error")}
+	store := NewTrafficStore(repo)
+
+	// Suppress expected error logs
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	// Should not panic on repo error
+	store.AddEntry(&model.TrafficEntry{ID: "e1"})
+
+	entries, total := store.GetPage(0, 10)
+	if entries != nil || total != 0 {
+		t.Errorf("Expected nil entries on repo error")
+	}
+
 	store.ClearEntries()
 }
+
+type mockRepoWithError struct {
+	err error
+}
+
+func (m *mockRepoWithError) Add(_ *model.TrafficEntry) error { return m.err }
+func (m *mockRepoWithError) GetPage(_, _ int) ([]*model.TrafficEntry, int, error) {
+	return nil, 0, m.err
+}
+func (m *mockRepoWithError) GetByIDs(_ []string) ([]*model.TrafficEntry, error) { return nil, m.err }
+func (m *mockRepoWithError) Clear() error                                       { return m.err }
+func (m *mockRepoWithError) Prune(_ int) error                                  { return m.err }
+func (m *mockRepoWithError) Flush()                                             {}
+
+func TestReadAndReplaceBody_Errors(t *testing.T) {
+	// Test nil body
+	req, _ := http.NewRequest("GET", "http://test.com", nil)
+	body, err := ReadAndReplaceBody(req)
+	if err != nil || body != "" {
+		t.Errorf("Expected empty body for nil body")
+	}
+
+	// Test ReadAll error
+	req2, _ := http.NewRequest("POST", "http://test.com", &errReader{})
+	_, err = ReadAndReplaceBody(req2)
+	if err == nil {
+		t.Error("Expected error from errReader")
+	}
+}
+
+type errReader struct{}
+
+func (e *errReader) Read(_ []byte) (n int, err error) { return 0, errors.New("read error") }
+func (e *errReader) Close() error                     { return nil }

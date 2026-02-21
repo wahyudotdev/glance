@@ -17,6 +17,28 @@ func fakeExecCommand(command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+func TestListAndroidDevices_Parsing(t *testing.T) {
+	oldExec := execCommand
+	defer func() { execCommand = oldExec }()
+
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		cs := []string{"-test.run=TestHelperProcess", "--", command}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1", "BAD_ADB_OUTPUT=1"}
+		return cmd
+	}
+
+	devices, err := ListAndroidDevices()
+	if err != nil {
+		t.Fatalf("ListAndroidDevices failed: %v", err)
+	}
+	// Verify it skipped bad lines
+	if len(devices) != 1 {
+		t.Errorf("Expected 1 valid device, got %d", len(devices))
+	}
+}
+
 func TestHelperProcess(_ *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -24,6 +46,14 @@ func TestHelperProcess(_ *testing.T) {
 
 	if os.Getenv("FAIL_ADB") == "1" {
 		os.Exit(1)
+	}
+
+	if os.Getenv("BAD_ADB_OUTPUT") == "1" {
+		_, _ = fmt.Fprintln(os.Stdout, "List of devices attached")
+		_, _ = fmt.Fprintln(os.Stdout, "invalid-line")
+		_, _ = fmt.Fprintln(os.Stdout, "offline-device offline")
+		_, _ = fmt.Fprintln(os.Stdout, "dev1 device model:M1 device:D1")
+		os.Exit(0)
 	}
 
 	args := os.Args
@@ -105,5 +135,56 @@ func TestPushCertToDevice_Mock(t *testing.T) {
 	err := PushCertToDevice("dev1", []byte("cert"))
 	if err != nil {
 		t.Errorf("PushCertToDevice failed: %v", err)
+	}
+}
+
+func TestConfigureAndroidProxy_Error(t *testing.T) {
+	oldExec := execCommand
+	defer func() { execCommand = oldExec }()
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		cs := []string{"-test.run=TestHelperProcess", "--", command}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1", "FAIL_ADB=1"}
+		return cmd
+	}
+
+	err := ConfigureAndroidProxy("dev1", "8000")
+	if err == nil {
+		t.Error("Expected error")
+	}
+}
+
+func TestClearAndroidProxy_Error(t *testing.T) {
+	oldExec := execCommand
+	defer func() { execCommand = oldExec }()
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		cs := []string{"-test.run=TestHelperProcess", "--", command}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1", "FAIL_ADB=1"}
+		return cmd
+	}
+
+	err := ClearAndroidProxy("dev1", "8000")
+	if err == nil {
+		t.Error("Expected error")
+	}
+}
+
+func TestPushCertToDevice_Error(t *testing.T) {
+	oldExec := execCommand
+	defer func() { execCommand = oldExec }()
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		cs := []string{"-test.run=TestHelperProcess", "--", command}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...) // #nosec G204 G702
+		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1", "FAIL_ADB=1"}
+		return cmd
+	}
+
+	err := PushCertToDevice("dev1", []byte("cert"))
+	if err == nil {
+		t.Error("Expected error")
 	}
 }

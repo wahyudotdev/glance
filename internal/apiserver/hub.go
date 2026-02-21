@@ -33,12 +33,18 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
+			if client == nil {
+				continue
+			}
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
 			log.Println("WebSocket client registered")
 
 		case client := <-h.unregister:
+			if client == nil {
+				continue
+			}
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)

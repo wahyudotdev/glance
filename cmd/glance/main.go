@@ -2,8 +2,12 @@
 package main
 
 import (
+	"context"
+
 	"flag"
+
 	"fmt"
+
 	"log"
 	"strings"
 	"time"
@@ -146,10 +150,9 @@ func main() {
 
 			fmt.Printf("%s[✓]%s MCP server (SSE) running on %s%s/mcp%s\n", colorGreen, colorReset, colorBold, formatAddr(*mcpAddr), colorReset)
 
-			if err := mcpServer.ServeSSE(*mcpAddr); err != nil {
+			if err := mcpServer.ServeSSE(context.Background(), *mcpAddr); err != nil {
 
 				log.Printf("MCP Server error: %v", err)
-
 			}
 
 		}()
