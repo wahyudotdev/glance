@@ -32,18 +32,32 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           filename: coverage.out
+          target: coverage.svg
+
+      - name: Verify coverage files
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          ls -la coverage.out
+          if [ -f coverage.svg ]; then
+            ls -la coverage.svg
+          else
+            echo "coverage.svg was not generated"
+            exit 1
+          fi
 
       - name: Commit and push coverage badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp coverage.svg /tmp/coverage.svg
+          mkdir -p /tmp/coverage
+          cp coverage.svg /tmp/coverage/coverage.svg
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git checkout --orphan coverage
-          git rm -rf .
-          mv /tmp/coverage.svg coverage.svg
+          git fetch origin coverage:coverage || true
+          git checkout coverage || git checkout --orphan coverage
+          git rm -rf . || true
+          cp /tmp/coverage/coverage.svg coverage.svg
           git add coverage.svg
           git commit -m "docs: updated coverage badge [skip ci]"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" coverage --force
