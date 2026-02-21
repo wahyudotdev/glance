@@ -8,6 +8,8 @@ agent-proxy
 # Build artifacts
 internal/apiserver/dist/
 web/dashboard/dist/
+coverage.out
+coverage.svg
 
 # Dependencies
 node_modules/
@@ -15,3 +17,5 @@ web/dashboard/node_modules/
 
 # OS files
 .DS_Store
+coverage.svg
+coverage.out
