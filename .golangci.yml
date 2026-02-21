@@ -1,34 +1,32 @@
+# golangci-lint configuration file
+
 version: "2"
+
 run:
+  timeout: 5m
   tests: true
   allow-parallel-runners: true
+
 linters:
   enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+    - misspell
     - bodyclose
     - gocritic
     - gosec
-    - misspell
-    - revive
   settings:
     govet:
+      enable-all: true
       disable:
         - fieldalignment
-      enable-all: true
     revive:
       confidence: 0.8
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-formatters:
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
