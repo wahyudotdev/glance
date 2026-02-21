@@ -27,27 +27,22 @@ jobs:
       - name: Run Tests
         run: go test -v -coverprofile=coverage.out ./internal/...
 
-      - name: Create empty coverage badge
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: touch coverage.svg
-
-      - name: Go Coverage Badge
-        uses: tj-actions/coverage-badge-go@v2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          filename: coverage.out
-          target: coverage.svg
-
-      - name: Verify coverage files
+      - name: Generate coverage badge SVG
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          ls -la coverage.out
-          if [ -f coverage.svg ]; then
-            ls -la coverage.svg
-          else
-            echo "coverage.svg was not generated"
-            exit 1
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Coverage: ${COVERAGE}%"
+          COLOR="red"
+          if [ "$(echo "$COVERAGE >= 80" | bc -l)" -eq 1 ]; then
+            COLOR="brightgreen"
+          elif [ "$(echo "$COVERAGE >= 60" | bc -l)" -eq 1 ]; then
+            COLOR="yellow"
+          elif [ "$(echo "$COVERAGE >= 40" | bc -l)" -eq 1 ]; then
+            COLOR="orange"
           fi
+          curl -s "https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}" -o coverage.svg
+          echo "Generated SVG badge:"
+          head -1 coverage.svg
 
       - name: Commit and push coverage badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
