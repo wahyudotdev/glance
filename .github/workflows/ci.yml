@@ -27,6 +27,10 @@ jobs:
       - name: Run Tests
         run: go test -v -coverprofile=coverage.out ./internal/...
 
+      - name: Create empty coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: touch coverage.svg
+
       - name: Go Coverage Badge
         uses: tj-actions/coverage-badge-go@v2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
