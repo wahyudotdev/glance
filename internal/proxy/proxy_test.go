@@ -118,7 +118,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 		go func() {
 			_, resp := p.HandleRequest(req, ctx)
 			if resp != nil {
-				defer func() { _ = resp.Body.Close() }()
+				_ = resp.Body.Close()
 			}
 			done <- true
 		}()
@@ -147,7 +147,10 @@ func TestProxy_HandleRequest(t *testing.T) {
 
 		done := make(chan bool)
 		go func() {
-			p.HandleRequest(req, ctx)
+			_, resp := p.HandleRequest(req, ctx)
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
 			done <- true
 		}()
 
@@ -174,7 +177,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 		go func() {
 			_, resp := p.HandleRequest(req, ctx)
 			if resp != nil {
-				defer func() { _ = resp.Body.Close() }()
+				_ = resp.Body.Close()
 				if resp.StatusCode == 502 {
 					done <- true
 				}
@@ -202,7 +205,10 @@ func TestProxy_HandleRequest(t *testing.T) {
 
 		// This should return after BreakpointTimeout
 		start := time.Now()
-		p.HandleRequest(req, ctx)
+		_, resp := p.HandleRequest(req, ctx)
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
 		if time.Since(start) < BreakpointTimeout {
 			t.Errorf("Expected timeout wait, but returned too fast")
 		}
@@ -305,7 +311,7 @@ func TestProxy_HandleResponse(t *testing.T) {
 		go func() {
 			resp := p.HandleResponse(res, ctx)
 			if resp != nil {
-				defer func() { _ = resp.Body.Close() }()
+				_ = resp.Body.Close()
 			}
 			done <- true
 		}()
@@ -344,7 +350,10 @@ func TestProxy_HandleResponse(t *testing.T) {
 		ctx := &goproxy.ProxyCtx{UserData: &model.TrafficEntry{ID: "tr-timeout"}}
 
 		start := time.Now()
-		p.HandleResponse(res, ctx)
+		resp := p.HandleResponse(res, ctx)
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
 		if time.Since(start) < BreakpointTimeout {
 			t.Errorf("Expected timeout wait in response, but returned too fast")
 		}

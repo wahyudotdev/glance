@@ -34,11 +34,14 @@ func TestHub_Logic(t *testing.T) {
 
 	// Connect a client
 	wsURL := "ws://" + addr + "/ws"
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
 		t.Fatalf("Dial failed: %v", err)
 	}
-	defer conn.Close()
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	defer func() { _ = conn.Close() }()
 
 	// Give it a moment to register
 	time.Sleep(100 * time.Millisecond)
@@ -54,7 +57,10 @@ func TestHub_Logic(t *testing.T) {
 	}
 
 	// Test WebSocket write error by closing connection and then broadcasting
-	conn2, _, _ := websocket.DefaultDialer.Dial(wsURL, nil)
+	conn2, resp2, _ := websocket.DefaultDialer.Dial(wsURL, nil)
+	if resp2 != nil {
+		_ = resp2.Body.Close()
+	}
 	time.Sleep(100 * time.Millisecond) // wait for registration
 	_ = conn2.Close()
 	time.Sleep(100 * time.Millisecond) // wait for unregister or at least close

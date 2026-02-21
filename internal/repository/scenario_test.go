@@ -79,7 +79,8 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 	scenario.Steps = []model.ScenarioStep{
 		{ID: "step3", TrafficEntryID: "t3", Order: 1},
 	}
-	if err := repo.Update(scenario); err != nil {
+	err = repo.Update(scenario)
+	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
@@ -92,12 +93,14 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 	scenario.Steps = []model.ScenarioStep{
 		{TrafficEntryID: "t4", Order: 1},
 	}
-	if err := repo.Update(scenario); err != nil {
+	err = repo.Update(scenario)
+	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
 	// Test Delete
-	if err := repo.Delete("s1"); err != nil {
+	err = repo.Delete("s1")
+	if err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
 	all, _ = repo.GetAll()
@@ -114,7 +117,7 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 	}
 
 	// Test GetByID not found
-	got, err = repo.GetByID("nonexistent")
+	_, err = repo.GetByID("nonexistent")
 	if err == nil {
 		t.Error("Expected error (sql.ErrNoRows) for nonexistent ID")
 	}

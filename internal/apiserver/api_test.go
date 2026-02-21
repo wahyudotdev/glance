@@ -5,6 +5,7 @@ import (
 	"glance/internal/proxy"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -20,6 +21,13 @@ func TestNewServer(t *testing.T) {
 
 	// Verify routes are registered without panic
 	s.RegisterRoutes()
+
+	// Exercise middleware
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	resp, _ := s.app.Test(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 }
 
 func TestServer_Listen(t *testing.T) {

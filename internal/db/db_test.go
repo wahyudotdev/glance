@@ -62,8 +62,13 @@ func TestInitCustom_Twice(t *testing.T) {
 
 	// Second init (re-open)
 	InitCustom(dbPath)
-	if DB == nil || DB == db1 {
-		// Just ensure it's not nil and we used db1
+	if DB == nil {
+		t.Error("Expected DB to be initialized")
+	}
+	if DB == db1 {
+		// This might happen if sql.Open returns the same instance, but usually it's different.
+		// We just want to ensure it's not nil and maybe log it.
+		t.Log("DB instance is the same after re-init")
 	}
 }
 
