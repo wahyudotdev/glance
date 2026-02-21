@@ -9,7 +9,7 @@ VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 # Build flags
 LDFLAGS=-ldflags="-s -w -X glance/internal/config.Version=$(VERSION)"
 
-.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage load-test lint
+.PHONY: all build build-frontend build-backend clean build-all build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 test test-coverage test-coverage-percent load-test lint
 
 all: build
 
@@ -65,7 +65,13 @@ test:
 test-coverage:
 	@echo "Running tests with coverage..."
 	go test -coverprofile=coverage.out ./internal/...
+	@go tool cover -func=coverage.out | grep total | awk '{print "Total Coverage: " $$3}'
 	go tool cover -html=coverage.out
+
+test-coverage-percent:
+	@echo "Calculating test coverage..."
+	@go test -coverprofile=coverage.out ./internal/... > /dev/null
+	@go tool cover -func=coverage.out | grep total | awk '{print "Total Coverage: " $$3}'
 
 load-test:
 	@echo "Running load test (100 reqs, 10 concurrency)..."

@@ -73,4 +73,27 @@ func TestSQLiteScenarioRepository(t *testing.T) {
 	if len(got.VariableMappings) != 1 {
 		t.Errorf("Mapping count mismatch: %d", len(got.VariableMappings))
 	}
+
+	// Test Update
+	scenario.Name = "Updated Name"
+	scenario.Steps = []model.ScenarioStep{
+		{ID: "step3", TrafficEntryID: "t3", Order: 1},
+	}
+	if err := repo.Update(scenario); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+
+	got, _ = repo.GetByID("s1")
+	if got.Name != "Updated Name" || len(got.Steps) != 1 {
+		t.Errorf("Update not applied correctly: %+v", got)
+	}
+
+	// Test Delete
+	if err := repo.Delete("s1"); err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
+	all, _ = repo.GetAll()
+	if len(all) != 0 {
+		t.Errorf("Delete failed, still have %d scenarios", len(all))
+	}
 }

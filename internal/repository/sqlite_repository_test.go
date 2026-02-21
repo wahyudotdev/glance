@@ -145,3 +145,27 @@ func TestSQLiteTrafficRepository_GetByIDs(t *testing.T) {
 		t.Errorf("Expected 2 entries, got %d", len(got))
 	}
 }
+
+func TestSQLiteTrafficRepository_PruneAndClear(t *testing.T) {
+	db := setupTestDB()
+	repo := NewSQLiteTrafficRepository(db)
+
+	for i := 0; i < 5; i++ {
+		_ = repo.Add(&model.TrafficEntry{ID: string(rune(i)), StartTime: time.Now()})
+	}
+	repo.Flush()
+
+	// Test Prune
+	_ = repo.Prune(2)
+	_, total, _ := repo.GetPage(0, 10)
+	if total > 2 {
+		t.Errorf("Expected max 2 entries, got %d", total)
+	}
+
+	// Test Clear
+	_ = repo.Clear()
+	_, total, _ = repo.GetPage(0, 10)
+	if total != 0 {
+		t.Errorf("Expected 0 entries, got %d", total)
+	}
+}

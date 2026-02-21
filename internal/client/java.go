@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"glance/internal/model"
 	"log"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -15,7 +14,7 @@ func ListJavaProcesses() ([]model.JavaProcess, error) {
 	processes := make(map[string]model.JavaProcess)
 
 	// 1. Try jps first (best for accurate names)
-	cmd := exec.Command("jps", "-l")
+	cmd := execCommand("jps", "-l")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err == nil {
@@ -46,7 +45,7 @@ func ListJavaProcesses() ([]model.JavaProcess, error) {
 	}
 
 	// 2. Fallback to ps aux on Unix systems to find processes jps missed (e.g. different users)
-	psCmd := exec.Command("ps", "aux")
+	psCmd := execCommand("ps", "aux")
 	var psOut bytes.Buffer
 	psCmd.Stdout = &psOut
 	if err := psCmd.Run(); err == nil {

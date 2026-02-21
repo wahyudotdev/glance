@@ -24,13 +24,13 @@ func LaunchChromium(proxyAddr string) error {
 		// On macOS, we try to find Chrome or Chromium
 		path := "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 		// #nosec G204
-		cmd = exec.Command(path, args...)
+		cmd = execCommand(path, args...)
 	case "linux":
 		// #nosec G204
-		cmd = exec.Command("google-chrome", args...)
+		cmd = execCommand("google-chrome", args...)
 	case "windows":
 		// #nosec G204
-		cmd = exec.Command("chrome.exe", args...)
+		cmd = execCommand("chrome.exe", args...)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}

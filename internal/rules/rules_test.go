@@ -66,3 +66,49 @@ func TestEngine_Match(t *testing.T) {
 		})
 	}
 }
+
+func TestEngine_UpdateAndDelete(t *testing.T) {
+	repo := &mockRuleRepo{}
+	engine := NewEngine(repo)
+
+	rule := &model.Rule{ID: "1", URLPattern: "/old"}
+	engine.AddRule(rule)
+
+	rule.URLPattern = "/new"
+	engine.UpdateRule(rule)
+	if engine.GetRules()[0].URLPattern != "/new" {
+		t.Errorf("Update failed")
+	}
+
+	engine.DeleteRule("1")
+	if len(engine.GetRules()) != 0 {
+		t.Errorf("Delete failed")
+	}
+}
+
+func TestEngine_ClearRules(_ *testing.T) {
+	engine := NewEngine(&mockRuleRepo{})
+	engine.ClearRules()
+}
+
+func TestEngine_MatchEdgeCases(t *testing.T) {
+	repo := &mockRuleRepo{}
+	engine := NewEngine(repo)
+
+	t.Run("Match Any Method", func(t *testing.T) {
+		rule := &model.Rule{ID: "any", URLPattern: "test"}
+		repo.rules = []*model.Rule{rule}
+		req, _ := http.NewRequest("POST", "http://test.com", nil)
+		if got := engine.Match(req); got == nil || got.ID != "any" {
+			t.Error("Expected match for any method")
+		}
+	})
+
+	t.Run("No Rules", func(t *testing.T) {
+		repo.rules = nil
+		req, _ := http.NewRequest("GET", "http://any.com", nil)
+		if got := engine.Match(req); got != nil {
+			t.Error("Expected no match")
+		}
+	})
+}

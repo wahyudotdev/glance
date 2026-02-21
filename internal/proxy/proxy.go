@@ -72,177 +72,179 @@ func NewProxyWithRepositories(addr string, store *interceptor.TrafficStore, engi
 	p.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
 	// Capture Requests and apply rules
-	p.OnRequest().DoFunc(
-		func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-			entry, err := interceptor.NewEntry(r)
-			if err != nil {
-				log.Printf("Error capturing request: %v", err)
-			} else {
-				ctx.UserData = entry
-			}
-
-			// Apply rules
-			rule := engine.Match(r)
-
-			// Handle CORS Preflight for any URL that has a rule
-			if r.Method == "OPTIONS" && rule != nil {
-				resp := goproxy.NewResponse(r, goproxy.ContentTypeText, 204, "")
-				resp.Header.Set("Access-Control-Allow-Origin", "*")
-				resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-				resp.Header.Set("Access-Control-Allow-Headers", "*")
-				resp.Header.Set("Access-Control-Max-Age", "86400")
-				return r, resp
-			}
-
-			if rule != nil {
-				if rule.Type == model.RuleMock && rule.Response != nil {
-					entry.ModifiedBy = "mock"
-					entry.Status = rule.Response.Status
-					entry.ResponseHeaders = make(http.Header)
-					for k, v := range rule.Response.Headers {
-						entry.ResponseHeaders.Set(k, v)
-					}
-					entry.ResponseBody = rule.Response.Body
-					entry.Duration = time.Since(entry.StartTime)
-
-					// Save to store and broadcast
-					if proxy.Store != nil {
-						proxy.Store.AddEntry(entry)
-					}
-					if proxy.OnEntry != nil {
-						proxy.OnEntry(entry)
-					}
-
-					resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
-
-					// Apply configured headers
-					for k, v := range rule.Response.Headers {
-						resp.Header.Set(k, v)
-					}
-
-					// Auto-inject CORS headers to prevent browser blocks
-					resp.Header.Set("Access-Control-Allow-Origin", "*")
-					resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-					resp.Header.Set("Access-Control-Allow-Headers", "*")
-					resp.Header.Set("Access-Control-Allow-Credentials", "true")
-
-					log.Printf("[MOCK] %s %s -> %d", r.Method, r.URL.String(), rule.Response.Status)
-					return r, resp
-				}
-
-				if rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyRequest || rule.Strategy == model.StrategyBoth || rule.Strategy == "") {
-					entry.ModifiedBy = "breakpoint"
-					log.Printf("[PAUSE REQ] Intercepting %s %s", r.Method, r.URL.String())
-					bp := &Breakpoint{
-						ID:      entry.ID,
-						Request: r,
-						Entry:   entry,
-						Resume:  make(chan bool),
-						Abort:   make(chan bool),
-						Type:    "request",
-					}
-					proxy.bpMu.Lock()
-					proxy.breakpoints[bp.ID] = bp
-					proxy.bpMu.Unlock()
-
-					if proxy.OnIntercept != nil {
-						// Provide immediate feedback to UI and persist
-						if proxy.Store != nil {
-							proxy.Store.AddEntry(entry)
-						}
-						if proxy.OnEntry != nil {
-							proxy.OnEntry(entry)
-						}
-						proxy.OnIntercept(bp)
-					}
-
-					// BLOCK here until resume or abort
-					select {
-					case <-bp.Resume:
-						log.Printf("[RESUME] Resuming %s", bp.ID)
-					case <-bp.Abort:
-						log.Printf("[ABORT] Aborting %s", bp.ID)
-						return r, goproxy.NewResponse(r, goproxy.ContentTypeText, 502, "Request aborted by user")
-					case <-time.After(5 * time.Minute):
-						log.Printf("[TIMEOUT] Auto-resuming %s after timeout", bp.ID)
-					}
-
-					proxy.bpMu.Lock()
-					delete(proxy.breakpoints, bp.ID)
-					proxy.bpMu.Unlock()
-				}
-			}
-
-			return r, nil
-		},
-	)
+	p.OnRequest().DoFunc(proxy.HandleRequest)
 
 	// Capture Responses
-	p.OnResponse().DoFunc(
-		func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-			if resp == nil {
-				return resp
-			}
-			entry, ok := ctx.UserData.(*model.TrafficEntry)
-			if ok && store != nil {
-				body, _ := interceptor.ReadAndReplaceResponseBody(resp)
-				entry.Status = resp.StatusCode
-				entry.ResponseHeaders = resp.Header.Clone()
-				entry.ResponseBody = body
-				entry.Duration = time.Since(entry.StartTime)
-
-				// Check for Response Breakpoint
-				rule := engine.Match(resp.Request)
-				if rule != nil && rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyResponse || rule.Strategy == model.StrategyBoth) {
-					entry.ModifiedBy = "breakpoint"
-					log.Printf("[PAUSE RES] Intercepting response for %s", resp.Request.URL.String())
-					bp := &Breakpoint{
-						ID:       entry.ID,
-						Request:  resp.Request,
-						Response: resp,
-						Entry:    entry,
-						Resume:   make(chan bool),
-						Abort:    make(chan bool),
-						Type:     "response",
-					}
-
-					proxy.bpMu.Lock()
-					proxy.breakpoints[bp.ID] = bp
-					proxy.bpMu.Unlock()
-
-					if proxy.OnIntercept != nil {
-						proxy.OnIntercept(bp)
-					}
-
-					// BLOCK here until resume or abort
-					select {
-					case <-bp.Resume:
-						log.Printf("[RESUME RES] Resuming response for %s", bp.ID)
-					case <-bp.Abort:
-						log.Printf("[ABORT RES] Aborting response for %s", bp.ID)
-						return goproxy.NewResponse(resp.Request, goproxy.ContentTypeText, 502, "Response aborted by user")
-					case <-time.After(5 * time.Minute):
-						log.Printf("[TIMEOUT RES] Auto-resuming response %s after timeout", bp.ID)
-					}
-
-					proxy.bpMu.Lock()
-					delete(proxy.breakpoints, bp.ID)
-					proxy.bpMu.Unlock()
-				}
-
-				store.AddEntry(entry)
-
-				if proxy.OnEntry != nil {
-					proxy.OnEntry(entry)
-				}
-
-				log.Printf("[%d] %s %s (%v)", entry.Status, entry.Method, entry.URL, entry.Duration)
-			}
-			return resp
-		},
-	)
+	p.OnResponse().DoFunc(proxy.HandleResponse)
 
 	return proxy
+}
+
+// HandleRequest processes an incoming HTTP request, applying rules and managing breakpoints.
+func (p *Proxy) HandleRequest(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+	entry, err := interceptor.NewEntry(r)
+	if err != nil {
+		log.Printf("Error capturing request: %v", err)
+	} else {
+		ctx.UserData = entry
+	}
+
+	// Apply rules
+	rule := p.Engine.Match(r)
+
+	// Handle CORS Preflight for any URL that has a rule
+	if r.Method == "OPTIONS" && rule != nil {
+		resp := goproxy.NewResponse(r, goproxy.ContentTypeText, 204, "")
+		resp.Header.Set("Access-Control-Allow-Origin", "*")
+		resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+		resp.Header.Set("Access-Control-Allow-Headers", "*")
+		resp.Header.Set("Access-Control-Max-Age", "86400")
+		return r, resp
+	}
+
+	if rule != nil {
+		if rule.Type == model.RuleMock && rule.Response != nil {
+			entry.ModifiedBy = "mock"
+			entry.Status = rule.Response.Status
+			entry.ResponseHeaders = make(http.Header)
+			for k, v := range rule.Response.Headers {
+				entry.ResponseHeaders.Set(k, v)
+			}
+			entry.ResponseBody = rule.Response.Body
+			entry.Duration = time.Since(entry.StartTime)
+
+			// Save to store and broadcast
+			if p.Store != nil {
+				p.Store.AddEntry(entry)
+			}
+			if p.OnEntry != nil {
+				p.OnEntry(entry)
+			}
+
+			resp := goproxy.NewResponse(r, goproxy.ContentTypeText, rule.Response.Status, rule.Response.Body)
+
+			// Apply configured headers
+			for k, v := range rule.Response.Headers {
+				resp.Header.Set(k, v)
+			}
+
+			// Auto-inject CORS headers to prevent browser blocks
+			resp.Header.Set("Access-Control-Allow-Origin", "*")
+			resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+			resp.Header.Set("Access-Control-Allow-Headers", "*")
+			resp.Header.Set("Access-Control-Allow-Credentials", "true")
+
+			log.Printf("[MOCK] %s %s -> %d", r.Method, r.URL.String(), rule.Response.Status)
+			return r, resp
+		}
+
+		if rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyRequest || rule.Strategy == model.StrategyBoth || rule.Strategy == "") {
+			entry.ModifiedBy = "breakpoint"
+			log.Printf("[PAUSE REQ] Intercepting %s %s", r.Method, r.URL.String())
+			bp := &Breakpoint{
+				ID:      entry.ID,
+				Request: r,
+				Entry:   entry,
+				Resume:  make(chan bool),
+				Abort:   make(chan bool),
+				Type:    "request",
+			}
+			p.bpMu.Lock()
+			p.breakpoints[bp.ID] = bp
+			p.bpMu.Unlock()
+
+			if p.OnIntercept != nil {
+				// Provide immediate feedback to UI and persist
+				if p.Store != nil {
+					p.Store.AddEntry(entry)
+				}
+				if p.OnEntry != nil {
+					p.OnEntry(entry)
+				}
+				p.OnIntercept(bp)
+			}
+
+			// BLOCK here until resume or abort
+			select {
+			case <-bp.Resume:
+				log.Printf("[RESUME] Resuming %s", bp.ID)
+			case <-bp.Abort:
+				log.Printf("[ABORT] Aborting %s", bp.ID)
+				return r, goproxy.NewResponse(r, goproxy.ContentTypeText, 502, "Request aborted by user")
+			case <-time.After(5 * time.Minute):
+				log.Printf("[TIMEOUT] Auto-resuming %s after timeout", bp.ID)
+			}
+
+			p.bpMu.Lock()
+			delete(p.breakpoints, bp.ID)
+			p.bpMu.Unlock()
+		}
+	}
+
+	return r, nil
+}
+
+// HandleResponse processes an outgoing HTTP response, capturing data and applying breakpoints.
+func (p *Proxy) HandleResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+	if resp == nil {
+		return resp
+	}
+	entry, ok := ctx.UserData.(*model.TrafficEntry)
+	if ok && p.Store != nil {
+		body, _ := interceptor.ReadAndReplaceResponseBody(resp)
+		entry.Status = resp.StatusCode
+		entry.ResponseHeaders = resp.Header.Clone()
+		entry.ResponseBody = body
+		entry.Duration = time.Since(entry.StartTime)
+
+		// Check for Response Breakpoint
+		rule := p.Engine.Match(resp.Request)
+		if rule != nil && rule.Type == model.RuleBreakpoint && (rule.Strategy == model.StrategyResponse || rule.Strategy == model.StrategyBoth) {
+			entry.ModifiedBy = "breakpoint"
+			log.Printf("[PAUSE RES] Intercepting response for %s", resp.Request.URL.String())
+			bp := &Breakpoint{
+				ID:       entry.ID,
+				Request:  resp.Request,
+				Response: resp,
+				Entry:    entry,
+				Resume:   make(chan bool),
+				Abort:    make(chan bool),
+				Type:     "response",
+			}
+
+			p.bpMu.Lock()
+			p.breakpoints[bp.ID] = bp
+			p.bpMu.Unlock()
+
+			if p.OnIntercept != nil {
+				p.OnIntercept(bp)
+			}
+
+			// BLOCK here until resume or abort
+			select {
+			case <-bp.Resume:
+				log.Printf("[RESUME RES] Resuming response for %s", bp.ID)
+			case <-bp.Abort:
+				log.Printf("[ABORT RES] Aborting response for %s", bp.ID)
+				return goproxy.NewResponse(resp.Request, goproxy.ContentTypeText, 502, "Response aborted by user")
+			case <-time.After(5 * time.Minute):
+				log.Printf("[TIMEOUT RES] Auto-resuming response %s after timeout", bp.ID)
+			}
+
+			p.bpMu.Lock()
+			delete(p.breakpoints, bp.ID)
+			p.bpMu.Unlock()
+		}
+
+		p.Store.AddEntry(entry)
+
+		if p.OnEntry != nil {
+			p.OnEntry(entry)
+		}
+
+		log.Printf("[%d] %s %s (%v)", entry.Status, entry.Method, entry.URL, entry.Duration)
+	}
+	return resp
 }
 
 // Start begins the proxy server on the configured address.
@@ -261,6 +263,13 @@ func (p *Proxy) Start() (string, error) {
 	// Use the listener with the server
 	go http.Serve(ln, p.server) //nolint:errcheck,gosec
 	return actualAddr, nil
+}
+
+// AddBreakpointForTesting is a helper for unit tests to register breakpoints manually.
+func (p *Proxy) AddBreakpointForTesting(bp *Breakpoint) {
+	p.bpMu.Lock()
+	defer p.bpMu.Unlock()
+	p.breakpoints[bp.ID] = bp
 }
 
 // GetBreakpoint retrieves an active breakpoint by its ID.
