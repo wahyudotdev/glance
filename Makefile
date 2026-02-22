@@ -23,6 +23,7 @@ build-frontend:
 	rm -rf $(BACKEND_STATIC_DIR)
 	mkdir -p $(BACKEND_STATIC_DIR)
 	cp -r $(FRONTEND_DIR)/dist/* $(BACKEND_STATIC_DIR)/
+	touch $(BACKEND_STATIC_DIR)/.gitkeep
 
 build-backend:
 	@echo "Building Go binary for current platform..."

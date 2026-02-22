@@ -1,12 +1,13 @@
 .env
-dist/
+/dist/
 build/
 glance
 mcproxy
 agent-proxy
 
 # Build artifacts
-internal/apiserver/dist/
+internal/apiserver/dist/*
+!internal/apiserver/dist/.gitkeep
 web/dashboard/dist/
 coverage.out
 coverage.svg
@@ -20,6 +21,9 @@ docs/.vitepress/dist/
 
 # OS files
 .DS_Store
+
+# Keep files
+!.gitkeep
 
 # IDEs
 .idea/
