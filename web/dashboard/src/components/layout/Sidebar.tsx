@@ -1,5 +1,6 @@
 import React from 'react';
 import { Globe, Sparkles, Settings, Code, ShieldAlert, ChevronLeft, ChevronRight, ListPlus, Info } from 'lucide-react';
+import { GlanceLogo } from '../ui/GlanceLogo';
 
 interface SidebarProps {
   currentView: 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about';
@@ -32,9 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`px-6 mb-10 flex items-center gap-3 cursor-pointer overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`} 
         onClick={() => setCurrentView('traffic')}
       >
-        <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200 dark:shadow-none shrink-0">
-          <Sparkles className="text-white" size={24} />
-        </div>
+        <GlanceLogo size={40} className="shrink-0 shadow-lg shadow-blue-200 dark:shadow-none rounded-full" />
         {!isCollapsed && (
           <div className="flex flex-col min-w-0">
             <span className="font-bold text-lg tracking-tight text-slate-800 dark:text-slate-100 leading-tight">Glance</span>

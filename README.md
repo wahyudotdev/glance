@@ -5,6 +5,8 @@
 
 Glance is a specialized MITM (Man-in-the-Middle) proxy designed for **AI Agents** and developers to intercept, inspect, and mock HTTP/HTTPS traffic. It provides a real-time view of your application's network activity through a modern web dashboard and integrates deeply with AI workflows via the **Model Context Protocol (MCP)**.
 
+📖 **[View Full Documentation](https://wahyudotdev.github.io/glance/)**
+
 ## 🚀 Key Features
 
 ### 🔍 Traffic Inspection
@@ -58,7 +60,7 @@ Glance implements the Model Context Protocol, allowing AI agents to interact wit
 ### 📱 Client & Environment Support
 - **Java/JVM**: Specialized overrides for `HttpsURLConnection` to support already-running apps (Java 8+).
 - **Android**: ADB-based device discovery, automatic CA certificate installation, and proxy configuration.
-- **Chromium**: Auto-launch browser instances with pre-configured proxy and certificate flags.
+- **Chromium**: One-click launch via Dashboard with pre-configured proxy and certificate flags.
 - **One-liner Setup**: `eval "$(curl -s http://localhost:15501/setup)"` for quick terminal proxy configuration.
 
 ## 📦 Installation
@@ -80,7 +82,7 @@ Download the latest pre-compiled binary for your platform from the [Releases](ht
 | :--- | :--- | :--- | :--- |
 | **Java / JVM** | Native (Auto) | Java 8+ (v52.0+) | `HttpsURLConnection` overrides, Auto-trust CA |
 | **Android** | ADB-based | Android 7+ (API 24+) | `adb reverse`, Auto-cert push, System/User trust guides |
-| **Chromium** | Native (Launch) | Chrome / Edge / Brave | Auto-launch with proxy flags, Ignore cert errors |
+| **Chromium** | Dashboard (One-click) | Chrome / Edge / Brave | Auto-launch with proxy flags, Ignore cert errors |
 | **Terminal** | One-liner | Bash / Zsh / Fish | `HTTP_PROXY`, `HTTPS_PROXY` injection |
 | **MCP** | Built-in | Claude Desktop / MCP Host | Resource inspection, Tool execution, AI analysis |
 

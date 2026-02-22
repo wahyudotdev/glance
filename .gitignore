@@ -14,8 +14,19 @@ coverage.svg
 # Dependencies
 node_modules/
 web/dashboard/node_modules/
+docs/node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 
 # OS files
 .DS_Store
-coverage.svg
-coverage.out
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.iml
+
+# Gemini Agent
+.gemini/
+MEMORY.md

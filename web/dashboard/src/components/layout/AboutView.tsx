@@ -1,5 +1,6 @@
 import React from 'react';
-import { Heart, Sparkles, Shield, Info } from 'lucide-react';
+import { Heart, Shield, Info } from 'lucide-react';
+import { GlanceLogo } from '../ui/GlanceLogo';
 
 export const AboutView: React.FC = () => {
   return (
@@ -7,9 +8,7 @@ export const AboutView: React.FC = () => {
       <div className="max-w-4xl mx-auto space-y-12">
         <section>
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none">
-              <Sparkles className="text-white" size={24} />
-            </div>
+            <GlanceLogo size={48} className="rounded-full shadow-lg shadow-blue-200 dark:shadow-none" />
             <div>
               <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Glance</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Let Your AI Understand Every Request at a Glance.</p>
