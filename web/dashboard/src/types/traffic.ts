@@ -48,6 +48,7 @@ export interface MockResponse {
 
 export interface Rule {
   id: string;
+  enabled: boolean;
   type: 'mock' | 'breakpoint';
   url_pattern: string;
   method: string;

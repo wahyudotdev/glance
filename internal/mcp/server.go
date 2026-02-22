@@ -298,6 +298,7 @@ func (ms *Server) handleGetProxyStatus() (*mcp.CallToolResult, any, error) {
 func (ms *Server) handleAddMockRule(args addMockRuleArgs) (*mcp.CallToolResult, any, error) {
 	rule := &model.Rule{
 		ID:         uuid.New().String(),
+		Enabled:    true,
 		Type:       model.RuleMock,
 		URLPattern: args.URLPattern,
 		Method:     args.Method,
@@ -318,8 +319,12 @@ func (ms *Server) handleListRules() (*mcp.CallToolResult, any, error) {
 	rules := ms.engine.GetRules()
 	var sb strings.Builder
 	for _, r := range rules {
-		fmt.Fprintf(&sb, "ID: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
-			r.ID, r.Type, r.Method, r.URLPattern, r.Strategy)
+		status := "Enabled"
+		if !r.Enabled {
+			status = "Disabled"
+		}
+		fmt.Fprintf(&sb, "ID: %s | Status: %s | Type: %s | Method: %s | Pattern: %s | Strategy: %s\n",
+			r.ID, status, r.Type, r.Method, r.URLPattern, r.Strategy)
 	}
 	if sb.Len() == 0 {
 		return NewToolResultText("No active rules."), nil, nil
@@ -330,6 +335,7 @@ func (ms *Server) handleListRules() (*mcp.CallToolResult, any, error) {
 func (ms *Server) handleAddBreakpointRule(args addBreakpointRuleArgs) (*mcp.CallToolResult, any, error) {
 	rule := &model.Rule{
 		ID:         uuid.New().String(),
+		Enabled:    true,
 		Type:       model.RuleBreakpoint,
 		URLPattern: args.URLPattern,
 		Method:     args.Method,

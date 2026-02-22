@@ -70,6 +70,7 @@ const (
 // Rule defines how to intercept specific traffic.
 type Rule struct {
 	ID         string             `json:"id"`
+	Enabled    bool               `json:"enabled"`
 	Type       RuleType           `json:"type"`
 	URLPattern string             `json:"url_pattern"`
 	Method     string             `json:"method"`

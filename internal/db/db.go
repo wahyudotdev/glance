@@ -72,7 +72,7 @@ func createTables() {
 			status INTEGER, start_time DATETIME, duration INTEGER, modified_by TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS rules (
-			id TEXT PRIMARY KEY, type TEXT, url_pattern TEXT,
+			id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 1, type TEXT, url_pattern TEXT,
 			method TEXT, strategy TEXT, response_json TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS scenarios (
@@ -93,4 +93,7 @@ func createTables() {
 			fatalf("Failed to create table: %v\nQuery: %s", err, q)
 		}
 	}
+
+	// Migrations
+	_, _ = DB.Exec("ALTER TABLE rules ADD COLUMN enabled INTEGER DEFAULT 1")
 }

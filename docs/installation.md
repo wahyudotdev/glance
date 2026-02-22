@@ -22,7 +22,7 @@ brew upgrade glance
 
 ## Direct Download
 
-Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases) page.
+Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases/latest) page.
 
 ### macOS
 
@@ -58,7 +58,7 @@ sudo mv glance /usr/local/bin/
 
 ### Windows
 
-Download the Windows binary from the [Releases](https://github.com/wahyudotdev/glance/releases) page and extract it to a directory in your PATH.
+Download the Windows binary from the [Releases](https://github.com/wahyudotdev/glance/releases/latest) page and extract it to a directory in your PATH.
 
 ## Build from Source
 

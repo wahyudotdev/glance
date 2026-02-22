@@ -74,7 +74,7 @@ brew install glance
 ```
 
 ### Direct Download
-Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases) page.
+Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases/latest) page.
 
 ## ⚖️ Compatibility Matrix
 

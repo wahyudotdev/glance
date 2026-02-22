@@ -28,7 +28,7 @@ func setupTestDB() *sql.DB {
 			status INTEGER, start_time DATETIME, duration INTEGER, modified_by TEXT
 		)`,
 		`CREATE TABLE rules (
-			id TEXT PRIMARY KEY, type TEXT, url_pattern TEXT,
+			id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 1, type TEXT, url_pattern TEXT,
 			method TEXT, strategy TEXT, response_json TEXT
 		)`,
 	}
@@ -245,7 +245,7 @@ func TestSQLiteRuleRepository_InvalidJSON(t *testing.T) {
 	db := setupTestDB()
 	repo := NewSQLiteRuleRepository(db)
 
-	_, _ = db.Exec("INSERT INTO rules (id, type, url_pattern, method, strategy, response_json) VALUES ('r-bad', 'mock', '/bad', 'GET', 'request', 'invalid json')")
+	_, _ = db.Exec("INSERT INTO rules (id, enabled, type, url_pattern, method, strategy, response_json) VALUES ('r-bad', 1, 'mock', '/bad', 'GET', 'request', 'invalid json')")
 	all, err := repo.GetAll()
 	if err != nil {
 		t.Fatalf("GetAll failed: %v", err)

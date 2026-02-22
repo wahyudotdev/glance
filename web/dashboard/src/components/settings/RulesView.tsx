@@ -7,10 +7,11 @@ interface RulesViewProps {
   onDelete: (id: string) => void;
   onCreate: (rule: Partial<Rule>) => void;
   onEdit: (rule: Rule) => void;
+  onUpdate: (id: string, rule: Partial<Rule>) => void;
   isLoading: boolean;
 }
 
-export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate, onEdit, isLoading }) => {
+export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate, onEdit, onUpdate, isLoading }) => {
   const [newPattern, setNewPattern] = useState('');
   const [newMethod, setNewMethod] = useState('ANY');
   const [newType, setNewType] = useState<'breakpoint' | 'mock'>('breakpoint');
@@ -31,6 +32,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
     e.preventDefault();
     if (newPattern) {
       const rule: Partial<Rule> = {
+        enabled: true,
         type: newType,
         url_pattern: newPattern,
         method: newMethod === 'ANY' ? '' : newMethod,
@@ -156,6 +158,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
           <table className="w-full text-left border-separate border-spacing-0">
             <thead className="bg-slate-50/50 dark:bg-slate-950/50">
               <tr className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold border-b border-slate-100 dark:border-slate-800">
+                <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Action</th>
                 <th className="px-6 py-4">Method</th>
                 <th className="px-6 py-4">URL Pattern</th>
@@ -166,7 +169,18 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                           {rules.length > 0 ? (
                             rules.map((rule) => (
-                              <tr key={rule.id} className="group hover:bg-slate-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                              <tr key={rule.id} className={`group hover:bg-slate-50/50 dark:hover:bg-blue-900/10 transition-colors ${!rule.enabled ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                                <td className="px-6 py-4">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdate(rule.id, { ...rule, enabled: !rule.enabled });
+                                    }}
+                                    className={`w-9 h-5 rounded-full transition-all relative ${rule.enabled ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                                  >
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${rule.enabled ? 'left-5' : 'left-1'}`} />
+                                  </button>
+                                </td>
                                 <td className="px-6 py-4">
                                   <span className={`px-2 py-1 rounded text-[10px] font-bold border flex items-center gap-1.5 w-fit ${rule.type === 'mock' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30' : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30'}`}>
                                     {rule.type === 'mock' ? <Eye size={12} /> : <ShieldAlert size={12} />}
@@ -196,7 +210,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ rules, onDelete, onCreate,
                             ))
                           ) : (
                             <tr>
-                              <td colSpan={5} className="px-6 py-12 text-center text-slate-400 dark:text-slate-600 italic text-sm">No active rules defined.</td>
+                              <td colSpan={6} className="px-6 py-12 text-center text-slate-400 dark:text-slate-600 italic text-sm">No active rules defined.</td>
                             </tr>
                           )}
                         </tbody>

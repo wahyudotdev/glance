@@ -59,6 +59,7 @@ func TestEngine_Match(t *testing.T) {
 
 	rule1 := &model.Rule{
 		ID:         "1",
+		Enabled:    true,
 		Type:       model.RuleMock,
 		URLPattern: "/api/test",
 		Method:     "GET",
@@ -89,17 +90,25 @@ func TestEngine_Match(t *testing.T) {
 		})
 	}
 
+	// Test case for disabled rule
+	rule1.Enabled = false
+	reqDisabled, _ := http.NewRequest("GET", "http://example.com/api/test", nil)
+	if got := engine.Match(reqDisabled); got != nil {
+		t.Errorf("Expected no match for disabled rule")
+	}
+	rule1.Enabled = true // Reset
+
 	// Test case where method is empty
-	rule2 := &model.Rule{ID: "2", URLPattern: "test"}
+	rule2 := &model.Rule{ID: "2", URLPattern: "test", Enabled: true}
 	repo.rules = []*model.Rule{rule2}
-	req, _ := http.NewRequest("PATCH", "http://example.com/test", nil)
-	if got := engine.Match(req); got == nil || got.ID != "2" {
+	reqEmptyMethod, _ := http.NewRequest("PATCH", "http://example.com/test", nil)
+	if got := engine.Match(reqEmptyMethod); got == nil || got.ID != "2" {
 		t.Errorf("Expected match for empty method")
 	}
 
 	// Test repo error
 	repo.err = errors.New("repo error")
-	if got := engine.Match(req); got != nil {
+	if got := engine.Match(reqEmptyMethod); got != nil {
 		t.Errorf("Expected nil on repo error")
 	}
 }
@@ -163,7 +172,7 @@ func TestEngine_MatchEdgeCases(t *testing.T) {
 	engine := NewEngine(repo)
 
 	t.Run("Match Any Method", func(t *testing.T) {
-		rule := &model.Rule{ID: "any", URLPattern: "test"}
+		rule := &model.Rule{ID: "any", URLPattern: "test", Enabled: true}
 		repo.rules = []*model.Rule{rule}
 		req, _ := http.NewRequest("POST", "http://test.com", nil)
 		if got := engine.Match(req); got == nil || got.ID != "any" {
@@ -172,7 +181,7 @@ func TestEngine_MatchEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Empty Pattern Match", func(t *testing.T) {
-		rule := &model.Rule{ID: "empty", URLPattern: ""}
+		rule := &model.Rule{ID: "empty", URLPattern: "", Enabled: true}
 		repo.rules = []*model.Rule{rule}
 		req, _ := http.NewRequest("GET", "http://any.com", nil)
 		if got := engine.Match(req); got == nil || got.ID != "empty" {

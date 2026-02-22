@@ -533,6 +533,7 @@ const App: React.FC = () => {
           {currentView === 'rules' && (
             <RulesView 
               rules={rules} isLoading={isLoadingRules} onDelete={deleteRule} onCreate={createRule}
+              onUpdate={updateRule}
               onEdit={(rule) => { setSelectedRule(rule); setIsRuleEditorOpen(true); }}
             />
           )}

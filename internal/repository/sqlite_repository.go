@@ -261,12 +261,12 @@ type sqliteRuleRepository struct {
 
 // NewSQLiteRuleRepository creates a new SQLite-backed RuleRepository.
 func NewSQLiteRuleRepository(db *sql.DB) RuleRepository {
-	getAllStmt, _ := db.Prepare("SELECT id, type, url_pattern, method, strategy, response_json FROM rules")
+	getAllStmt, _ := db.Prepare("SELECT id, enabled, type, url_pattern, method, strategy, response_json FROM rules")
 	addStmt, _ := db.Prepare(`
-		INSERT INTO rules (id, type, url_pattern, method, strategy, response_json)
-		VALUES (?, ?, ?, ?, ?, ?)`)
+		INSERT INTO rules (id, enabled, type, url_pattern, method, strategy, response_json)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	updateStmt, _ := db.Prepare(`
-		UPDATE rules SET type = ?, url_pattern = ?, method = ?, strategy = ?, response_json = ?
+		UPDATE rules SET enabled = ?, type = ?, url_pattern = ?, method = ?, strategy = ?, response_json = ?
 		WHERE id = ?`)
 	deleteStmt, _ := db.Prepare("DELETE FROM rules WHERE id = ?")
 
@@ -290,10 +290,12 @@ func (r *sqliteRuleRepository) GetAll() ([]*model.Rule, error) {
 	for rows.Next() {
 		var rule model.Rule
 		var respJSON sql.NullString
-		err := rows.Scan(&rule.ID, &rule.Type, &rule.URLPattern, &rule.Method, &rule.Strategy, &respJSON)
+		var enabled int
+		err := rows.Scan(&rule.ID, &enabled, &rule.Type, &rule.URLPattern, &rule.Method, &rule.Strategy, &respJSON)
 		if err != nil {
 			continue
 		}
+		rule.Enabled = enabled == 1
 		if respJSON.Valid && respJSON.String != "" {
 			_ = json.Unmarshal([]byte(respJSON.String), &rule.Response)
 		}
@@ -304,13 +306,21 @@ func (r *sqliteRuleRepository) GetAll() ([]*model.Rule, error) {
 
 func (r *sqliteRuleRepository) Add(rule *model.Rule) error {
 	respJSON, _ := json.Marshal(rule.Response)
-	_, err := r.addStmt.Exec(rule.ID, rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON))
+	enabled := 0
+	if rule.Enabled {
+		enabled = 1
+	}
+	_, err := r.addStmt.Exec(rule.ID, enabled, rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON))
 	return err
 }
 
 func (r *sqliteRuleRepository) Update(rule *model.Rule) error {
 	respJSON, _ := json.Marshal(rule.Response)
-	_, err := r.updateStmt.Exec(rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON), rule.ID)
+	enabled := 0
+	if rule.Enabled {
+		enabled = 1
+	}
+	_, err := r.updateStmt.Exec(enabled, rule.Type, rule.URLPattern, rule.Method, rule.Strategy, string(respJSON), rule.ID)
 	return err
 }
 

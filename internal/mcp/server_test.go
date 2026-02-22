@@ -36,7 +36,7 @@ func setupTestServer() (*Server, *sql.DB, repository.TrafficRepository) {
 			status INTEGER, start_time DATETIME, duration INTEGER, modified_by TEXT
 		)`,
 		`CREATE TABLE rules (
-			id TEXT PRIMARY KEY, type TEXT, url_pattern TEXT,
+			id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 1, type TEXT, url_pattern TEXT,
 			method TEXT, strategy TEXT, response_json TEXT
 		)`,
 		`CREATE TABLE scenarios (id TEXT PRIMARY KEY, name TEXT, description TEXT, created_at DATETIME)`,

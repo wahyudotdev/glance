@@ -81,6 +81,9 @@ func (e *Engine) Match(r *http.Request) *model.Rule {
 	}
 
 	for _, rule := range rules {
+		if !rule.Enabled {
+			continue
+		}
 		if rule.Method != "" && rule.Method != r.Method {
 			continue
 		}

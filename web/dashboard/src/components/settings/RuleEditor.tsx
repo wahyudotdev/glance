@@ -13,6 +13,7 @@ interface RuleEditorProps {
 export const RuleEditor: React.FC<RuleEditorProps> = ({ 
   isOpen, onClose, rule, onSave 
 }) => {
+  const [enabled, setEnabled] = useState(true);
   const [type, setType] = useState<'breakpoint' | 'mock'>('breakpoint');
   const [pattern, setPattern] = useState('');
   const [method, setMethod] = useState('');
@@ -23,6 +24,7 @@ export const RuleEditor: React.FC<RuleEditorProps> = ({
 
   useEffect(() => {
     if (rule) {
+      setEnabled(rule.enabled);
       setType(rule.type);
       setPattern(rule.url_pattern);
       setMethod(rule.method || 'ANY');
@@ -44,6 +46,7 @@ export const RuleEditor: React.FC<RuleEditorProps> = ({
 
   const handleSave = () => {
     const updated: Partial<Rule> = {
+      enabled,
       type,
       url_pattern: pattern,
       method: method === 'ANY' ? '' : method,
@@ -95,20 +98,32 @@ export const RuleEditor: React.FC<RuleEditorProps> = ({
         <div className={`flex-1 overflow-y-auto transition-all ${isFullScreen ? 'p-0 flex flex-col bg-slate-900' : 'p-8 space-y-8'}`}>
           {!isFullScreen && (
             <>
-              {/* Action Toggle */}
-              <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit transition-colors">
-                <button 
-                  onClick={() => setType('breakpoint')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${type === 'breakpoint' ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                >
-                  <ShieldAlert size={16} /> Pause
-                </button>
-                <button 
-                  onClick={() => setType('mock')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${type === 'mock' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                >
-                  <Eye size={16} /> Mock
-                </button>
+              <div className="flex items-center justify-between">
+                {/* Action Toggle */}
+                <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit transition-colors">
+                  <button 
+                    onClick={() => setType('breakpoint')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${type === 'breakpoint' ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                  >
+                    <ShieldAlert size={16} /> Pause
+                  </button>
+                  <button 
+                    onClick={() => setType('mock')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${type === 'mock' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                  >
+                    <Eye size={16} /> Mock
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
+                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">Status: {enabled ? 'Enabled' : 'Disabled'}</span>
+                  <button 
+                    onClick={() => setEnabled(!enabled)}
+                    className={`w-10 h-5 rounded-full transition-all relative ${enabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${enabled ? 'left-6' : 'left-1'}`} />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6">
