@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.cqfd-qMR.js";const o=JSON.parse('{"title":"API Reference","description":"","frontmatter":{},"headers":[],"relativePath":"api.md","filePath":"api.md"}'),h={name:"api.md"};function l(p,s,e,k,E,r){return a(),t("div",null,[...s[0]||(s[0]=[n("",112)])])}const g=i(h,[["render",l]]);export{o as __pageData,g as default};
