@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Glance",
   description: "The specialized MITM proxy for AI Agents with MCP integration",
+  base: '/glance/',
   head: [['link', { rel: 'icon', href: '/icon.svg' }]],
   
   themeConfig: {
