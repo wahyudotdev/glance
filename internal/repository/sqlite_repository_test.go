@@ -90,6 +90,7 @@ func TestSQLiteRuleRepository(t *testing.T) {
 
 	rule := &model.Rule{
 		ID:         "r1",
+		Enabled:    true,
 		Type:       model.RuleMock,
 		URLPattern: "/api/test",
 		Method:     "GET",
@@ -107,8 +108,12 @@ func TestSQLiteRuleRepository(t *testing.T) {
 	if err != nil || len(all) != 1 {
 		t.Fatalf("GetAll failed: %v", err)
 	}
+	if !all[0].Enabled {
+		t.Error("Expected rule to be enabled")
+	}
 
 	rule.URLPattern = "/api/updated"
+	rule.Enabled = false
 	if err := repo.Update(rule); err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
@@ -116,6 +121,9 @@ func TestSQLiteRuleRepository(t *testing.T) {
 	all, _ = repo.GetAll()
 	if all[0].URLPattern != "/api/updated" {
 		t.Errorf("Update not reflected")
+	}
+	if all[0].Enabled {
+		t.Error("Expected rule to be disabled after update")
 	}
 
 	if err := repo.Delete("r1"); err != nil {

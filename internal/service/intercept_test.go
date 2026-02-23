@@ -28,7 +28,7 @@ func TestInterceptService(t *testing.T) {
 	})
 
 	t.Run("Request Breakpoint and Abort", func(t *testing.T) {
-		engine.AddRule(&model.Rule{ID: "b1", Type: model.RuleBreakpoint, URLPattern: "abort", Strategy: "request"})
+		engine.AddRule(&model.Rule{ID: "b1", Enabled: true, Type: model.RuleBreakpoint, URLPattern: "abort", Strategy: "request"})
 		req, _ := http.NewRequest("GET", "http://abort.me", nil)
 		ctx := &goproxy.ProxyCtx{}
 
@@ -51,7 +51,7 @@ func TestInterceptService(t *testing.T) {
 	})
 
 	t.Run("Response Breakpoint and Continue", func(t *testing.T) {
-		engine.AddRule(&model.Rule{ID: "b2", Type: model.RuleBreakpoint, URLPattern: "resume", Strategy: "response"})
+		engine.AddRule(&model.Rule{ID: "b2", Enabled: true, Type: model.RuleBreakpoint, URLPattern: "resume", Strategy: "response"})
 		req, _ := http.NewRequest("GET", "http://resume.me", nil)
 		res := &http.Response{
 			StatusCode: 200,
@@ -78,7 +78,7 @@ func TestInterceptService(t *testing.T) {
 	})
 
 	t.Run("Request Breakpoint and Continue", func(t *testing.T) {
-		engine.AddRule(&model.Rule{ID: "b3", Type: model.RuleBreakpoint, URLPattern: "cont", Strategy: "request"})
+		engine.AddRule(&model.Rule{ID: "b3", Enabled: true, Type: model.RuleBreakpoint, URLPattern: "cont", Strategy: "request"})
 		req, _ := http.NewRequest("GET", "http://cont.me", nil)
 		ctx := &goproxy.ProxyCtx{}
 

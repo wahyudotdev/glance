@@ -73,7 +73,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 	})
 
 	t.Run("CORS Preflight with Rule", func(t *testing.T) {
-		repo.rules = []*model.Rule{{Method: "", URLPattern: "test.com"}}
+		repo.rules = []*model.Rule{{Enabled: true, Method: "", URLPattern: "test.com"}}
 		req, _ := http.NewRequest("OPTIONS", "http://test.com", nil)
 		ctx := &goproxy.ProxyCtx{}
 		_, resp := p.HandleRequest(req, ctx)
@@ -88,6 +88,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 	t.Run("Mock Response", func(t *testing.T) {
 		repo.rules = []*model.Rule{{
 			ID:         "m1",
+			Enabled:    true,
 			Type:       model.RuleMock,
 			URLPattern: "mock.me",
 			Response:   &model.MockResponse{Status: 201, Body: "mocked"},
@@ -106,6 +107,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 	t.Run("Breakpoint Request", func(t *testing.T) {
 		repo.rules = []*model.Rule{{
 			ID:         "b1",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "pause.me",
 			Strategy:   "request",
@@ -138,6 +140,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 	t.Run("Breakpoint Both Request", func(t *testing.T) {
 		repo.rules = []*model.Rule{{
 			ID:         "b-both",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "both.me",
 			Strategy:   "both",
@@ -166,6 +169,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 	t.Run("Abort Request", func(_ *testing.T) {
 		repo.rules = []*model.Rule{{
 			ID:         "b3",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "abort.me",
 			Strategy:   "request",
@@ -196,6 +200,7 @@ func TestProxy_HandleRequest(t *testing.T) {
 
 		repo.rules = []*model.Rule{{
 			ID:         "b-timeout",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "timeout.me",
 			Strategy:   "request",
@@ -290,6 +295,7 @@ func TestProxy_HandleResponse(t *testing.T) {
 	t.Run("Breakpoint Response", func(t *testing.T) {
 		repo := &mockRuleRepo{rules: []*model.Rule{{
 			ID:         "b2",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "pause.res",
 			Strategy:   "response",
@@ -333,6 +339,7 @@ func TestProxy_HandleResponse(t *testing.T) {
 
 		repo := &mockRuleRepo{rules: []*model.Rule{{
 			ID:         "br-timeout",
+			Enabled:    true,
 			Type:       model.RuleBreakpoint,
 			URLPattern: "timeout.res",
 			Strategy:   "response",
