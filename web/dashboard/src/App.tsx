@@ -36,6 +36,8 @@ import { useScenarios } from './hooks/useScenarios';
 import { useIntegrations } from './hooks/useIntegrations';
 import { useConfig } from './hooks/useConfig';
 
+type View = 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about';
+
 const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
   const { toasts, toast, removeToast } = useToasts();
@@ -60,13 +62,13 @@ const App: React.FC = () => {
   } = useIntegrations(toast);
 
   // UI State
-  const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about'>(() => {
+  const [currentView, setCurrentView] = useState<View>(() => {
     const hash = window.location.hash.replace('#/', '');
     const validViews = ['traffic', 'integrations', 'settings', 'rules', 'scenarios', 'about'];
-    if (validViews.includes(hash)) return hash as any;
+    if (validViews.includes(hash)) return hash as View;
 
     const saved = localStorage.getItem('glance-current-view');
-    return (saved as 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about') || 'traffic';
+    return (saved as View) || 'traffic';
   });
 
   useEffect(() => {
@@ -83,7 +85,7 @@ const App: React.FC = () => {
       const hash = window.location.hash.replace('#/', '');
       const validViews = ['traffic', 'integrations', 'settings', 'rules', 'scenarios', 'about'];
       if (validViews.includes(hash)) {
-        setCurrentView(hash as any);
+        setCurrentView(hash as View);
       }
     };
 
