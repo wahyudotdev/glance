@@ -363,7 +363,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              container.intercepted ? onStopInterceptDocker(container.id) : onInterceptDocker(container.id);
+                              if (container.intercepted) {
+                                onStopInterceptDocker(container.id);
+                              } else {
+                                onInterceptDocker(container.id);
+                              }
                             }}
                             className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-cyan-200 dark:shadow-none ${container.intercepted 
                               ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200' 

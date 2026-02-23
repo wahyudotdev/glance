@@ -9,7 +9,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
@@ -17,14 +16,18 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+var newDockerClient = func() (client.APIClient, error) {
+	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+}
+
 // ListDockerContainers returns a list of running Docker containers.
 func ListDockerContainers() ([]model.DockerContainer, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := newDockerClient()
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	containers, err := cli.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {
@@ -62,7 +65,7 @@ func ListDockerContainers() ([]model.DockerContainer, error) {
 	return result, nil
 }
 
-func isIntercepted(c types.Container) bool {
+func isIntercepted(c container.Summary) bool {
 	// Look for proxy env vars in the container info
 	// Actually, the 'c' object (types.Container) doesn't have the Env list.
 	// We might need to inspect it if we want accurate state in the list.
@@ -84,11 +87,11 @@ func isIntercepted(c types.Container) bool {
 // InterceptDocker starts intercepting a container by recreating it with proxy environment variables.
 func InterceptDocker(containerID string, proxyAddr string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := newDockerClient()
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	// 1. Inspect original container
 	inspect, err := cli.ContainerInspect(ctx, containerID)
@@ -143,14 +146,14 @@ func InterceptDocker(containerID string, proxyAddr string) error {
 
 	// 4. Stop and Rename old container
 	timeout := 10
-	if err := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
-		return fmt.Errorf("failed to stop container: %v", err)
+	if errStop := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); errStop != nil {
+		return fmt.Errorf("failed to stop container: %v", errStop)
 	}
 
 	oldName := strings.TrimPrefix(inspect.Name, "/")
 	backupName := oldName + "-glance-backup"
-	if err := cli.ContainerRename(ctx, containerID, backupName); err != nil {
-		return fmt.Errorf("failed to rename container: %v", err)
+	if errRename := cli.ContainerRename(ctx, containerID, backupName); errRename != nil {
+		return fmt.Errorf("failed to rename container: %v", errRename)
 	}
 
 	// 5. Create and Start new container with original name
@@ -196,11 +199,11 @@ func InterceptDocker(containerID string, proxyAddr string) error {
 // StopInterceptDocker stops intercepting a container by reverting to the backup.
 func StopInterceptDocker(containerID string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := newDockerClient()
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	// 1. Inspect current container to find its name
 	inspect, err := cli.ContainerInspect(ctx, containerID)
@@ -238,7 +241,7 @@ func StopInterceptDocker(containerID string) error {
 	return nil
 }
 
-func findHostIP(ctx context.Context, cli *client.Client, containerID string) (string, error) {
+func findHostIP(ctx context.Context, cli client.APIClient, containerID string) (string, error) {
 	// 1. Try to resolve host.docker.internal first
 	// This is the most reliable way for Docker Desktop (macOS/Windows)
 	_, out, _ := execInContainer(ctx, cli, containerID, []string{"getent", "hosts", "host.docker.internal"})
@@ -274,7 +277,7 @@ func findHostIP(ctx context.Context, cli *client.Client, containerID string) (st
 	return "", fmt.Errorf("could not determine host IP")
 }
 
-func injectCACert(ctx context.Context, cli *client.Client, containerID string) error {
+func injectCACert(ctx context.Context, cli client.APIClient, containerID string) error {
 	// 1. Detect OS
 	osType := detectOS(ctx, cli, containerID)
 
@@ -366,7 +369,7 @@ func injectCACert(ctx context.Context, cli *client.Client, containerID string) e
 	return nil
 }
 
-func detectOS(ctx context.Context, cli *client.Client, containerID string) string {
+func detectOS(ctx context.Context, cli client.APIClient, containerID string) string {
 	_, out, err := execInContainer(ctx, cli, containerID, []string{"cat", "/etc/os-release"})
 	if err != nil {
 		return "debian" // Default fallback
@@ -382,7 +385,7 @@ func detectOS(ctx context.Context, cli *client.Client, containerID string) strin
 	return "debian"
 }
 
-func execInContainer(ctx context.Context, cli *client.Client, containerID string, cmd []string) (int, string, error) {
+func execInContainer(ctx context.Context, cli client.APIClient, containerID string, cmd []string) (int, string, error) {
 	config := container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdout: true,

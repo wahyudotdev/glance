@@ -25,6 +25,11 @@ func (m *mockClientService) ListAndroidDevices() ([]model.AndroidDevice, error) 
 func (m *mockClientService) InterceptAndroid(_, _ string) error { return m.err }
 func (m *mockClientService) ClearAndroid(_, _ string) error     { return m.err }
 func (m *mockClientService) PushAndroidCert(_ string) error     { return m.err }
+func (m *mockClientService) ListDockerContainers() ([]model.DockerContainer, error) {
+	return nil, m.err
+}
+func (m *mockClientService) InterceptDocker(_, _ string) error  { return m.err }
+func (m *mockClientService) StopInterceptDocker(_ string) error { return m.err }
 
 func TestHandleLaunchChromium(t *testing.T) {
 	app := fiber.New()
@@ -188,6 +193,66 @@ func TestHandleAndroidHandlers(t *testing.T) {
 	t.Run("PushCert", func(t *testing.T) {
 		svc.err = nil
 		req := httptest.NewRequest("POST", "/api/client/android/push-cert/dev1", nil)
+		resp, _ := app.Test(req)
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != 200 {
+			t.Errorf("Expected 200, got %d", resp.StatusCode)
+		}
+
+		svc.err = errors.New("error")
+		resp, _ = app.Test(req)
+		if resp.StatusCode != 500 {
+			t.Errorf("Expected 500, got %d", resp.StatusCode)
+		}
+	})
+}
+
+func TestHandleDockerHandlers(t *testing.T) {
+	app := fiber.New()
+	svc := &mockClientService{}
+	s := &Server{
+		services: Services{Client: svc},
+		app:      app,
+	}
+	app.Get("/api/client/docker/containers", s.handleListDockerContainers)
+	app.Post("/api/client/docker/intercept/:id", s.handleInterceptDocker)
+	app.Post("/api/client/docker/stop/:id", s.handleStopInterceptDocker)
+
+	t.Run("List", func(t *testing.T) {
+		svc.err = nil
+		req := httptest.NewRequest("GET", "/api/client/docker/containers", nil)
+		resp, _ := app.Test(req)
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != 200 {
+			t.Errorf("Expected 200, got %d", resp.StatusCode)
+		}
+
+		svc.err = errors.New("error")
+		resp, _ = app.Test(req)
+		if resp.StatusCode != 500 {
+			t.Errorf("Expected 500, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("Intercept", func(t *testing.T) {
+		svc.err = nil
+		req := httptest.NewRequest("POST", "/api/client/docker/intercept/cont1", nil)
+		resp, _ := app.Test(req)
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != 200 {
+			t.Errorf("Expected 200, got %d", resp.StatusCode)
+		}
+
+		svc.err = errors.New("error")
+		resp, _ = app.Test(req)
+		if resp.StatusCode != 500 {
+			t.Errorf("Expected 500, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("Stop", func(t *testing.T) {
+		svc.err = nil
+		req := httptest.NewRequest("POST", "/api/client/docker/stop/cont1", nil)
 		resp, _ := app.Test(req)
 		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != 200 {
