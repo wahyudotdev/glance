@@ -64,6 +64,7 @@ For a persistent setup, add these lines to your shell profile (`~/.bashrc`, `~/.
 See the [Client Configuration Guide](clients.md) for specific instructions for:
 
 - [Java/JVM applications](clients/java.md)
+- [Docker containers](clients/docker.md)
 - [Android devices](clients/android.md)
 - [Chromium browsers](clients/chromium.md)
 - [Terminal/CLI tools](clients/terminal.md)

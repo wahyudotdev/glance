@@ -8,6 +8,7 @@ Glance supports various client environments and provides specialized configurati
 |-------------|---------------|---------------------|
 | **Terminal/CLI** | ✅ Native | Environment variables or one-liner |
 | **Java/JVM** | ✅ Native | Automatic HttpsURLConnection overrides |
+| **Docker** | ✅ One-Click | Transparent container recreation |
 | **Android** | ✅ ADB-based | Automatic CA installation and proxy setup |
 | **Chromium** | Dashboard (One-click) | Auto-launch with proxy flags |
 | **Python** | ✅ Native | Environment variables or library-specific config |
@@ -43,6 +44,7 @@ For persistence, add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 For detailed configuration instructions for specific platforms:
 
 - [Java/JVM Applications](clients/java.md) - Native support with automatic certificate handling
+- [Docker Containers](clients/docker.md) - One-click transparent interception and CA injection
 - [Android Devices](clients/android.md) - ADB-based setup with CA installation
 - [Chromium Browsers](clients/chromium.md) - Auto-launch configuration
 - [Terminal/CLI Tools](clients/terminal.md) - Advanced proxy configuration
@@ -117,9 +119,9 @@ If you don't see traffic in the dashboard:
 
 Some applications ignore system proxy settings. Check the specific guides:
 
-- Java applications may need JVM arguments
+- Java applications may need JVM arguments or the [Automatic Agent](clients/java.md)
 - Some tools require explicit proxy configuration
-- Docker containers need special network configuration
+- [Docker Containers](clients/docker.md) can be intercepted with one-click from the dashboard
 
 ## Next Steps
 

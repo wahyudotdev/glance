@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollText, X, ShieldCheck, Layout, Info, Sparkles, Zap, Rocket, Bug, Globe, Smartphone, Settings, Maximize2, Braces, Filter } from 'lucide-react';
+import { ScrollText, X, ShieldCheck, Layout, Info, Sparkles, Zap, Rocket, Bug, Globe, Smartphone, Settings, Maximize2, Braces, Filter, Box } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -10,6 +10,16 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const changes = [
+    {
+      date: 'v0.2.0 - 2026-02-23',
+      items: [
+        { icon: <Box className="text-cyan-500" size={14} />, title: 'Docker Interception', description: 'Robust one-click interception via container recreation and environment injection.' },
+        { icon: <Zap className="text-amber-500" size={14} />, title: 'Java Container Support', description: 'Automatic CA injection into Java KeyStore (cacerts) inside Docker containers.' },
+        { icon: <ShieldCheck className="text-emerald-500" size={14} />, title: 'Universal Compatibility', description: 'Works across all container OS flavors without requiring NET_ADMIN capabilities.' },
+        { icon: <Globe className="text-blue-500" size={14} />, title: 'Smart IP Detection', description: 'Enhanced host discovery prioritizing host.docker.internal for Docker Desktop.' },
+        { icon: <Settings className="text-indigo-500" size={14} />, title: 'API Stability', description: 'Fixed Docker SDK compatibility for older daemons and handled binary stream demultiplexing.' }
+      ]
+    },
     {
       date: 'v0.1.4 - 2026-02-21',
       items: [

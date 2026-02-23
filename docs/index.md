@@ -6,7 +6,7 @@ hero:
   text: "Let Your AI Understand Every Request at a Glance."
   tagline: "The specialized MITM proxy for AI Agents with native MCP integration."
   image:
-    src: /icon.svg
+    src: /glance/icon.svg
     alt: Glance Logo
   actions:
     - theme: brand
@@ -24,7 +24,7 @@ features:
   - title: 🤖 Native MCP
     details: Expose traffic and tools to AI agents like Claude Desktop natively.
   - title: 📱 Multi-Platform
-    details: Deep integration with Java/JVM, Android, and Chromium browsers.
+    details: Deep integration with Java/JVM, Docker, Android, and Chromium.
 
 ---
 

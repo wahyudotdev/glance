@@ -4,10 +4,10 @@ export default defineConfig({
   title: "Glance",
   description: "The specialized MITM proxy for AI Agents with MCP integration",
   base: '/glance/',
-  head: [['link', { rel: 'icon', href: '/icon.svg' }]],
+  head: [['link', { rel: 'icon', href: '/glance/icon.svg' }]],
   
   themeConfig: {
-    logo: '/icon.svg',
+    logo: '/glance/icon.svg',
     
     nav: [
       { text: 'Home', link: '/' },
@@ -36,6 +36,7 @@ export default defineConfig({
         items: [
           { text: 'Supported Clients', link: '/clients' },
           { text: 'Java/JVM', link: '/clients/java' },
+          { text: 'Docker', link: '/clients/docker' },
           { text: 'Android', link: '/clients/android' },
           { text: 'Chromium', link: '/clients/chromium' },
           { text: 'Terminal', link: '/clients/terminal' }

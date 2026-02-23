@@ -380,10 +380,6 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/50 p-2 rounded-lg">
-                  <Shield size={12} className="text-cyan-600" />
-                  <span>Uses <strong>iptables</strong> for transparent redirection. Requires <code>NET_ADMIN</code> capability in the container.</span>
-                </div>
               </div>
             </div>
           </div>
