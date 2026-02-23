@@ -10,6 +10,8 @@ A scenario is a named collection of HTTP requests that represent a user flow or 
 - **E-commerce Checkout**: Add to Cart → Update Quantity → Checkout → Payment
 - **API Integration**: Authenticate → Create Resource → Update → Delete
 
+![Traffic Scenarios](/_media/scenarios.png)
+
 ## Creating Scenarios
 
 ### Method 1: Manual Selection

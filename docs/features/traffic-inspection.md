@@ -2,6 +2,8 @@
 
 Glance provides powerful tools for inspecting HTTP/HTTPS traffic in real-time.
 
+![Traffic Inspector](/_media/dashboard.png)
+
 ## Real-time Live View
 
 The dashboard updates automatically as requests flow through the proxy:

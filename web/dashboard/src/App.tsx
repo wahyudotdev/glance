@@ -61,13 +61,38 @@ const App: React.FC = () => {
 
   // UI State
   const [currentView, setCurrentView] = useState<'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about'>(() => {
+    const hash = window.location.hash.replace('#/', '');
+    const validViews = ['traffic', 'integrations', 'settings', 'rules', 'scenarios', 'about'];
+    if (validViews.includes(hash)) return hash as any;
+
     const saved = localStorage.getItem('glance-current-view');
     return (saved as 'traffic' | 'integrations' | 'settings' | 'rules' | 'scenarios' | 'about') || 'traffic';
   });
 
   useEffect(() => {
     localStorage.setItem('glance-current-view', currentView);
+    // Sync with hash
+    const hash = window.location.hash.replace('#/', '');
+    if (hash && hash !== currentView) {
+      window.location.hash = `#/${currentView}`;
+    }
   }, [currentView]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#/', '');
+      const validViews = ['traffic', 'integrations', 'settings', 'rules', 'scenarios', 'about'];
+      if (validViews.includes(hash)) {
+        setCurrentView(hash as any);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    // Initialize from hash if present
+    handleHashChange();
+    
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isRequestEditorOpen, setIsRequestEditorOpen] = useState(false);

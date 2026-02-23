@@ -15,6 +15,8 @@ Glance supports various client environments and provides specialized configurati
 | **Node.js** | ✅ Native | Environment variables or axios/fetch config |
 | **cURL** | ✅ Native | `-x` flag or environment variables |
 
+![Client Integrations](/_media/integrations.png)
+
 ## Quick Setup Methods
 
 ### Terminal One-Liner (Recommended)

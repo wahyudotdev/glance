@@ -6,6 +6,19 @@ Glance implements the **Model Context Protocol (MCP)**, allowing AI agents to in
 
 The [Model Context Protocol](https://modelcontextprotocol.io) is an open standard that allows AI agents to access external tools, resources, and context. Glance's MCP server exposes network traffic data and proxy controls to AI agents like Claude Desktop.
 
+<div style="margin: 2rem 0; aspect-ratio: 16/9; width: 100%;">
+  <iframe 
+    style="width: 100%; height: 100%; border-radius: 12px;"
+    src="https://www.youtube.com/embed/vgI1V-KKXhw" 
+    title="Glance MCP Integration" 
+    frameborder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+    allowfullscreen>
+  </iframe>
+</div>
+
+![Glance MCP Settings](/_media/settings.png)
+
 ## Quick Setup (Claude Code CLI)
 
 Run this one-liner in your terminal to instantly connect Glance to Claude Code:

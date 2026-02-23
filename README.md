@@ -60,6 +60,7 @@ Glance implements the Model Context Protocol, allowing AI agents to interact wit
 ### 📱 Client & Environment Support
 - **Java/JVM**: Specialized overrides for `HttpsURLConnection` to support already-running apps (Java 8+).
 - **Android**: ADB-based device discovery, automatic CA certificate installation, and proxy configuration.
+- **Docker**: One-click transparent interception and CA injection for running containers.
 - **Chromium**: One-click launch via Dashboard with pre-configured proxy and certificate flags.
 - **One-liner Setup**: `eval "$(curl -s http://localhost:15501/setup)"` for quick terminal proxy configuration.
 
@@ -76,15 +77,15 @@ brew install glance
 ### Direct Download
 Download the latest pre-compiled binary for your platform from the [Releases](https://github.com/wahyudotdev/glance/releases/latest) page.
 
-## ⚖️ Compatibility Matrix
+## 📱 Supported Clients
 
 | Environment | Support Level | Requirements | Features |
 | :--- | :--- | :--- | :--- |
 | **Java / JVM** | Native (Auto) | Java 8+ (v52.0+) | `HttpsURLConnection` overrides, Auto-trust CA |
 | **Android** | ADB-based | Android 7+ (API 24+) | `adb reverse`, Auto-cert push, System/User trust guides |
+| **Docker** | One-Click | Docker Engine | Transparent container recreation, CA injection |
 | **Chromium** | Dashboard (One-click) | Chrome / Edge / Brave | Auto-launch with proxy flags, Ignore cert errors |
 | **Terminal** | One-liner | Bash / Zsh / Fish | `HTTP_PROXY`, `HTTPS_PROXY` injection |
-| **MCP** | Built-in | Claude Desktop / MCP Host | Resource inspection, Tool execution, AI analysis |
 
 ## 📜 Changelog
 See [CHANGELOG.md](CHANGELOG.md) for details on recent updates and milestones.

@@ -11,6 +11,8 @@ The rule engine supports two types of rules:
 
 Both types use pattern matching to determine which requests to intercept.
 
+![Traffic Rules](/_media/rules.png)
+
 ## Mocks
 
 Mocks allow you to return custom responses for specific requests without contacting the actual server.
