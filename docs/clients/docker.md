@@ -36,6 +36,7 @@ Unlike `iptables`-based methods, this approach does **not** require the `--cap-a
 ## Smart Host Detection
 
 In Docker environments, reaching the host's "localhost" from inside a container can be tricky. Glance automatically handles this:
+*   **Automatic Host Mapping**: Glance injects `host.docker.internal:host-gateway` into the container's `extra_hosts` configuration. This allows the container to resolve `host.docker.internal` to the host machine even on standard Linux environments where this is not provided by default.
 *   **Docker Desktop (macOS/Windows)**: Uses `host.docker.internal` to route traffic to the host.
 *   **Linux**: Automatically detects the default bridge gateway IP and uses it as the proxy host.
 

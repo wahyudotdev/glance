@@ -158,6 +158,9 @@ func InterceptDocker(containerID string, proxyAddr string) error {
 
 	// 5. Create and Start new container with original name
 	// Note: We copy HostConfig and NetworkConfig to keep everything else the same.
+	newHostConfig := *inspect.HostConfig
+	newHostConfig.ExtraHosts = append(newHostConfig.ExtraHosts, "host.docker.internal:host-gateway")
+
 	// We must clear dynamic fields like MacAddress and IPAddress to maintain compatibility with older API versions.
 	endpoints := make(map[string]*network.EndpointSettings)
 	for netName, settings := range inspect.NetworkSettings.Networks {
@@ -176,7 +179,7 @@ func InterceptDocker(containerID string, proxyAddr string) error {
 	networkingConfig := &network.NetworkingConfig{
 		EndpointsConfig: endpoints,
 	}
-	newContainer, err := cli.ContainerCreate(ctx, &newConfig, inspect.HostConfig, networkingConfig, nil, oldName)
+	newContainer, err := cli.ContainerCreate(ctx, &newConfig, &newHostConfig, networkingConfig, nil, oldName)
 	if err != nil {
 		// Rollback rename if create fails
 		_ = cli.ContainerRename(ctx, containerID, oldName)

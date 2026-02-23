@@ -2,12 +2,15 @@
 
 All notable changes to the Glance project will be documented in this file.
 
+## [v0.2.1] - 2026-02-23
+- **Improved Host Resolution**: Enhanced Host IP discovery to prioritize `host.docker.internal` for Docker Desktop users.
+- **ExtraHosts Injection**: Automatically included `host.docker.internal:host-gateway` in `ExtraHosts` during container recreation to ensure reliable host resolution across all platforms (Linux/macOS/Windows).
+
 ## [v0.2.0] - 2026-02-23
 - **Docker Interception**: Introduced a robust "One-Click Intercept" for Docker containers via container recreation and environment injection.
 - **Java Container Support**: Added specialized logic to automatically inject and trust the Glance CA certificate into the Java Trust Store (`cacerts`) inside Docker containers using `keytool`.
 - **Universal Compatibility**: Replaced the `iptables` approach with standard `HTTP_PROXY`/`HTTPS_PROXY` and `JAVA_TOOL_OPTIONS` injection, ensuring compatibility across all container OS flavors (Alpine, Debian, RHEL) without requiring `NET_ADMIN` capabilities.
 - **Docker UI**: New full-width Docker Containers card in the Integrations view with real-time status tracking, container renaming for backups, and seamless restoration.
-- **Improved IP Detection**: Enhanced Host IP discovery to prioritize `host.docker.internal` for Docker Desktop users, ensuring reliable connectivity from container to host.
 - **API Stability**: Fixed Docker SDK compatibility issues for older daemon versions (API 1.41) and properly handled binary stream demultiplexing for command execution.
 
 ## [v0.1.4] - 2026-02-21

@@ -21,7 +21,7 @@ type mockDockerClient struct {
 	client.APIClient
 	listFunc        func() ([]container.Summary, error)
 	inspectFunc     func(id string) (container.InspectResponse, error)
-	createFunc      func() (container.CreateResponse, error)
+	createFunc      func(hostConfig *container.HostConfig) (container.CreateResponse, error)
 	execCreateFunc  func() (types.IDResponse, error) // nolint:staticcheck
 	execAttachFunc  func() (types.HijackedResponse, error)
 	execInspectFunc func() (container.ExecInspect, error)
@@ -49,7 +49,7 @@ func (m *mockDockerClient) ContainerInspect(ctx context.Context, containerID str
 
 func (m *mockDockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error) {
 	if m.createFunc != nil {
-		return m.createFunc()
+		return m.createFunc(hostConfig)
 	}
 	return container.CreateResponse{ID: "new-id"}, nil
 }
@@ -166,6 +166,8 @@ func TestInterceptDocker(t *testing.T) {
 	oldNewClient := newDockerClient
 	defer func() { newDockerClient = oldNewClient }()
 
+	var capturedHostConfig *container.HostConfig
+
 	mock := &mockDockerClient{
 		inspectFunc: func(id string) (container.InspectResponse, error) {
 			return container.InspectResponse{
@@ -175,6 +177,9 @@ func TestInterceptDocker(t *testing.T) {
 				},
 				ContainerJSONBase: &container.ContainerJSONBase{
 					Name: "/test-container",
+					HostConfig: &container.HostConfig{
+						ExtraHosts: []string{"existing:1.2.3.4"},
+					},
 				},
 				NetworkSettings: &container.NetworkSettings{
 					Networks: map[string]*network.EndpointSettings{
@@ -182,6 +187,10 @@ func TestInterceptDocker(t *testing.T) {
 					},
 				},
 			}, nil
+		},
+		createFunc: func(hostConfig *container.HostConfig) (container.CreateResponse, error) {
+			capturedHostConfig = hostConfig
+			return container.CreateResponse{ID: "new-id"}, nil
 		},
 		execCreateFunc: func() (types.IDResponse, error) { // nolint:staticcheck
 			return types.IDResponse{ID: "exec-id"}, nil // nolint:staticcheck
@@ -205,6 +214,21 @@ func TestInterceptDocker(t *testing.T) {
 	err := InterceptDocker("cont1", "localhost:15500")
 	if err != nil {
 		t.Fatalf("InterceptDocker failed: %v", err)
+	}
+
+	if capturedHostConfig == nil {
+		t.Fatal("HostConfig was not captured")
+	}
+
+	found := false
+	for _, host := range capturedHostConfig.ExtraHosts {
+		if host == "host.docker.internal:host-gateway" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected host.docker.internal:host-gateway in ExtraHosts, got %v", capturedHostConfig.ExtraHosts)
 	}
 }
 
