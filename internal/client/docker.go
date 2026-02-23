@@ -100,9 +100,11 @@ func InterceptDocker(containerID string, proxyAddr string) error {
 	}
 
 	// 2. Determine Host IP for the proxy
+	// We try to find a numeric IP first (Gateway). If it resolves to 127.0.0.1
+	// or fails, we use 'host.docker.internal' as the last resort.
 	hostIP, err := findHostIP(ctx, cli, containerID)
-	if err != nil {
-		return fmt.Errorf("failed to find host IP: %v", err)
+	if err != nil || hostIP == "127.0.0.1" || hostIP == "localhost" {
+		hostIP = "host.docker.internal"
 	}
 
 	_, port, err := net.SplitHostPort(proxyAddr)

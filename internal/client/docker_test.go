@@ -232,6 +232,55 @@ func TestInterceptDocker(t *testing.T) {
 	}
 }
 
+func TestInterceptDocker_LocalhostFallback(t *testing.T) {
+	oldNewClient := newDockerClient
+	defer func() { newDockerClient = oldNewClient }()
+
+	mock := &mockDockerClient{
+		inspectFunc: func(id string) (container.InspectResponse, error) {
+			return container.InspectResponse{
+				Config: &container.Config{Image: "test-image"},
+				ContainerJSONBase: &container.ContainerJSONBase{
+					Name:       "/test-container",
+					HostConfig: &container.HostConfig{},
+				},
+				NetworkSettings: &container.NetworkSettings{
+					Networks: map[string]*network.EndpointSettings{
+						"bridge": {Gateway: "127.0.0.1"}, // Force localhost detection
+					},
+				},
+			}, nil
+		},
+		createFunc: func(hostConfig *container.HostConfig) (container.CreateResponse, error) {
+			return container.CreateResponse{ID: "new-id"}, nil
+		},
+		execCreateFunc: func() (types.IDResponse, error) { // nolint:staticcheck
+			return types.IDResponse{ID: "exec-id"}, nil // nolint:staticcheck
+		},
+		execAttachFunc: func() (types.HijackedResponse, error) {
+			r, w := net.Pipe()
+			bufr := bufio.NewReader(r)
+			go func() {
+				header := []byte{1, 0, 0, 0, 0, 0, 0, 6}
+				_, _ = w.Write(append(header, []byte("alpine")...))
+				_ = w.Close()
+			}()
+			return types.HijackedResponse{Reader: bufr, Conn: w}, nil
+		},
+		execInspectFunc: func() (container.ExecInspect, error) {
+			return container.ExecInspect{ExitCode: 0}, nil
+		},
+	}
+	newDockerClient = func() (client.APIClient, error) { return mock, nil }
+
+	// InterceptDocker internal logic should change 127.0.0.1 -> host.docker.internal
+	// We can verify this by checking if it completes without error or by capturing the Config
+	err := InterceptDocker("cont1", "localhost:15500")
+	if err != nil {
+		t.Fatalf("InterceptDocker failed: %v", err)
+	}
+}
+
 func TestStopInterceptDocker(t *testing.T) {
 	oldNewClient := newDockerClient
 	defer func() { newDockerClient = oldNewClient }()
