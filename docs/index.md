@@ -6,7 +6,7 @@ hero:
   text: "Let Your AI Understand Every Request at a Glance."
   tagline: "The specialized MITM proxy for AI Agents with native MCP integration."
   image:
-    src: /glance/icon.svg
+    src: /icon.svg
     alt: Glance Logo
   actions:
     - theme: brand

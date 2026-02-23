@@ -4,10 +4,10 @@ export default defineConfig({
   title: "Glance",
   description: "The specialized MITM proxy for AI Agents with MCP integration",
   base: '/glance/',
-  head: [['link', { rel: 'icon', href: '/glance/icon.png' }]],
+  head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]],
   
   themeConfig: {
-    logo: '/glance/icon.png',
+    logo: '/icon.svg',
     
     nav: [
       { text: 'Home', link: '/' },
