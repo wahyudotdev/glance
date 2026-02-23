@@ -56,3 +56,11 @@ https://github.com/wahyudotdev/glance/releases/latest
 :::
 
 </div>
+
+## 💖 Support the Project
+
+Glance is free and open-source. If you find it helpful, consider supporting its development:
+
+- **Sponsor**: [GitHub Sponsors](https://github.com/sponsors/wahyudotdev)
+- **Star**: [Star us on GitHub](https://github.com/wahyudotdev/glance)
+- **Contribute**: [Join the community](/contributing)

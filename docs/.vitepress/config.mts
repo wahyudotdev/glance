@@ -12,7 +12,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quick Start', link: '/quickstart' },
-      { text: 'GitHub', link: 'https://github.com/wahyudotdev/glance' }
+      { text: 'Support', link: '/support' }
     ],
 
     sidebar: [
@@ -67,6 +67,7 @@ export default defineConfig({
       {
         text: 'Help',
         items: [
+          { text: 'Support', link: '/support' },
           { text: 'FAQ', link: '/faq' },
           { text: 'Troubleshooting', link: '/troubleshooting' },
           { text: 'Changelog', link: '/changelog' }

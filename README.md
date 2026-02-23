@@ -138,6 +138,12 @@ Glance is built on top of amazing open-source projects:
 - **[Tailwind CSS](https://tailwindcss.com)**: Modern utility-first styling.
 - **[SQLite](https://sqlite.org)**: Lightweight & high-performance persistence.
 
+## 💖 Support Glance
+
+Glance is open-source and free to use. If you'd like to support the project's development, please consider sponsoring:
+
+- **GitHub Sponsors**: [Sponsor @wahyudotdev](https://github.com/sponsors/wahyudotdev)
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
