@@ -19,6 +19,9 @@ type ClientService interface {
 	InterceptAndroid(deviceID string, proxyAddr string) error
 	ClearAndroid(deviceID string, proxyAddr string) error
 	PushAndroidCert(deviceID string) error
+	ListDockerContainers() ([]model.DockerContainer, error)
+	InterceptDocker(containerID string, proxyAddr string) error
+	StopInterceptDocker(containerID string) error
 }
 
 type clientService struct{}
@@ -66,4 +69,16 @@ func (s *clientService) ClearAndroid(deviceID string, proxyAddr string) error {
 
 func (s *clientService) PushAndroidCert(deviceID string) error {
 	return client.PushCertToDevice(deviceID, []byte(goproxy.CA_CERT))
+}
+
+func (s *clientService) ListDockerContainers() ([]model.DockerContainer, error) {
+	return client.ListDockerContainers()
+}
+
+func (s *clientService) InterceptDocker(containerID string, proxyAddr string) error {
+	return client.InterceptDocker(containerID, proxyAddr)
+}
+
+func (s *clientService) StopInterceptDocker(containerID string) error {
+	return client.StopInterceptDocker(containerID)
 }

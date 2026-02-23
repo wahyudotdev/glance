@@ -69,6 +69,32 @@ func (s *Server) handlePushAndroidCert(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "pushed"})
 }
 
+func (s *Server) handleListDockerContainers(c *fiber.Ctx) error {
+	containers, err := s.services.Client.ListDockerContainers()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(containers)
+}
+
+func (s *Server) handleInterceptDocker(c *fiber.Ctx) error {
+	containerID := c.Params("id")
+	err := s.services.Client.InterceptDocker(containerID, s.proxyAddr)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "intercepting"})
+}
+
+func (s *Server) handleStopInterceptDocker(c *fiber.Ctx) error {
+	containerID := c.Params("id")
+	err := s.services.Client.StopInterceptDocker(containerID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "stopped"})
+}
+
 func (s *Server) registerClientRoutes() {
 	s.app.Post("/api/client/chromium", s.handleLaunchChromium)
 	s.app.Get("/api/client/java/processes", s.handleListJavaProcesses)
@@ -78,6 +104,10 @@ func (s *Server) registerClientRoutes() {
 	s.app.Post("/api/client/android/intercept/:id", s.handleInterceptAndroid)
 	s.app.Post("/api/client/android/clear/:id", s.handleClearAndroid)
 	s.app.Post("/api/client/android/push-cert/:id", s.handlePushAndroidCert)
+
+	s.app.Get("/api/client/docker/containers", s.handleListDockerContainers)
+	s.app.Post("/api/client/docker/intercept/:id", s.handleInterceptDocker)
+	s.app.Post("/api/client/docker/stop/:id", s.handleStopInterceptDocker)
 
 	s.app.Get("/api/client/terminal/setup", s.handleTerminalSetup)
 	s.app.Get("/setup", s.handleTerminalSetup)

@@ -1,25 +1,32 @@
 import React, { useState } from 'react';
-import { Globe, Terminal, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle, Code } from 'lucide-react';
-import type { JavaProcess, AndroidDevice } from '../../types/traffic';
+import { Globe, Terminal, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle, Code, Box } from 'lucide-react';
+import type { JavaProcess, AndroidDevice, DockerContainer } from '../../types/traffic';
 
 interface IntegrationsViewProps {
   javaProcesses: JavaProcess[];
   androidDevices: AndroidDevice[];
+  dockerContainers: DockerContainer[];
   isLoadingJava: boolean;
   isLoadingAndroid: boolean;
+  isLoadingDocker: boolean;
   onFetchJava: () => void;
   onFetchAndroid: () => void;
+  onFetchDocker: () => void;
   onInterceptJava: (pid: string) => void;
   onInterceptAndroid: (id: string) => void;
   onClearAndroid: (id: string) => void;
   onPushAndroidCert: (id: string) => void;
+  onInterceptDocker: (id: string) => void;
+  onStopInterceptDocker: (id: string) => void;
   onShowTerminalDocs: () => void;
 }
 
 export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ 
-  javaProcesses, androidDevices, isLoadingJava, isLoadingAndroid, 
-  onFetchJava, onFetchAndroid, onInterceptJava, onInterceptAndroid, onClearAndroid,
-  onPushAndroidCert, onShowTerminalDocs
+  javaProcesses, androidDevices, dockerContainers, 
+  isLoadingJava, isLoadingAndroid, isLoadingDocker,
+  onFetchJava, onFetchAndroid, onFetchDocker, 
+  onInterceptJava, onInterceptAndroid, onClearAndroid,
+  onPushAndroidCert, onInterceptDocker, onStopInterceptDocker, onShowTerminalDocs
 }) => {
   const [scriptCopied, setScriptCopied] = useState(false);
 
@@ -32,7 +39,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
             {/* Left Column: Quick Setup */}
             <div className="flex flex-col gap-6">
               {/* Chromium Card */}
-              <div className="flex-1 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
@@ -59,7 +66,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
 
               {/* Existing Terminal Card */}
-              <div className="flex-1 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
@@ -316,6 +323,66 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                   <p className="text-[10px] text-amber-700 dark:text-amber-500 leading-relaxed italic">
                     <strong>HTTPS:</strong> Import the CA cert into your keystore or use <code>-Djavax.net.ssl.trustStore</code>.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Docker Card - Bottom Spanning 2 Columns */}
+            <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl flex items-center justify-center shrink-0">
+                      <Box className="text-cyan-600 dark:text-cyan-400" size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold dark:text-slate-100">Docker Containers</h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">One-click transparent interception</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={onFetchDocker}
+                    className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all ${isLoadingDocker ? 'animate-spin text-cyan-600' : 'text-slate-400 dark:text-slate-500'}`}
+                  >
+                    <Activity size={14} />
+                  </button>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden mb-4 min-h-[120px]">
+                  {dockerContainers.length > 0 ? (
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-64 overflow-y-auto">
+                      {dockerContainers.map(container => (
+                        <div key={container.id} className="px-4 py-3.5 flex items-center justify-between hover:bg-white dark:hover:bg-slate-900 transition-colors group">
+                          <div className="flex flex-col min-w-0 pr-6">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title={container.name}>{container.name}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{container.id}</span>
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-[150px]">{container.image}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold ${container.state === 'running' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500'}`}>{container.state}</span>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              container.intercepted ? onStopInterceptDocker(container.id) : onInterceptDocker(container.id);
+                            }}
+                            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-cyan-200 dark:shadow-none ${container.intercepted 
+                              ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200' 
+                              : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
+                          >
+                            {container.intercepted ? 'Stop Intercept' : 'Intercept Traffic'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-12 text-center text-slate-400 dark:text-slate-600 text-xs italic">
+                      No running containers found. Ensure Docker is running.
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/50 p-2 rounded-lg">
+                  <Shield size={12} className="text-cyan-600" />
+                  <span>Uses <strong>iptables</strong> for transparent redirection. Requires <code>NET_ADMIN</code> capability in the container.</span>
                 </div>
               </div>
             </div>

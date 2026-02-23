@@ -33,6 +33,15 @@ export interface AndroidDevice {
   name: string;
 }
 
+export interface DockerContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  ip_address: string;
+  intercepted: boolean;
+}
+
 export interface VariableMapping {
   name: string;
   source_entry_id: string;

@@ -52,9 +52,11 @@ const App: React.FC = () => {
   const { rules, isLoadingRules, fetchRules, createRule, updateRule, deleteRule } = useRules(toast);
   const { scenarios, isLoadingScenarios, fetchScenarios, saveScenario, deleteScenario, addToScenario } = useScenarios(toast);
   const { 
-    javaProcesses, androidDevices, isLoadingJava, isLoadingAndroid, terminalScript,
-    fetchJavaProcesses, fetchAndroidDevices, fetchTerminalScript,
-    interceptJava, interceptAndroid, clearAndroid, pushAndroidCert 
+    javaProcesses, androidDevices, dockerContainers, 
+    isLoadingJava, isLoadingAndroid, isLoadingDocker, terminalScript,
+    fetchJavaProcesses, fetchAndroidDevices, fetchDockerContainers, fetchTerminalScript,
+    interceptJava, interceptAndroid, clearAndroid, pushAndroidCert,
+    interceptDocker, stopInterceptDocker
   } = useIntegrations(toast);
 
   // UI State
@@ -422,6 +424,7 @@ const App: React.FC = () => {
     if (currentView === 'integrations') {
       fetchJavaProcesses();
       fetchAndroidDevices();
+      fetchDockerContainers();
       fetchTerminalScript();
     }
     if (currentView === 'rules') {
@@ -430,7 +433,7 @@ const App: React.FC = () => {
     if (currentView === 'scenarios') {
       fetchScenarios();
     }
-  }, [currentView, fetchAndroidDevices, fetchJavaProcesses, fetchRules, fetchScenarios, fetchTerminalScript]);
+  }, [currentView, fetchAndroidDevices, fetchJavaProcesses, fetchDockerContainers, fetchRules, fetchScenarios, fetchTerminalScript]);
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900 transition-colors">
@@ -524,8 +527,21 @@ const App: React.FC = () => {
 
           {currentView === 'integrations' && (
             <IntegrationsView 
-              javaProcesses={javaProcesses} androidDevices={androidDevices} isLoadingJava={isLoadingJava} isLoadingAndroid={isLoadingAndroid}
-              onFetchJava={fetchJavaProcesses} onFetchAndroid={fetchAndroidDevices} onInterceptJava={interceptJava} onInterceptAndroid={interceptAndroid} onClearAndroid={clearAndroid} onPushAndroidCert={pushAndroidCert}
+              javaProcesses={javaProcesses} 
+              androidDevices={androidDevices} 
+              dockerContainers={dockerContainers}
+              isLoadingJava={isLoadingJava} 
+              isLoadingAndroid={isLoadingAndroid}
+              isLoadingDocker={isLoadingDocker}
+              onFetchJava={fetchJavaProcesses} 
+              onFetchAndroid={fetchAndroidDevices} 
+              onFetchDocker={fetchDockerContainers}
+              onInterceptJava={interceptJava} 
+              onInterceptAndroid={interceptAndroid} 
+              onClearAndroid={clearAndroid} 
+              onPushAndroidCert={pushAndroidCert}
+              onInterceptDocker={interceptDocker}
+              onStopInterceptDocker={stopInterceptDocker}
               onShowTerminalDocs={() => setIsTerminalDocsOpen(true)}
             />
           )}

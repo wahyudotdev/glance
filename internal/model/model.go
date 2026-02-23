@@ -45,6 +45,16 @@ type AndroidDevice struct {
 	Name  string `json:"name"`
 }
 
+// DockerContainer represents a running Docker container.
+type DockerContainer struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Image       string `json:"image"`
+	State       string `json:"state"`
+	IPAddress   string `json:"ip_address"`
+	Intercepted bool   `json:"intercepted"`
+}
+
 // RuleType defines the kind of interception rule.
 type RuleType string
 
