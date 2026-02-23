@@ -28,10 +28,31 @@ features:
 
 ---
 
-<div style="text-align: center; margin-top: 2rem;">
+<div style="margin-top: 2rem; max-width: 1152px; margin-left: auto; margin-right: auto;">
 
-```bash
+::: code-group
+
+```bash [macOS]
+brew tap wahyudotdev/tap
 brew install glance
 ```
+
+```bash [Linux]
+# Download
+curl -LO https://github.com/wahyudotdev/glance/releases/latest/download/glance_Linux_x86_64.tar.gz
+
+# Extract
+tar -xzf glance_Linux_x86_64.tar.gz
+
+# Move to path
+sudo mv glance /usr/local/bin/
+```
+
+```powershell [Windows]
+# Download the latest .exe from our Releases page:
+https://github.com/wahyudotdev/glance/releases/latest
+```
+
+:::
 
 </div>
