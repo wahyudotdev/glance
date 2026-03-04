@@ -11,6 +11,22 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const changes = [
     {
+      date: 'v0.2.3 - 2026-03-05',
+      items: [
+        { icon: <Zap className="text-amber-500" size={14} />, title: 'Terminal Interception', description: 'Complete redesign with support for curl, git, pip, and npm CA certificates.' },
+        { icon: <ShieldCheck className="text-emerald-500" size={14} />, title: 'Local Interception', description: 'Default behavior now unsets NO_PROXY to intercept localhost traffic.' },
+        { icon: <Globe className="text-blue-500" size={14} />, title: 'Port Standardization', description: 'Standardized default ports to 15501 (API) and 15500 (Proxy) across all layers.' }
+      ]
+    },
+    {
+      date: 'v0.2.2 - 2026-02-24',
+      items: [
+        { icon: <Braces className="text-indigo-500" size={14} />, title: 'Mock Rules Engine', description: 'Interactive mock editor with JSON tree view and switchable mocking rules.' },
+        { icon: <Box className="text-cyan-500" size={14} />, title: 'Docker Networking', description: 'Enhanced host resolution using host.docker.internal and automatic ExtraHosts injection.' },
+        { icon: <Layout className="text-emerald-500" size={14} />, title: 'Documentation', description: 'New VitePress docs with dark mode, dashboard screenshots, and branding.' }
+      ]
+    },
+    {
       date: 'v0.2.1 - 2026-02-23',
       items: [
         { icon: <Globe className="text-blue-500" size={14} />, title: 'Improved Host Resolution', description: 'Priority detection for host.docker.internal on Docker Desktop.' },
