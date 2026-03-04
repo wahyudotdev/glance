@@ -19,8 +19,8 @@ func Get() *model.Config {
 	if err != nil {
 		// Fallback to defaults if repo fails
 		return &model.Config{
-			ProxyAddr:  ":8000",
-			APIAddr:    ":8081",
+			ProxyAddr:  ":15500",
+			APIAddr:    ":15501",
 			MCPEnabled: false,
 		}
 	}

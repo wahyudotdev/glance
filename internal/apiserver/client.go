@@ -30,7 +30,8 @@ func (s *Server) handleInterceptJava(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleTerminalSetup(c *fiber.Ctx) error {
-	script := s.services.Client.GetTerminalSetupScript(s.proxyAddr)
+	noProxy := c.Query("no_proxy")
+	script := s.services.Client.GetTerminalSetupScript(s.proxyAddr, noProxy)
 	return c.SendString(script)
 }
 

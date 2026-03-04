@@ -21,18 +21,18 @@ func (e *errorRepo) Save(_ *model.Config) error  { return fmt.Errorf("error") }
 func TestConfig_Fallback(t *testing.T) {
 	Init(&errorRepo{})
 	cfg := Get()
-	if cfg.ProxyAddr != ":8000" {
-		t.Errorf("Expected fallback proxy addr :8000, got %s", cfg.ProxyAddr)
+	if cfg.ProxyAddr != ":15500" {
+		t.Errorf("Expected fallback proxy addr :15500, got %s", cfg.ProxyAddr)
 	}
 }
 
 func TestConfig(t *testing.T) {
-	repo := &mockRepo{cfg: &model.Config{ProxyAddr: ":8000"}}
+	repo := &mockRepo{cfg: &model.Config{ProxyAddr: ":15500"}}
 	Init(repo)
 
 	cfg := Get()
-	if cfg.ProxyAddr != ":8000" {
-		t.Errorf("Expected :8000, got %s", cfg.ProxyAddr)
+	if cfg.ProxyAddr != ":15500" {
+		t.Errorf("Expected :15500, got %s", cfg.ProxyAddr)
 	}
 
 	cfg.ProxyAddr = ":9000"

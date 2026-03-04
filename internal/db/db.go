@@ -39,6 +39,21 @@ func Init() {
 	createTables()
 }
 
+// InitTestDB initializes an in-memory database and returns the connection.
+func InitTestDB() *sql.DB {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		fatalf("Failed to open in-memory database: %v", err)
+	}
+
+	// For tests, use a local instance instead of setting the global DB
+	// but the global DB is used by some services, so we set it anyway.
+	DB = db
+
+	createTables()
+	return db
+}
+
 // InitCustom initializes the database at a specific path.
 func InitCustom(path string) {
 	var err error

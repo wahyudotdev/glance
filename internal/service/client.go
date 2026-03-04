@@ -14,7 +14,7 @@ type ClientService interface {
 	LaunchChromium(proxyAddr string) error
 	ListJavaProcesses() ([]model.JavaProcess, error)
 	InterceptJava(pid string, proxyAddr string) error
-	GetTerminalSetupScript(proxyAddr string) string
+	GetTerminalSetupScript(proxyAddr string, noProxy string) string
 	ListAndroidDevices() ([]model.AndroidDevice, error)
 	InterceptAndroid(deviceID string, proxyAddr string) error
 	ClearAndroid(deviceID string, proxyAddr string) error
@@ -43,8 +43,8 @@ func (s *clientService) InterceptJava(pid string, proxyAddr string) error {
 	return client.BuildAndAttachAgent(pid, proxyAddr)
 }
 
-func (s *clientService) GetTerminalSetupScript(proxyAddr string) string {
-	return client.GetTerminalSetupScript(proxyAddr)
+func (s *clientService) GetTerminalSetupScript(proxyAddr string, noProxy string) string {
+	return client.GetTerminalSetupScript(proxyAddr, noProxy)
 }
 
 func (s *clientService) ListAndroidDevices() ([]model.AndroidDevice, error) {

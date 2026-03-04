@@ -17,8 +17,8 @@ func (m *mockClientService) LaunchChromium(_ string) error { return m.err }
 func (m *mockClientService) ListJavaProcesses() ([]model.JavaProcess, error) {
 	return nil, m.err
 }
-func (m *mockClientService) InterceptJava(_, _ string) error        { return m.err }
-func (m *mockClientService) GetTerminalSetupScript(_ string) string { return "script" }
+func (m *mockClientService) InterceptJava(_, _ string) error           { return m.err }
+func (m *mockClientService) GetTerminalSetupScript(_, _ string) string { return "script" }
 func (m *mockClientService) ListAndroidDevices() ([]model.AndroidDevice, error) {
 	return nil, m.err
 }
