@@ -7,7 +7,14 @@ import (
 )
 
 func (s *Server) handleStatus(c *fiber.Ctx) error {
-	status, err := s.services.Config.GetStatus(s.mcp, s.proxyAddr)
+	mcpSessions := 0
+	mcpEnabled := false
+	if s.mcp != nil {
+		mcpSessions = s.mcp.ActiveSessions()
+		mcpEnabled = true
+	}
+
+	status, err := s.services.Config.GetStatus(mcpSessions, mcpEnabled, s.proxyAddr)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

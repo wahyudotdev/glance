@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"glance/internal/mcp"
 	"glance/internal/model"
 	"glance/internal/service"
 )
@@ -12,7 +11,7 @@ type mockConfigService struct {
 	err    error
 }
 
-func (m *mockConfigService) GetStatus(_ *mcp.Server, _ string) (map[string]any, error) {
+func (m *mockConfigService) GetStatus(_ int, _ bool, _ string) (map[string]any, error) {
 	return m.status, m.err
 }
 func (m *mockConfigService) GetConfig() (*model.Config, error) {

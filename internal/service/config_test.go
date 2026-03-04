@@ -2,7 +2,6 @@ package service
 
 import (
 	"glance/internal/config"
-	"glance/internal/mcp"
 	"glance/internal/model"
 	"testing"
 )
@@ -24,11 +23,12 @@ func TestConfigService_Status_MCP(t *testing.T) {
 	config.Init(&mockConfigRepo{cfg: &model.Config{}})
 	svc := NewConfigService()
 
-	// Minimal MCP server setup
-	ms := mcp.NewServer(nil, nil, ":0", nil)
-	status, _ := svc.GetStatus(ms, ":8000")
+	status, _ := svc.GetStatus(1, true, ":8000")
 	if status["mcp_enabled"] != true {
 		t.Error("Expected mcp_enabled true")
+	}
+	if status["mcp_sessions"] != 1 {
+		t.Errorf("Expected 1 session, got %v", status["mcp_sessions"])
 	}
 }
 
@@ -38,7 +38,7 @@ func TestConfigService(t *testing.T) {
 	svc := NewConfigService()
 
 	// Test GetStatus
-	status, err := svc.GetStatus(nil, ":8000")
+	status, err := svc.GetStatus(0, false, ":8000")
 	if err != nil {
 		t.Fatalf("GetStatus failed: %v", err)
 	}

@@ -20,6 +20,7 @@ import (
 	"glance/internal/proxy"
 	"glance/internal/repository"
 	"glance/internal/rules"
+	"glance/internal/service"
 )
 
 const (
@@ -144,7 +145,7 @@ func main() {
 
 	if *mcpMode {
 
-		mcpServer = mcp.NewServer(p.Store, p.Engine, actualProxyAddr, scenarioRepo)
+		mcpServer = mcp.NewServer(p.Store, p.Engine, actualProxyAddr, scenarioRepo, service.NewClientService())
 
 		go func() {
 

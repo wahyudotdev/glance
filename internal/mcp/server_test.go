@@ -9,6 +9,7 @@ import (
 	"glance/internal/model"
 	"glance/internal/repository"
 	"glance/internal/rules"
+	"glance/internal/service"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,44 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	_ "modernc.org/sqlite"
 )
+
+type mockClientService struct {
+	service.ClientService
+	err error
+}
+
+func (m *mockClientService) ListAndroidDevices() ([]model.AndroidDevice, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return []model.AndroidDevice{{ID: "dev1", Model: "Pixel", Name: "Emulator"}}, nil
+}
+
+func (m *mockClientService) InterceptAndroid(_, _ string) error {
+	return m.err
+}
+
+func (m *mockClientService) ListDockerContainers() ([]model.DockerContainer, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return []model.DockerContainer{{ID: "cont1", Name: "web", Image: "nginx", State: "running", Intercepted: false}}, nil
+}
+
+func (m *mockClientService) InterceptDocker(_, _ string) error {
+	return m.err
+}
+
+func (m *mockClientService) ListJavaProcesses() ([]model.JavaProcess, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return []model.JavaProcess{{PID: "1234", Name: "Main"}}, nil
+}
+
+func (m *mockClientService) InterceptJava(_, _ string) error {
+	return m.err
+}
 
 func setupTestServer() (*Server, *sql.DB, repository.TrafficRepository) {
 	db, err := sql.Open("sqlite", ":memory:")
@@ -59,7 +98,7 @@ func setupTestServer() (*Server, *sql.DB, repository.TrafficRepository) {
 	store := interceptor.NewTrafficStore(trafficRepo)
 	engine := rules.NewEngine(ruleRepo)
 
-	ms := NewServer(store, engine, ":8080", scenarioRepo)
+	ms := NewServer(store, engine, ":8080", scenarioRepo, &mockClientService{})
 	return ms, db, trafficRepo
 }
 
@@ -294,6 +333,51 @@ func TestToolHandlers(t *testing.T) {
 
 		// Delete
 		_, _, _ = ms.handleDeleteScenario(deleteScenarioArgs{ID: "s1"})
+	})
+
+	t.Run("AndroidTools", func(t *testing.T) {
+		res, _, err := ms.handleListAndroidDevices()
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "dev1") {
+			t.Error("Expected device dev1 in list")
+		}
+
+		_, _, err = ms.handleInterceptAndroidDevice(interceptAndroidArgs{DeviceID: "dev1"})
+		if err != nil {
+			t.Fatalf("Intercept failed: %v", err)
+		}
+	})
+
+	t.Run("DockerTools", func(t *testing.T) {
+		res, _, err := ms.handleListDockerContainers()
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "web") {
+			t.Error("Expected container web in list")
+		}
+
+		_, _, err = ms.handleInterceptDockerContainer(interceptDockerArgs{ContainerID: "cont1"})
+		if err != nil {
+			t.Fatalf("Intercept failed: %v", err)
+		}
+	})
+
+	t.Run("JavaTools", func(t *testing.T) {
+		res, _, err := ms.handleListJavaProcesses()
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "1234") {
+			t.Error("Expected PID 1234 in list")
+		}
+
+		_, _, err = ms.handleInterceptJavaProcess(interceptJavaArgs{PID: "1234"})
+		if err != nil {
+			t.Fatalf("Intercept failed: %v", err)
+		}
 	})
 
 	t.Run("ExecuteRequest", func(t *testing.T) {

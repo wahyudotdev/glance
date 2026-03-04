@@ -11,6 +11,7 @@ import (
 	"glance/internal/model"
 	"glance/internal/repository"
 	"glance/internal/rules"
+	"glance/internal/service"
 	"io"
 	"net/http"
 	"strings"
@@ -22,11 +23,12 @@ import (
 
 // Server manages the MCP connection and tool registrations.
 type Server struct {
-	store        *interceptor.TrafficStore
-	engine       *rules.Engine
-	scenarioRepo repository.ScenarioRepository
-	proxyAddr    string
-	server       *mcp.Server
+	store         *interceptor.TrafficStore
+	engine        *rules.Engine
+	scenarioRepo  repository.ScenarioRepository
+	clientService service.ClientService
+	proxyAddr     string
+	server        *mcp.Server
 }
 
 type listTrafficArgs struct {
@@ -84,19 +86,32 @@ type deleteScenarioArgs struct {
 	ID string `json:"id" jsonschema:"The ID of the scenario to delete"`
 }
 
+type interceptAndroidArgs struct {
+	DeviceID string `json:"device_id" jsonschema:"The ID of the Android device to intercept"`
+}
+
+type interceptDockerArgs struct {
+	ContainerID string `json:"container_id" jsonschema:"The ID of the Docker container to intercept"`
+}
+
+type interceptJavaArgs struct {
+	PID string `json:"pid" jsonschema:"The Process ID (PID) of the Java process to intercept"`
+}
+
 // NewServer creates and initializes a new Server instance using the official SDK.
-func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string, scenarioRepo repository.ScenarioRepository) *Server {
+func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string, scenarioRepo repository.ScenarioRepository, clientService service.ClientService) *Server {
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "Glance",
 		Version: "1.0.0",
 	}, nil)
 
 	ms := &Server{
-		store:        store,
-		engine:       engine,
-		scenarioRepo: scenarioRepo,
-		proxyAddr:    proxyAddr,
-		server:       s,
+		store:         store,
+		engine:        engine,
+		scenarioRepo:  scenarioRepo,
+		clientService: clientService,
+		proxyAddr:     proxyAddr,
+		server:        s,
 	}
 
 	ms.registerTools()
@@ -235,6 +250,54 @@ func (ms *Server) registerTools() {
 		Description: "Delete a scenario by ID.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, args deleteScenarioArgs) (*mcp.CallToolResult, any, error) {
 		return ms.handleDeleteScenario(args)
+	})
+
+	// 15. list_android_devices
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_android_devices",
+		Description: "List all connected Android devices and emulators available for interception.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		return ms.handleListAndroidDevices()
+	})
+
+	// 16. intercept_android_device
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "intercept_android_device",
+		Description: "Configure a specific Android device to route its traffic through the Glance proxy.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args interceptAndroidArgs) (*mcp.CallToolResult, any, error) {
+		return ms.handleInterceptAndroidDevice(args)
+	})
+
+	// 17. list_docker_containers
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_docker_containers",
+		Description: "List all Docker containers that can be intercepted.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		return ms.handleListDockerContainers()
+	})
+
+	// 18. intercept_docker_container
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "intercept_docker_container",
+		Description: "Configure a specific Docker container to route its traffic through the Glance proxy.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args interceptDockerArgs) (*mcp.CallToolResult, any, error) {
+		return ms.handleInterceptDockerContainer(args)
+	})
+
+	// 19. list_java_processes
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "list_java_processes",
+		Description: "List all running Java processes available for agent-based interception.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
+		return ms.handleListJavaProcesses()
+	})
+
+	// 20. intercept_java_process
+	mcp.AddTool(ms.server, &mcp.Tool{
+		Name:        "intercept_java_process",
+		Description: "Attach the Glance Java Agent to a running process to intercept its HTTP traffic.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, args interceptJavaArgs) (*mcp.CallToolResult, any, error) {
+		return ms.handleInterceptJavaProcess(args)
 	})
 }
 
@@ -546,6 +609,102 @@ func (ms *Server) handleDeleteScenario(args deleteScenarioArgs) (*mcp.CallToolRe
 		return nil, nil, err
 	}
 	return NewToolResultText(fmt.Sprintf("Scenario %s deleted", args.ID)), nil, nil
+}
+
+func (ms *Server) handleListAndroidDevices() (*mcp.CallToolResult, any, error) {
+	devices, err := ms.clientService.ListAndroidDevices()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list Android devices: %v", err)
+	}
+
+	var sb strings.Builder
+	for _, d := range devices {
+		fmt.Fprintf(&sb, "ID: %s | Model: %s | Name: %s\n", d.ID, d.Model, d.Name)
+	}
+	if sb.Len() == 0 {
+		return NewToolResultText("No Android devices found."), nil, nil
+	}
+	return NewToolResultText(sb.String()), nil, nil
+}
+
+func (ms *Server) handleInterceptAndroidDevice(args interceptAndroidArgs) (*mcp.CallToolResult, any, error) {
+	if args.DeviceID == "" {
+		return nil, nil, fmt.Errorf("device_id is required")
+	}
+
+	if err := ms.clientService.InterceptAndroid(args.DeviceID, ms.proxyAddr); err != nil {
+		return nil, nil, fmt.Errorf("failed to intercept Android device: %v", err)
+	}
+
+	return NewToolResultText(fmt.Sprintf("Android device %s is now being intercepted through %s", args.DeviceID, ms.proxyAddr)), nil, nil
+}
+
+func (ms *Server) handleListDockerContainers() (*mcp.CallToolResult, any, error) {
+	containers, err := ms.clientService.ListDockerContainers()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list Docker containers: %v", err)
+	}
+
+	var sb strings.Builder
+	for _, c := range containers {
+		status := "Stopped"
+		if c.State == "running" {
+			status = "Running"
+		}
+		intercepted := ""
+		if c.Intercepted {
+			intercepted = " (Intercepted)"
+		}
+		shortID := c.ID
+		if len(shortID) > 12 {
+			shortID = shortID[:12]
+		}
+		fmt.Fprintf(&sb, "ID: %s | Name: %s | Image: %s | Status: %s%s\n", shortID, c.Name, c.Image, status, intercepted)
+	}
+	if sb.Len() == 0 {
+		return NewToolResultText("No Docker containers found."), nil, nil
+	}
+	return NewToolResultText(sb.String()), nil, nil
+}
+
+func (ms *Server) handleInterceptDockerContainer(args interceptDockerArgs) (*mcp.CallToolResult, any, error) {
+	if args.ContainerID == "" {
+		return nil, nil, fmt.Errorf("container_id is required")
+	}
+
+	if err := ms.clientService.InterceptDocker(args.ContainerID, ms.proxyAddr); err != nil {
+		return nil, nil, fmt.Errorf("failed to intercept Docker container: %v", err)
+	}
+
+	return NewToolResultText(fmt.Sprintf("Docker container %s is now being intercepted through %s", args.ContainerID, ms.proxyAddr)), nil, nil
+}
+
+func (ms *Server) handleListJavaProcesses() (*mcp.CallToolResult, any, error) {
+	processes, err := ms.clientService.ListJavaProcesses()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list Java processes: %v", err)
+	}
+
+	var sb strings.Builder
+	for _, p := range processes {
+		fmt.Fprintf(&sb, "PID: %s | Name: %s\n", p.PID, p.Name)
+	}
+	if sb.Len() == 0 {
+		return NewToolResultText("No Java processes found."), nil, nil
+	}
+	return NewToolResultText(sb.String()), nil, nil
+}
+
+func (ms *Server) handleInterceptJavaProcess(args interceptJavaArgs) (*mcp.CallToolResult, any, error) {
+	if args.PID == "" {
+		return nil, nil, fmt.Errorf("pid is required")
+	}
+
+	if err := ms.clientService.InterceptJava(args.PID, ms.proxyAddr); err != nil {
+		return nil, nil, fmt.Errorf("failed to intercept Java process: %v", err)
+	}
+
+	return NewToolResultText(fmt.Sprintf("Java process %s is now being intercepted through %s", args.PID, ms.proxyAddr)), nil, nil
 }
 
 func (ms *Server) registerResources() {

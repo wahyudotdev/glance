@@ -3,13 +3,12 @@ package service
 
 import (
 	"glance/internal/config"
-	"glance/internal/mcp"
 	"glance/internal/model"
 )
 
 // ConfigService defines the interface for application configuration and status.
 type ConfigService interface {
-	GetStatus(mcpServer *mcp.Server, proxyAddr string) (map[string]any, error)
+	GetStatus(mcpSessions int, mcpEnabled bool, proxyAddr string) (map[string]any, error)
 	GetConfig() (*model.Config, error)
 	SaveConfig(cfg *model.Config) error
 }
@@ -21,16 +20,12 @@ func NewConfigService() ConfigService {
 	return &configService{}
 }
 
-func (s *configService) GetStatus(mcpServer *mcp.Server, proxyAddr string) (map[string]any, error) {
-	mcpSessions := 0
-	if mcpServer != nil {
-		mcpSessions = mcpServer.ActiveSessions()
-	}
+func (s *configService) GetStatus(mcpSessions int, mcpEnabled bool, proxyAddr string) (map[string]any, error) {
 	return map[string]any{
 		"version":      config.Version,
 		"proxy_addr":   proxyAddr,
 		"mcp_sessions": mcpSessions,
-		"mcp_enabled":  mcpServer != nil,
+		"mcp_enabled":  mcpEnabled,
 	}, nil
 }
 
