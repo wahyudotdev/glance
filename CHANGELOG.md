@@ -2,6 +2,11 @@
 
 All notable changes to the Glance project will be documented in this file.
 
+## [v0.2.4] - 2026-03-05
+- **MCP One-Click Interception**: Enhanced MCP server with specialized tools for one-click interception of Docker containers, Android devices, and Java processes.
+- **Improved Tooling**: Added `intercept_docker_container`, `intercept_android_device`, and `intercept_java_process` to the Model Context Protocol (MCP) toolset.
+- **Reliable Automation**: Integrated robust container recreation logic and environment injection directly into the AI agent workflow.
+
 ## [v0.2.3] - 2026-03-05
 - **Terminal Interception**: Redesigned setup script with improved compatibility and feedback.
 - **Local Interception**: Default behavior now unsets `NO_PROXY` to intercept `localhost` traffic by default.

@@ -11,6 +11,14 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const changes = [
     {
+      date: 'v0.2.4 - 2026-03-05',
+      items: [
+        { icon: <Rocket className="text-rose-500" size={14} />, title: 'MCP One-Click Interception', description: 'New MCP tools to intercept Docker, Android, and Java processes with a single command.' },
+        { icon: <Box className="text-cyan-500" size={14} />, title: 'Improved Tooling', description: 'Added intercept_docker_container, intercept_android_device, and intercept_java_process tools.' },
+        { icon: <Zap className="text-amber-500" size={14} />, title: 'Reliable Automation', description: 'Integrated robust container recreation and environment injection for AI workflows.' }
+      ]
+    },
+    {
       date: 'v0.2.3 - 2026-03-05',
       items: [
         { icon: <Zap className="text-amber-500" size={14} />, title: 'Terminal Interception', description: 'Complete redesign with support for curl, git, pip, and npm CA certificates.' },
