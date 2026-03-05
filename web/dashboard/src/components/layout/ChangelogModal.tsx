@@ -11,6 +11,14 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const changes = [
     {
+      date: 'v0.2.5 - 2026-03-06',
+      items: [
+        { icon: <Globe className="text-blue-500" size={14} />, title: 'Clipboard Fallback', description: 'Added fallback for Clipboard API to support non-secure (HTTP) environments.' },
+        { icon: <Bug className="text-rose-500" size={14} />, title: 'HTTP Support', description: 'Fixed crash when copying text while accessing the dashboard via remote IP/HTTP.' },
+        { icon: <ShieldCheck className="text-emerald-500" size={14} />, title: 'Improved UI Reliability', description: 'Universal clipboard utility ensuring copy works across all browsers and contexts.' }
+      ]
+    },
+    {
       date: 'v0.2.4 - 2026-03-05',
       items: [
         { icon: <Rocket className="text-rose-500" size={14} />, title: 'MCP One-Click Interception', description: 'New MCP tools to intercept Docker, Android, and Java processes with a single command.' },

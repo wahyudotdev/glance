@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bot, Zap, Code, ShieldAlert, X, Copy, Check } from 'lucide-react';
+import { copyToClipboard } from '../../lib/clipboard';
 
 interface MCPDocsProps {
   isOpen: boolean;
@@ -14,20 +15,24 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
 
   if (!isOpen) return null;
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(mcpUrl);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
+  const handleCopyUrl = async () => {
+    const success = await copyToClipboard(mcpUrl);
+    if (success) {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
   };
 
-  const handleCopyCLI = () => {
+  const handleCopyCLI = async () => {
     const cmd = `claude mcp add --transport http glance ${mcpUrl}`;
-    navigator.clipboard.writeText(cmd);
-    setCopiedCLI(true);
-    setTimeout(() => setCopiedCLI(false), 2000);
+    const success = await copyToClipboard(cmd);
+    if (success) {
+      setCopiedCLI(true);
+      setTimeout(() => setCopiedCLI(false), 2000);
+    }
   };
 
-  const handleCopyConfig = () => {
+  const handleCopyConfig = async () => {
     const config = JSON.stringify({
       mcpServers: {
         glance: {
@@ -36,9 +41,11 @@ export const MCPDocs: React.FC<MCPDocsProps> = ({ isOpen, onClose, mcpUrl }) => 
         }
       }
     }, null, 2);
-    navigator.clipboard.writeText(config);
-    setCopiedConfig(true);
-    setTimeout(() => setCopiedConfig(false), 2000);
+    const success = await copyToClipboard(config);
+    if (success) {
+      setCopiedConfig(true);
+      setTimeout(() => setCopiedConfig(false), 2000);
+    }
   };
 
   return (

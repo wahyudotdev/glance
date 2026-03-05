@@ -102,7 +102,7 @@ type interceptJavaArgs struct {
 func NewServer(store *interceptor.TrafficStore, engine *rules.Engine, proxyAddr string, scenarioRepo repository.ScenarioRepository, clientService service.ClientService) *Server {
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "Glance",
-		Version: "1.0.0",
+		Version: "0.2.5",
 	}, nil)
 
 	ms := &Server{

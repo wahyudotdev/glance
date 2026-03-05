@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, Terminal, Activity, Copy, Check, Shield, Smartphone, ChevronRight, XCircle, HelpCircle, Code, Box } from 'lucide-react';
 import type { JavaProcess, AndroidDevice, DockerContainer } from '../../types/traffic';
+import { copyToClipboard } from '../../lib/clipboard';
 
 interface IntegrationsViewProps {
   javaProcesses: JavaProcess[];
@@ -95,10 +96,13 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                     eval "$(curl -s {window.location.origin}/setup)"
                   </pre>
                   <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(`eval "$(curl -s ${window.location.origin}/setup)"`);
-                      setScriptCopied(true);
-                      setTimeout(() => setScriptCopied(false), 2000);
+                    onClick={async () => {
+                      const text = `eval "$(curl -s ${window.location.origin}/setup)"`;
+                      const success = await copyToClipboard(text);
+                      if (success) {
+                        setScriptCopied(true);
+                        setTimeout(() => setScriptCopied(false), 2000);
+                      }
                     }}
                     className="absolute top-2.5 right-2 p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all"
                   >

@@ -2,6 +2,11 @@
 
 All notable changes to the Glance project will be documented in this file.
 
+## [v0.2.5] - 2026-03-06
+- **Clipboard Fallback**: Implemented a fallback mechanism for the Clipboard API using `document.execCommand('copy')` to support non-secure contexts (HTTP).
+- **HTTP Support**: Fixed `Uncaught TypeError: Cannot read properties of undefined (reading 'writeText')` when accessing the dashboard over a remote IP via HTTP.
+- **Improved UI Reliability**: Updated all copy buttons (Integrations, Traffic Details, and MCP Docs) to use the new robust clipboard utility.
+
 ## [v0.2.4] - 2026-03-05
 - **MCP One-Click Interception**: Enhanced MCP server with specialized tools for one-click interception of Docker containers, Android devices, and Java processes.
 - **Improved Tooling**: Added `intercept_docker_container`, `intercept_android_device`, and `intercept_java_process` to the Model Context Protocol (MCP) toolset.

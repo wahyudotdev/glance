@@ -3,6 +3,7 @@ import { FileText, Copy, Check, Eye, Code, Play, X, ShieldAlert, Edit3, ListPlus
 import type { TrafficEntry, Scenario } from '../../types/traffic';
 import { generateCurl } from '../../lib/curl';
 import { JSONTreeEditor } from '../ui/JSONTreeEditor';
+import { copyToClipboard } from '../../lib/clipboard';
 
 interface DetailsPanelProps {
   entry: TrafficEntry;
@@ -115,27 +116,33 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
-  const handleCopyRequestBody = () => {
+  const handleCopyRequestBody = async () => {
     if (entry.request_body) {
-      navigator.clipboard.writeText(entry.request_body);
-      setCopiedRequest(true);
-      setTimeout(() => setCopiedRequest(false), 2000);
+      const success = await copyToClipboard(entry.request_body);
+      if (success) {
+        setCopiedRequest(true);
+        setTimeout(() => setCopiedRequest(false), 2000);
+      }
     }
   };
 
-  const handleCopyResponseBody = () => {
+  const handleCopyResponseBody = async () => {
     if (entry.response_body) {
-      navigator.clipboard.writeText(entry.response_body);
-      setCopiedResponse(true);
-      setTimeout(() => setCopiedResponse(false), 2000);
+      const success = await copyToClipboard(entry.response_body);
+      if (success) {
+        setCopiedResponse(true);
+        setTimeout(() => setCopiedResponse(false), 2000);
+      }
     }
   };
 
-  const handleCopyCurl = () => {
+  const handleCopyCurl = async () => {
     const curl = generateCurl(entry);
-    navigator.clipboard.writeText(curl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(curl);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
