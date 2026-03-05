@@ -1,0 +1,1 @@
+import{_ as e,o,c as r,ag as a}from"./chunks/framework.cqfd-qMR.js";const h=JSON.parse('{"title":"Support Glance","description":"","frontmatter":{},"headers":[],"relativePath":"support.md","filePath":"support.md"}'),n={name:"support.md"};function i(s,t,u,p,l,c){return o(),r("div",null,[...t[0]||(t[0]=[a("",12)])])}const g=e(n,[["render",i]]);export{h as __pageData,g as default};
